@@ -5,6 +5,15 @@
 - 你的模块下应该有
   - `.gitignore`: 忽略你的工程文件件 / 编译产生的文件
   - `README.md` : 对你模块的说明文件，包括依赖库和编译指令
-- 当 master 分支更新时，你应该用 `git rebase origin/master` 来将更新添加到你的分支
+- 当 master 分支更新时，你应该用 `rebase` 来将更新添加到你的分支
+  - 示例：
+
+    ```shell
+    git fetch
+    git checkout your-branch-name
+    git rebase origin/master
+    ```
+
+  - 注意：在 rebase 之前，保证你这个分支所有在 Github 上的提交已经被 master 分支合并
 - 当你的模块完成时，你应该发起一个 `pull request` **而不是** 将更新直接合并到 master 分支
 - 你应当在 test 文件夹创建适当的测试
