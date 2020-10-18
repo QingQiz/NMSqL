@@ -22,7 +22,7 @@ data UnionOp = Union | UnionAll
              deriving (Show)
 
 
-data Type = TInt | TString | TDouble deriving (Show)
+data Type = TInt | TString Int | TDouble deriving (Show)
 
 
 data SortOrder = ASC | DESC deriving (Show)
@@ -31,11 +31,17 @@ data SortOrder = ASC | DESC deriving (Show)
 ----------------------------------------------------------
 -- Some help data type
 ----------------------------------------------------------
+data Value = ValStr String
+           | ValInt Int
+           | ValDouble Double
+           deriving (Show)
+
+
 data ColumnConstraint = ColNotNull
                       | ColPrimaryKey SortOrder
                       | ColUnique
                       | ColCheck Expr
-                      | ColDefault String
+                      | ColDefault Value
                       deriving (Show)
 
 
@@ -70,7 +76,6 @@ type FuncName = String
 type TableName = String
 type ColumnName = String
 type IndexName = String
-type Value = String
 
 ----------------------------------------------------------
 -- Select Stmt
