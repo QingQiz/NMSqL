@@ -9,20 +9,23 @@ data BinOp = Multiple | Divide   -- (*) (/)
            | Ls | LE  | Gr | GE  -- (<) (<=) (>) (>=)
            | Eq | NEq | In       -- (= ==) (!= <>) (IN)
            | And| Or             -- (AND) (OR)
+           deriving (Show)
 
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
             | Glob | NotGlob     -- (GLOB) (NOT GLOB)
+            deriving (Show)
 
 
 data UnionOp = Union | UnionAll
              | Intersect | Except
+             deriving (Show)
 
 
-data Type = TInt | TString | TDouble
+data Type = TInt | TString | TDouble deriving (Show)
 
 
-data SortOrder = ASC | DESC
+data SortOrder = ASC | DESC deriving (Show)
 
 
 ----------------------------------------------------------
@@ -33,14 +36,16 @@ data ColumnConstraint = ColNotNull
                       | ColUnique
                       | ColCheck Expr
                       | ColDefault String
+                      deriving (Show)
 
 
 data TableContraint = TbPrimaryKey [ColumnName]
                     | TbUnique [ColumnName]
                     | TbCheck Expr
+                    deriving (Show)
 
 
-data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint]
+data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint] deriving (Show)
                
 
 data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
@@ -55,6 +60,7 @@ data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | InSelect Expr Select             -- expr in select
           | NotExpr Expr                     -- not 1
           | SelectExpr Select
+          deriving (Show)
 
 
 ----------------------------------------------------------
@@ -75,6 +81,7 @@ data Select = Select Select [TableName]
             | SelectHaving Select Expr
             | SelectUnion Select [(UnionOp, Select)]
             | SelectOrderBy Select [(SortOrder, Expr)]
+            deriving (Show)
 
 
 ----------------------------------------------------------
@@ -82,6 +89,7 @@ data Select = Select Select [TableName]
 ----------------------------------------------------------
 data Update = Update TableName [(ColumnName, Expr)]
             | UpdateWhere Update Expr
+            deriving (Show)
 
 
 ----------------------------------------------------------
@@ -89,29 +97,26 @@ data Update = Update TableName [(ColumnName, Expr)]
 ----------------------------------------------------------
 data Insert = Insert TableName [ColumnName] [Value]
             | InsertFromSelect TableName [ColumnName] Select
+            deriving (Show)
 
 ----------------------------------------------------------
 -- Delete Stmt
 ----------------------------------------------------------
 data Delete = Delete TableName
             | DeleteWhere TableName Expr
+            deriving (Show)
 
 ----------------------------------------------------------
--- Create Table Stmt
+-- Create and Drop Table Stmt
 ----------------------------------------------------------
-data CreateTable = CreateTable TableName [ColumnDef] [TableContraint]
+data TableActon = CreateTable TableName [ColumnDef] [TableContraint]
+                | DropTable TableName
+                deriving (Show)
 
 ----------------------------------------------------------
--- Drop Table Stmt
+-- Create and Drop Index Stmt
 ----------------------------------------------------------
-data DropTable = DropTable TableName
+data IndexAction = CreateIndex IndexName TableName [(ColumnName, SortOrder)]
+                 | DropIndex IndexName
+                 deriving (Show)
 
-----------------------------------------------------------
--- Create Index Stmt
-----------------------------------------------------------
-data CreateIndex = CreateIndex IndexName TableName [(ColumnName, SortOrder)]
-
-----------------------------------------------------------
--- Drop Index Stmt
-----------------------------------------------------------
-data DropIndex = DropIndex IndexName
