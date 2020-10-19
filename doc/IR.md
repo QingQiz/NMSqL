@@ -68,7 +68,44 @@
 |FullKey|Y|N|N|将游标P1指向的key作为字符串压栈|
 |Rewind|Y|N|N|将游标P1重置(指向数据库第一个值)|
 |Next|Y|Y|N|将游标P1移向下一个位置 若已经是最后一个值 则跳转到P2|
-|BeginIdx|Y|N|N|
-|NextIdx|Y|Y|N|
-|PutIdx|Y|Y|Y|
-|DeleteIdx|Y|N|N|
+|BeginIdx|Y|N|N|出栈一个元素作为key 此key需要是由MakeKey产生的 将游标P1移到此记录的位置 此指令后续应不断使用NextIdx指定|
+|NextIdx|Y|Y|N|P1游标已指向一个索引位置 此指令不断访问下一条与BeginIdx中key相同的记录 若记录已结束 则跳转到P2|
+|PutIdx|Y|Y|Y|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中插入此key 其对应的值为Nil 若P2为1则此key必须为非重复的 若P3为非Null 则P3是报错信息|
+|DeleteIdx|Y|N|N|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中删除此key|
+|Destroy|Y|N|N|删除一个根page为P1的表或索引|
+|Destroy|Y|N|N|清空一个根page为P1的表或索引|
+|CreateTable|N|N|Y|创建一个新表 将此表的页编号压栈 将新表的根页写入数据库的根页中 将新表的根页号写入P3指定的内存中|
+|CreateIndex|N|N|Y|创建一个新索引 将此索引的页编号压栈 将新索引的根页写入数据库的根页中 将新索引的根页号写入P3指定的内存中|
+|Reorganize|Y|N|N|压缩 优化 根页编号为P1的表或索引|
+|ListOpen|Y|N|N|新建一个顺序表来暂时存储记录号 P1表示此表的标识符 若已存在 则将原P1表示的表关闭|
+|ListWrite|Y|N|N|将栈顶的数字写入P1所指向的表中|
+|ListRewind|Y|N|N|将P1指向的临时存储中 已读部分重置为此存储开始|
+|ListRead|Y|Y|N|从临时存储P1中读取一个数字并压栈 若P1为空 则跳转到P2 此指令会将一度部分++|
+|ListClose|Y|N|N|关闭并清空P1所指向的临时存储|
+|SortOpen|Y|N|N|开启一个编号为P1的sorter|
+|SortPut|Y|N|N|将栈顶作为key 栈中第二个元素为value 将其放入sorter中 出栈此两个元素|
+|SortMakeRec|Y|N|N|将P1个元素出栈 构造成callback的参数并压栈 TODO:研究一下|
+|SortMakeKey|Y|N|Y|出栈(P3长度)个元素 按照一个P3字符 一个元素 一个\000 的顺序构造串(第一个元素是栈顶) 将构造的串压栈 P1在SortCallback中使用|
+|Sort|Y|N|N|对P1标识的Sorter排序|
+|SortNext|Y|Y|N|将Sorter中的第一个元素压栈 并移除此元素 若Sorter为空 则跳转到P2|
+|SortKey|Y|N|N|将Sorter中第一个元素的key压栈 不改变Sorter|
+|SortCallback|Y|Y|N|栈顶需要是SortMakeKey的结果 并且P1相同(事实上不检测) 出栈此元素 作为xCallback的参数并执行xCallback|
+|SortClose|Y|N|N|关闭P1所指定的Sorter并清空|
+|FileOpen|N|N|Y|以只读形式打开P3指定的文件|
+|FileClose|N|N|N|关闭之前打开的文件|
+|FileRead|Y|Y|Y|从打开的文件中读取一行 若为EOF 跳转到P2 以P3为分隔符 若分割出的元素大于P1个 则忽略多余的元素 若小于P1个 则剩余的视为空字符串|
+|FileColumn|Y|N|N|将最近读取行的第P1列压栈|
+|MemStore|Y|N|N|出栈一个元素 将其存至P1内存位置|
+|MemLoad|Y|N|N|将P1内存位置的元素压栈|
+|AggReset|N|Y|N|清空当前aggregator 并扩展至可存储P2个元素|
+|AggFocus|N|Y|N|出栈一个元素作为aggregator key 如果已有一个使用此key的aggregator 则将其作为当前aggregator并跳转到P2 否则创建一个新aggregator作为当前aggregator aggregator操作必须是AggReset AggFocus AggNext 不能在AggReset和AggNext中使用AggFocus|
+|AggIncr|Y|Y|N|将当前focus aggregate element的P2位加P1|
+|AggSet|N|Y|N|将当前栈顶元素放入当前aggregate的P2位|
+|AggGet|N|Y|N|将当前aggregate的P2位入栈|
+|AggNext|N|Y|N|将下一个aggregate作为当前aggregate 前一个aggregate被删除 若无下一个 则跳转到P2|
+|SetClear|Y|N|N|清空第P1个Set|
+|SetInsert|Y|N|Y|向第P1个Set插入P3 若P3位Null 则出栈一个元素插入Set|
+|SetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则跳转到P2|
+|SetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则跳转到P2|
+|Strlen|N|N|N|栈顶元素为字符串 将此字符串替换为其长度|
+|Substr|Y|Y|N|当P2或P1任一为0时 此值由出栈元素获得 先处理P2 再处理P1 出栈一个字符串 压栈 从P1位置开始P2长度的子字符串(字符串开始位置为1)|
