@@ -110,6 +110,26 @@ sepBy sep a = (:) <$> a <*> many (sep >> a)
 
 sepByOrEmpty sep a = sepBy sep a <|> return []
 
+-- parse string like ((a op b) op c)
+-- result:    op
+--           /  \
+--         op    c
+--        /  \
+--       a    b
+chainl :: Parser (a -> a -> a) -> Parser a -> Parser a
+chainl op a = many space >> a >>= forRest
+    where
+        forRest left = (many space >> op <*> return left <*> a >>= forRest) <|> return left
+
+-- parse string like: op (op a)
+-- result: op
+--        /
+--      op
+--     /
+--    a
+unaryChain :: Parser (a -> a) -> Parser a -> Parser a
+unaryChain op a = many (many space >> op) >>= foldr (<$>) a
+
 -- match s and return ret
 matchAndRet s ret = spcStrIgnoreCase s >> return ret
 
@@ -138,7 +158,6 @@ strValue = many space >> char '"' >> (concat <$> many tryTakeChar) <* char '"'
         check '\\' '0'  = ['\0']
         check c1   c2   = [c1, c2]
 
-
 -- parse a int value
 intValue = toInt <$> (some digit <* (checkChar (/='.')))
     where toInt x = (read x)::Int
@@ -150,6 +169,9 @@ floatValue = toDouble <$> ((\a b -> a ++ "." ++ b) <$> (some digit) <*> ((char '
 ----------------------------------------------------------
 -- SQL parser implementation
 ----------------------------------------------------------
+
+-- sql ::= "string" | int  | float
+value = (ValStr <$> strValue) <|> (ValInt <$> intValue) <|> (ValDouble <$> floatValue)
 
 
 -- identification matches regex: `[_a-zA-Z]+[_a-zA-Z0-9]*`
@@ -223,8 +245,23 @@ createTable = CreateTable
                 defaultVal = spcStrIgnoreCase "default "     >> value
 
 
-value = (ValStr <$> strValue)
-    <|> (ValInt <$> intValue)
-    <|> (ValDouble <$> floatValue)
-
-expr = undefined
+-- operator precedence:
+--
+-- (OR AND)                               <
+-- (NOT)                                  <
+-- (ISNULL NOTNULL)                       <
+-- (< > = <= >= <> != ==)                 <
+-- (BETWEEN IN LIKE NOTLIKE GLOB NOTGLOB) <
+-- (+ -)                                  <
+-- (* /)
+expr :: Parser Expr
+expr = pd1
+    where
+        pNode opStr op ret = matchAndRet opStr op >>= (\x -> return (ret x))
+        pBinNode optStr op = pNode optStr op BinExpr
+        -- and or
+        pd1 = chainl (pBinNode "and" And <|> pBinNode "or" Or) pd2
+        pd2 = unaryChain (matchAndRet "not " NotExpr) pd3
+        pd3 = pd4 >>= (\x -> (matchAndRet "isnull" IsNull <|> matchAndRet "notnull" (NotExpr . IsNull)) <*> return x)
+        pd4 = chainl (pBinNode "<" Ls) pd5
+        pd5 = undefined

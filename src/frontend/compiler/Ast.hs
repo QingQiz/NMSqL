@@ -57,7 +57,7 @@ data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint] deriving (Show)
 data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | LikeExpr LikeOp Expr Expr        -- 2 like 3
           | TableColumn TableName ColumnName -- table.column
-          | Const String                     -- value
+          | ConstValue Value                 -- value
           | FunctionCall FuncName [Expr]     -- funcname(expr...)
           | IsNull Expr                      -- 1 is null
           | Between Expr Expr Expr           -- 1 between 2 and 3
