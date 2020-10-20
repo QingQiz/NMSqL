@@ -1,5 +1,15 @@
 # IR
 
+## IR分类
+
+IR大致可以分为以下几类：
+
+1. 普通指令：包括加减乘除、跳转、比较、栈操作等指令，这些指令是一些常见虚拟机都会有的指令
+2. 操作组件，例如cursor、sorter、agg、set、keylist等，这些指令需要了解组件的使用方式
+3. 各类构造指令，构造需要使用key或value
+4. 操作数据库指令，例如数据库创建删除、索引创建删除
+5. 文件相关指令
+
 ## IR列表 
 
 下表为IR的使用方式及含义，N表示无此项，Y表示有此项。
@@ -14,9 +24,9 @@
 |Pop|Y|N|N|将P1个值出栈|
 |Dup|Y|N|N|将第P1个值复制一份压栈(栈顶是第0个值)|
 |Pull|Y|N|N|将第P1个值移至栈顶|
-|ColumnCount|Y|N|N|TODO: 需要研究一下运行方式|
-|ColumnName|Y|N|Y|TODO: 需要研究一下运行方式|
-|Callback|Y|N|N|TODO: 需要研究一下运行方式|
+|ColumnCount|Y|N|N|设置query结果列数|
+|ColumnName|Y|N|Y|设置query结果第P1列(以0开始)的列名为P3|
+|Callback|Y|N|N|出栈P1个元素 调用callback callback使用相关见[others-callback函数](#callback函数)|
 |Concat|Y|Y|Y|将栈顶的P1个值以P3(字符串指针)为分隔符连接(栈顶在字符串左侧以此类推) 如果P2为0则这些值出栈，为1则不出栈 将结果压栈|
 |Add|N|N|N|将栈顶两个元素出栈 将他们的和压栈(字符串转化为double)|
 |Multiply|N|N|N|将栈顶两个元素出栈 将他们的积压栈(字符串转化为double)|
@@ -51,7 +61,7 @@
 |SetCookie|Y|N|N|设置数据库cookie为P1|
 |VerifyCookie|Y|N|N|验证数据库cookie为P1|
 |Open|Y|Y|Y|以只读形式打开数据库文件中根页为P2的表 并给他一个游标标示为P1 P1是一个尽可能小的正整数 若P2为0 则出栈一个数作为P2 当数据库有游标时 会给数据库上读锁|
-|Open|Y|Y|Y|以读写打开数据库文件中根页为P2的表 并给他一个游标标示为P1 P1是一个尽可能小的正整数 若P2为0 则出栈一个数作为P2 给数据库上读锁写锁|
+|OpenWrite|Y|Y|Y|以读写打开数据库文件中根页为P2的表 并给他一个游标标示为P1 P1是一个尽可能小的正整数 若P2为0 则出栈一个数作为P2 给数据库上读锁写锁|
 |OpenTemp|Y|N|N|在临时数据库中打开一个指向表的临时游标 此临时文件是可读写的 当游标关闭时临时文件被删除 游标的标识符为P1|
 |Close|Y|N|N|关闭标识符为P1的游标|
 |MoveTo|Y|N|N|出栈一个元素 将其作为key 将标识符为P1的游标重定位为此key所在位置 若无此key 则指向它左侧的最近的元素|
@@ -73,7 +83,7 @@
 |PutIdx|Y|Y|Y|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中插入此key 其对应的值为Nil 若P2为1则此key必须为非重复的 若P3为非Null 则P3是报错信息|
 |DeleteIdx|Y|N|N|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中删除此key|
 |Destroy|Y|N|N|删除一个根page为P1的表或索引|
-|Destroy|Y|N|N|清空一个根page为P1的表或索引|
+|Clear|Y|N|N|清空一个根page为P1的表或索引|
 |CreateTable|N|N|Y|创建一个新表 将此表的页编号压栈 将新表的根页写入数据库的根页中 将新表的根页号写入P3指定的内存中|
 |CreateIndex|N|N|Y|创建一个新索引 将此索引的页编号压栈 将新索引的根页写入数据库的根页中 将新索引的根页号写入P3指定的内存中|
 |Reorganize|Y|N|N|压缩 优化 根页编号为P1的表或索引|
@@ -109,3 +119,17 @@
 |SetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则跳转到P2|
 |Strlen|N|N|N|栈顶元素为字符串 将此字符串替换为其长度|
 |Substr|Y|Y|N|当P2或P1任一为0时 此值由出栈元素获得 先处理P2 再处理P1 出栈一个字符串 压栈 从P1位置开始P2长度的子字符串(字符串开始位置为1)|
+
+## others
+
+### callback函数
+
+这玩意在`sqlite_exec`函数中传入(事实上在许多执行相关的函数都有传入)，对query结果的每一行进行使用，其类型是以下形式：
+
+```cpp
+typedef int (*sqlite_callback)(void*,int,char**, char**);
+```
+
+第一个参数是`sqlite_exec`的第四个参数，第二个参数是query结果中的列数，第三个参数是每一列的值，第四个参数是每一列的名字。
+
+callback可以NULL，若为非空，则其返回值必须是0，否则会产生错。
