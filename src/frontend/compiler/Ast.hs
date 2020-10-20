@@ -104,8 +104,7 @@ data Update = Update TableName [(ColumnName, Expr)]
 ----------------------------------------------------------
 -- Insert Stmt
 ----------------------------------------------------------
-data Insert = Insert TableName [ColumnName] [Value]
-            | InsertFromSelect TableName [ColumnName] Select
+data Insert = Insert TableName [ColumnName] ValueList
             deriving (Show)
 
 ----------------------------------------------------------

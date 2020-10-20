@@ -213,8 +213,8 @@ dropIndex = DropIndex <$> (spcStrIgnoreCase "drop index " >> ident)
 
 
 -- sql ::= CREATE TABLE table-name \( column-def [,column-def]* [,table-constraint]* \)
-createTable = CreateTable
-    <$> (spcStrIgnoreCase "create" >> stringIgnoreCase "table" >> ident)
+createTable = (matchTwoAndRet "create" "table" CreateTable)
+    <*> ident
     <*> (spcChar '(' >> argsList columnDef)
     <*> (many (spcChar ',' >> tableConstraint)) <* spcChar ')'
     where
@@ -321,3 +321,12 @@ expr = pd1 where
           (Column <$> ident)                                                        <|>
           (ConstValue <$> value)
           -- TODO select expr
+
+
+-- sql ::= insert into table-name [\( column-list \)] values \( value-list \)
+--       | insert into table-name [\( column-list \)] select-stmt
+insert = matchTwoAndRet "insert" "into" Insert
+    <*> ident
+    <*> surroundByBrackets (argsList ident)
+    <*> (matchAndRet "values" ValueList <*> surroundByBrackets (argsList value)) -- TODO select stmt
+
