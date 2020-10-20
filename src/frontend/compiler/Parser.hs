@@ -229,8 +229,8 @@ createTable = CreateTable
         -- column-def        ::= name type [column-constraint]
         columnDef = ColumnDef <$> ident <*> columnType <*> many columnConstraint
 
-        -- table-constraint ::= primary-key \( [column-name [,column-name]*] \)
-        --                    | unique \( [column-name [,column-name]*] \)
+        -- table-constraint ::= primary-key \( column-name [,column-name]* \)
+        --                    | unique \( column-name [,column-name]* \)
         --                    | check \( expr \)
         tableConstraint = (matchTwoAndRet "primary" "key" TbPrimaryKey <*> surroundByBrackets (argsList ident))
                       <|> (matchAndRet "unique" TbUnique <*> surroundByBrackets (argsList ident))
@@ -296,7 +296,7 @@ expr = pd1 where
                 where makeNode x = matchAndRet "between" (Between x) <|>
                                    matchTwoAndRet "not" "between" (\a b -> NotExpr $ Between x a b)
 
-            inExpr = \x -> makeNode x <*> (ValueList <$> surroundByBrackets (argsList value)) -- TODO select expr
+            inExpr = \x -> makeNode x <*> (ValueList <$> surroundByBrackets (argsListOrEmpty value)) -- TODO select expr
                 where makeNode x = matchAndRet "in" (InExpr x) <|> matchTwoAndRet "not" "in" (NotExpr . InExpr x)
 
             likeExpr = \x -> makeNode x <*> pd6
@@ -315,9 +315,9 @@ expr = pd1 where
     --       | table-name . column-name
     --       | column-name
     --       | value
-    pd0 = surroundByBrackets pd1                                            <|>
-          (TableColumn <$> ident <*> (spcChar '.' >> ident))                <|>
-          (FunctionCall <$> ident <*> surroundByBrackets (argsList pd1))    <|>
-          (Column <$> ident)                                                <|>
+    pd0 = surroundByBrackets pd1                                                    <|>
+          (TableColumn <$> ident <*> (spcChar '.' >> ident))                        <|>
+          (FunctionCall <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))     <|>
+          (Column <$> ident)                                                        <|>
           (ConstValue <$> value)
           -- TODO select expr
