@@ -96,8 +96,7 @@ data Select = Select Select [TableName]
 ----------------------------------------------------------
 -- Update Stmt
 ----------------------------------------------------------
-data Update = Update TableName [(ColumnName, Expr)]
-            | UpdateWhere Update Expr
+data Update = Update TableName [(ColumnName, Expr)] (Maybe Expr)
             deriving (Show)
 
 

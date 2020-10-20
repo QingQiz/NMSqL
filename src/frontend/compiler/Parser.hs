@@ -323,10 +323,18 @@ expr = pd1 where
           -- TODO select expr
 
 
--- sql ::= insert into table-name [\( column-list \)] values \( value-list \)
---       | insert into table-name [\( column-list \)] select-stmt
+-- sql ::= INSERT INTO table-name [\( column-list \)] VALUES \( value-list \)
+--       | INSERT INTO table-name [\( column-list \)] select-stmt
 insert = matchTwoAndRet "insert" "into" Insert
     <*> ident
     <*> surroundByBrackets (argsList ident)
     <*> (matchAndRet "values" ValueList <*> surroundByBrackets (argsList value)) -- TODO select stmt
 
+
+-- sql ::= UPDATE table-name SET assignment [, assignment]* [WHERE expression]
+-- assignment ::= column-name = expression
+update = matchAndRet "update" Update
+    <*> ident
+    <*> (spcStrIgnoreCase "set" >> argsList assignment)
+    <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
+    where assignment = (,) <$> ident <*> (spcChar '=' >> expr)
