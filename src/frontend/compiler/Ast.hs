@@ -34,7 +34,12 @@ data SortOrder = ASC | DESC deriving (Show)
 data Value = ValStr String
            | ValInt Int
            | ValDouble Double
+           | Null
            deriving (Show)
+
+data ValueList = ValueList [Value]
+               | SelectResult Select
+               deriving (Show)
 
 
 data ColumnConstraint = ColNotNull
@@ -56,16 +61,15 @@ data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint] deriving (Show)
 
 data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | LikeExpr LikeOp Expr Expr        -- 2 like 3
-          | TableColumn TableName ColumnName -- table.column
           | ConstValue Value                 -- value
           | FunctionCall FuncName [Expr]     -- funcname(expr...)
           | IsNull Expr                      -- 1 is null
           | Between Expr Expr Expr           -- 1 between 2 and 3
-          | InExpr Expr Expr                 -- 1 in 2
-          | InValueList Expr [Value]         -- expr in valuelist
-          | InSelect Expr Select             -- expr in select
+          | InExpr Expr ValueList            -- 1 in 2
           | NotExpr Expr                     -- not 1
-          | SelectExpr Select
+          | SelectExpr Select                -- (1)
+          | Column ColumnName                -- column
+          | TableColumn TableName ColumnName -- table.column
           deriving (Show)
 
 
