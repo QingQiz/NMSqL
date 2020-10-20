@@ -251,6 +251,10 @@ createTable = (matchTwoAndRet "create" "table" CreateTable)
                 defaultVal = spcStrIgnoreCase "default "     >> value
 
 
+-- sql ::= DROP TABLE table-name
+dropTable = matchTwoAndRet "drop" "table" DropTable <*> ident
+
+
 -- operator precedence:
 --
 -- PD1: (OR AND)                               <
@@ -338,3 +342,9 @@ update = matchAndRet "update" Update
     <*> (spcStrIgnoreCase "set" >> argsList assignment)
     <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
     where assignment = (,) <$> ident <*> (spcChar '=' >> expr)
+
+
+-- sql ::= DELETE FROM table-name [WHERE expression]
+delete = matchTwoAndRet "delete" "from" Delete
+    <*> ident
+    <*> (matchAndRet "where" Just <*> expr <|> return Nothing)

@@ -109,8 +109,7 @@ data Insert = Insert TableName [ColumnName] ValueList
 ----------------------------------------------------------
 -- Delete Stmt
 ----------------------------------------------------------
-data Delete = Delete TableName
-            | DeleteWhere TableName Expr
+data Delete = Delete TableName (Maybe Expr)
             deriving (Show)
 
 ----------------------------------------------------------
