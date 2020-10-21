@@ -92,6 +92,8 @@ TODO: 详细研究使用方法以及功能
 
 ## 需要dbengine提供的接口
 
+暂时只能想到这么多
+
 ### Cursor
 
 类似于迭代器，提供访问数据库内容的一种方式
@@ -147,3 +149,21 @@ cursor后移
 #### reset(cursor)
 
 重置到第一个位置
+
+### 数据库相关操作
+
+#### create(dbTable)
+
+建表
+
+#### Reorganize(dbTable)
+
+优化数据库表结构
+
+#### getInfo(dbTable)
+
+获取数据库表元信息
+
+#### getNextRecordNumber(dbTable)
+
+获取下一个记录编号，原子操作
