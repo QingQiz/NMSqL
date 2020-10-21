@@ -17,9 +17,9 @@ data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
             deriving (Show)
 
 
-data UnionOp = Union | UnionAll
-             | Intersect | Except
-             deriving (Show)
+data CompoundOp = Union     | UnionAll
+                | Intersect | Except
+                deriving (Show)
 
 
 data Type = TInt | TString Int | TDouble deriving (Show)
@@ -57,7 +57,7 @@ data TableContraint = TbPrimaryKey [ColumnName]
 
 
 data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint] deriving (Show)
-               
+
 
 data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | LikeExpr LikeOp Expr Expr        -- 2 like 3
@@ -69,6 +69,7 @@ data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | NotExpr Expr                     -- not 1
           | SelectExpr Select                -- (1)
           | Column ColumnName                -- column
+          | AnyColumn                        -- column *
           | TableColumn TableName ColumnName -- table.column
           deriving (Show)
 
@@ -84,13 +85,15 @@ type IndexName = String
 ----------------------------------------------------------
 -- Select Stmt
 ----------------------------------------------------------
-data Select = Select Select [TableName]
-            | SelectWhere Select Expr
-            | SelectGroup Select [Expr]
-            | SelectHaving Select Expr
-            | SelectUnion Select [(UnionOp, Select)]
-            | SelectOrderBy Select [(SortOrder, Expr)]
-            deriving (Show)
+data Select = Select {
+    selectResult    :: [(Expr, String)]         , -- expression AS result-string
+    selectTableName :: [TableName]              , -- table-name
+    selectWhere     :: Maybe Expr               , -- WHERE expression
+    selectGroupBy   :: [Expr]                   , -- GROUP BY expression-list
+    selectHaving    :: Maybe Expr               , -- HAVING expression
+    selectUnion     :: [(CompoundOp, Select)]   , -- compound-op select
+    selectSortOrder :: [(Expr, SortOrder)]        -- ORDER BY expr [sort-order]
+} deriving (Show)
 
 
 ----------------------------------------------------------

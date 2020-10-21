@@ -142,6 +142,7 @@ matchTwoAndRet s1 s2 ret = spcStrIgnoreCase s1 >> spcStrIgnoreCase s2 >> return 
 
 -- parser surrounded by brackets
 surroundByBrackets p = spcChar '(' >> p <* spcChar ')'
+maySurroundByBrackets p = surroundByBrackets p <|> p
 
 -- parser surrounded by quotation mark
 surroundByQm p = (many space >> char '"') >> p <* (char '"')
@@ -272,7 +273,7 @@ expr = pd1 where
     pBinNode optStr op = pNode optStr op BinExpr
 
     -- pd1 ::= pd2 [(and | or) pd2]*
-    pd1 = chainl (pBinNode "and" And <|> pBinNode "or" Or) pd2
+    pd1 = chainl (pBinNode "and " And <|> pBinNode "or " Or) pd2
 
     -- pd2 ::= [not]* pd3
     pd2 = unaryChain (matchAndRet "not " NotExpr) pd3
@@ -300,7 +301,7 @@ expr = pd1 where
                 where makeNode x = matchAndRet "between" (Between x) <|>
                                    matchTwoAndRet "not" "between" (\a b -> NotExpr $ Between x a b)
 
-            inExpr = \x -> makeNode x <*> (ValueList <$> surroundByBrackets (argsListOrEmpty value)) -- TODO select expr
+            inExpr = \x -> makeNode x <*> (SelectResult <$> maySurroundByBrackets select <|> ValueList <$> surroundByBrackets (argsListOrEmpty value))
                 where makeNode x = matchAndRet "in" (InExpr x) <|> matchTwoAndRet "not" "in" (NotExpr . InExpr x)
 
             likeExpr = \x -> makeNode x <*> pd6
@@ -319,20 +320,20 @@ expr = pd1 where
     --       | table-name . column-name
     --       | column-name
     --       | value
-    pd0 = surroundByBrackets pd1                                                    <|>
-          (TableColumn <$> ident <*> (spcChar '.' >> ident))                        <|>
-          (FunctionCall <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))     <|>
-          (Column <$> ident)                                                        <|>
-          (ConstValue <$> value)
-          -- TODO select expr
+    pd0 = surroundByBrackets pd1                                                     <|>
+          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                        <|>
+          (FunctionCall <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))      <|>
+          (Column       <$> ident)                                                   <|>
+          (ConstValue   <$> value)                                                   <|>
+          (SelectExpr   <$> surroundByBrackets select)
 
 
 -- sql ::= INSERT INTO table-name [\( column-list \)] VALUES \( value-list \)
 --       | INSERT INTO table-name [\( column-list \)] select-stmt
 insert = matchTwoAndRet "insert" "into" Insert
     <*> ident
-    <*> surroundByBrackets (argsList ident)
-    <*> (matchAndRet "values" ValueList <*> surroundByBrackets (argsList value)) -- TODO select stmt
+    <*> (surroundByBrackets (argsList ident) <|> return [])
+    <*> (matchAndRet "values" ValueList <*> (surroundByBrackets (argsList value)) <|> SelectResult <$> maySurroundByBrackets select)
 
 
 -- sql ::= UPDATE table-name SET assignment [, assignment]* [WHERE expression]
@@ -348,3 +349,33 @@ update = matchAndRet "update" Update
 delete = matchTwoAndRet "delete" "from" Delete
     <*> ident
     <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
+
+
+-- sql  ::= SELECT result FROM table-list
+--          [WHERE expression]
+--          [GROUP BY expr-list]
+--          [HAVING expression]
+--          [compound-op select]*
+--          [ORDER BY sort-expr-list]
+-- xxx-list ::= xxx[,xxx]*
+-- result   ::= * | column-result-list
+select = matchAndRet "select" Select
+    <*> (argsList resultCol <|> (spcChar '*' >> return [(AnyColumn, "")]))
+    <*> (spcStrIgnoreCase "from" >> argsList ident)
+    <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
+    <*> ((matchTwoAndRet "group" "by" id >> argsList expr) <|> return [])
+    <*> (matchAndRet "having" Just <*> expr <|> return Nothing)
+    <*> (many ((,) <$> compoundOp <*> maySurroundByBrackets (surroundByBrackets select)))
+    <*> ((matchTwoAndRet "order" "by" id >> argsList sortExpr) <|> return [])
+    where
+        -- column-result ::= expression [AS string]
+        resultCol = (,) <$> expr <*> ((spcStrIgnoreCase "as" >> ident) <|> return "")
+
+        -- compound-op   ::= UNION | UNION ALL | INTERSECT | EXCEPT
+        compoundOp = matchTwoAndRet "union" "all" UnionAll  <|>
+                     matchAndRet    "union"       Union     <|>
+                     matchAndRet    "intersect"   Intersect <|>
+                     matchAndRet    "except"      Except
+
+        -- sort-expr     ::= expr [sort-order]
+        sortExpr = (,) <$> expr <*> sortOrder
