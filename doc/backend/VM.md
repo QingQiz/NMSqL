@@ -152,7 +152,7 @@ cursor后移
 
 ### 数据库相关操作
 
-#### create(dbTable)
+#### create(createTableSql)
 
 建表
 
