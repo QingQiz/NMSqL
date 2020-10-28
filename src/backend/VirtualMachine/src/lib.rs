@@ -3,3 +3,7 @@
 pub mod VirtualMachine;
 pub mod wrapper;
 use wrapper::wrapper::cLayer;
+
+extern crate num;
+#[macro_use]
+extern crate num_derive;
