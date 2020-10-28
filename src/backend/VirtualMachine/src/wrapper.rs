@@ -63,7 +63,7 @@ pub mod wrapper {
       unimplemented!()
     }
   }
-  mod cLayer {
+  pub mod cLayer {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
   }
 }
