@@ -1,8 +1,5 @@
 // FIXME: delete this when release
 #[allow(unused)]
-extern crate num;
-#[macro_use]
-extern crate num_derive;
 
 pub mod VirtualMachine {
   use crate::wrapper::wrapper::rustLayer::Cursor;
@@ -227,7 +224,7 @@ pub mod VirtualMachine {
         let newSize = self.stack.len() - n as usize;
 
         Ok({
-          let ret = Vec::new();
+          let mut ret = Vec::new();
           for i in 0..n {
             ret.push(self.stack.pop().unwrap());
           }
@@ -269,7 +266,8 @@ pub mod VirtualMachine {
           vm.popStack(1);
         }
         VmOpType::OP_Dup => {
-          let value = vm.stack[vm.stack.len() - (1 + nowOp.p1) as usize];
+          let target = vm.stack.len() - (1 + nowOp.p1) as usize;
+          let value = vm.stack[target].clone();
           vm.pushStack(value);
         }
         VmOpType::OP_Pull => {
@@ -278,13 +276,15 @@ pub mod VirtualMachine {
           for x in poped.into_iter().rev() {
             vm.pushStack(x);
           }
-          vm.pushStack(newTop[0]);
+          for x in newTop.into_iter() {
+            vm.pushStack(x);
+          }
         }
         VmOpType::OP_ColumnCount => vm
           .resultColumnNames
           .resize(nowOp.p1 as usize, String::new()),
         VmOpType::OP_ColumnName => {
-          vm.resultColumnNames[nowOp.p1 as usize] = String::from(nowOp.p3);
+          vm.resultColumnNames[nowOp.p1 as usize] = String::from(nowOp.p3.clone());
         }
         VmOpType::OP_Callback => unimplemented!(),
         VmOpType::OP_Concat => unimplemented!(),
