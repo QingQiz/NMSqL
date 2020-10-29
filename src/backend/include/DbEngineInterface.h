@@ -1,4 +1,11 @@
-#pragma once
+#ifndef _DBENGINEINTERFACE_H
+#define _DBENGINEINTERFACE_H
+#include <stdint.h>
+
+
+/***********************************
+ * for vm
+ ***********************************/
 
 enum CursorType { CURSOR_BTREE, CURSOR_LIST };
 
@@ -31,3 +38,22 @@ int reorganize();
 void* getMetaData(const char* tableName);
 int getCookies();
 char** getTableColumns(const char* tableName);
+
+
+/***********************************
+ * for compiler
+ ***********************************/
+
+struct TableMetadata {
+    int32_t indexCnt;       // 索引数量
+    char** indexName;       // 索引名
+    char** indexColumn;     // 索引列名，应和索引名是一对一的关系
+
+    int32_t columnCnt;      // 列的数量
+    char** column;          // 列明
+
+    int32_t cookie;         // 表 Cookie
+};
+
+struct TableMetadata* getTableMetadata(char* tableName);
+#endif
