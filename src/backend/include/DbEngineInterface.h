@@ -46,11 +46,13 @@ char** getTableColumns(const char* tableName);
 
 struct TableMetadata {
     int32_t indexCnt;       // 索引数量
-    char** indexName;       // 索引名
-    char** indexColumn;     // 索引列名，应和索引名是一对一的关系
+    char** index;           // 索引
+                            //   格式：索引名:逗号分隔的列名
+                            //   例如：index_a_b:a,b
+                            //     代表 a，b 上的索引，名为 index_a_b
 
     int32_t columnCnt;      // 列的数量
-    char** column;          // 列明
+    char** column;          // 列名
 
     int32_t cookie;         // 表 Cookie
 };
