@@ -49,8 +49,8 @@ IR大致可以分为以下几类：
 |Not|N|N|N|将栈顶元素取逻辑非|
 |Noop|N|N|N|do nothing|
 |If|N|Y|N|一个元素出栈 若为true则跳转到P2 string长度0为false|
-|IsNull|N|Y|N|栈顶为Null跳转到P2|
-|NotNull|N|Y|N|栈顶不为Null跳转到P2|
+|IsNull|N|Y|N|出栈一个元素 若为Null跳转到P2|
+|NotNull|N|Y|N|出栈一个元素 若不为Null跳转到P2|
 |MakeRecord|Y|N|N|将栈中P1个元素出栈 构造字符串作为Record并压栈 字符串头部有P1个2字节的整数代表偏移 然后是P1个字符串化的元素(NULL不操作) 元素顺序为 后出栈的元素在字符串前部|
 |MakeKey|Y|Y|N|将栈中P1个元素构造字符串作为key并压栈 字符串由P1个字符串化的元素(NULL占一位)组成 元素顺序为 后出栈的元素在字符串前部 若P2为非0则P1个元素不出栈 否则P1个元素出栈|
 |MakeIdxKey|Y|N|N|将栈中P1个元素字符串化 再将下一个元素出栈 作为整数放在字符串结尾(占4字节) 作为key并压栈 字符串由P1个字符串化的元素(NULL占一位)组成 元素顺序为 后出栈的元素在字符串前部|
