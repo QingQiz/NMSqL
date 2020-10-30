@@ -1,3 +1,6 @@
 .vscode
 tmp
 **/target
+.DS_Store
+src/backend/BPTree/CMakeLists.txt
+src/backend/BPTree/cmake-build-debug
