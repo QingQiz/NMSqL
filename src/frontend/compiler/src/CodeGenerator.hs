@@ -15,7 +15,7 @@ class CodeGenerator a where
     -- state is         : (Ast, TableMetadata)
     -- success return   : [Instruction]
     -- fail return      : String
-    genCode :: StateT (a, TableMetadata) (Either String) [Instruction]
+    genCode :: StateT (a, TableMetadata, [Instruction]) (Either String) [Instruction]
 
 
 instance CodeGenerator Expr where
@@ -23,7 +23,7 @@ instance CodeGenerator Expr where
         let
             haveIndex = False
         in do
-            (ast, metadata) <- get
+            (ast, metadata, instructions) <- get
             if haveIndex
             then notImplemented
             else notImplemented
