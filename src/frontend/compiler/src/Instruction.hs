@@ -105,11 +105,10 @@ opStrlen       = 102
 opSubstr       = 103
 opMAX          = 104
 
-type OpCode = Int
 
 data Instruction = Instruction {
-    opCode :: OpCode,
+    opCode :: Integer,
     p1     :: Int,
     p2     :: Int,
     p3     :: String
-}
+} deriving (Show)
