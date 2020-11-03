@@ -10,6 +10,7 @@ edition = "2018"
 num = "0.2"
 num-derive = "0.3"
 num-traits = "0.2"
+regex = "1"
 
 [build-dependencies]
 bindgen = "0.53.1"
