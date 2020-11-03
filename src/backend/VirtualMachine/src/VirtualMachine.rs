@@ -1,6 +1,3 @@
-// FIXME: delete this when release
-#[allow(unused)]
-
 pub mod VirtualMachine {
   use crate::wrapper::wrapper::rustLayer::Cursor;
   #[derive(Debug, Copy, Clone, FromPrimitive)]
@@ -173,19 +170,19 @@ pub mod VirtualMachine {
   struct VmCursor {
     cursor: Cursor,
   }
-  #[derive(Debug, Clone)]
+  #[derive(Debug, Clone, PartialEq, PartialOrd)]
   enum VmMem {
     MEM_INT(i128),
     MEM_DOUBLE(f64),
     MEM_NULL,
-    MEM_STRING(String),
+    MEM_STRING(Vec<u8>),
   }
   impl VmMem {
-    pub fn stringify(self: Self) -> String {
+    pub fn stringify(self: Self) -> Vec<u8> {
       match self {
-        VmMem::MEM_INT(x) => x.to_string(),
-        VmMem::MEM_DOUBLE(x) => x.to_string(),
-        VmMem::MEM_NULL => String::new(),
+        VmMem::MEM_INT(x) => x.to_string().as_bytes().iter().map(|&x| x).collect(),
+        VmMem::MEM_DOUBLE(x) => x.to_string().as_bytes().iter().map(|&x| x).collect(),
+        VmMem::MEM_NULL => Vec::new(),
         VmMem::MEM_STRING(x) => x,
       }
     }
@@ -194,9 +191,27 @@ pub mod VirtualMachine {
         VmMem::MEM_INT(x) => x,
         VmMem::MEM_DOUBLE(x) => x as i128,
         VmMem::MEM_NULL => 0,
-        VmMem::MEM_STRING(x) => x
-          .parse()
-          .expect(format!("expect a integer got {}", x).as_str()),
+        VmMem::MEM_STRING(x) => String::from_utf8_lossy(x.as_slice()).parse().expect(
+          format!(
+            "expect a integer got {}",
+            String::from_utf8_lossy(x.as_slice())
+          )
+          .as_str(),
+        ),
+      }
+    }
+    pub fn realify(self: Self) -> f64 {
+      match self {
+        VmMem::MEM_INT(x) => x as f64,
+        VmMem::MEM_DOUBLE(x) => x,
+        VmMem::MEM_NULL => 0.0,
+        VmMem::MEM_STRING(x) => String::from_utf8_lossy(x.as_slice()).parse().expect(
+          format!(
+            "expect a number got {}",
+            String::from_utf8_lossy(x.as_slice())
+          )
+          .as_str(),
+        ),
       }
     }
   }
@@ -252,24 +267,34 @@ pub mod VirtualMachine {
       }
       let nowOp = &ops[pc];
       match nowOp.vmOpType {
+        // goto
         VmOpType::OP_Goto => {
-          pc = nowOp.p2 as usize;
+          pc = nowOp.p2 as usize - 1;
         }
+        // stop the vm
         VmOpType::OP_Halt => {
-          pc = ops.len();
+          pc = ops.len() - 1;
         }
+        // push P1 to the stack
         VmOpType::OP_Integer => vm.pushStack(VmMem::MEM_INT(nowOp.p1 as i128)),
-        // a string may be used multiple times, a clone is needed here
-        VmOpType::OP_String => vm.pushStack(VmMem::MEM_STRING(nowOp.p3.clone())),
+        // push string to the stack
+        // a string may be used multiple times, so clone is needed here
+        VmOpType::OP_String => vm.pushStack(VmMem::MEM_STRING(
+          nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
+        )),
+        // push null to the stack
         VmOpType::OP_Null => vm.pushStack(VmMem::MEM_NULL),
+        // pop an element from the stack
         VmOpType::OP_Pop => {
           vm.popStack(1);
         }
+        // push the p1-th element to the stack
         VmOpType::OP_Dup => {
-          let target = vm.stack.len() - (1 + nowOp.p1) as usize;
-          let value = vm.stack[target].clone();
+          let targetIndex = vm.stack.len() - (1 + nowOp.p1) as usize;
+          let value = vm.stack[targetIndex].clone();
           vm.pushStack(value);
         }
+        // pop the p1-th element and push it to the stack
         VmOpType::OP_Pull => {
           let poped = vm.popStack(nowOp.p1)?;
           let newTop = vm.popStack(1)?;
@@ -280,18 +305,229 @@ pub mod VirtualMachine {
             vm.pushStack(x);
           }
         }
+        // push the result column number
         VmOpType::OP_ColumnCount => vm
           .resultColumnNames
           .resize(nowOp.p1 as usize, String::new()),
+        // set the p1-th column's name
         VmOpType::OP_ColumnName => {
           vm.resultColumnNames[nowOp.p1 as usize] = String::from(nowOp.p3.clone());
         }
+        // set the callback function
         VmOpType::OP_Callback => unimplemented!(),
-        VmOpType::OP_Concat => unimplemented!(),
+        // concat the p1 elements from (p1-1)-th to 0-th use p3 as separator
+        // pop if P2=0
+        VmOpType::OP_Concat => {
+          let poped = vm.popStack(nowOp.p1)?;
+          if nowOp.p2 == 1 {
+            for x in poped.iter() {
+              vm.pushStack(x.clone());
+            }
+          }
+          vm.pushStack(VmMem::MEM_STRING(
+            poped
+              .into_iter()
+              .rev()
+              .map(VmMem::stringify)
+              .collect::<Vec<Vec<u8>>>()
+              .join(nowOp.p3.as_bytes()),
+          ));
+        }
+        VmOpType::OP_Add | VmOpType::OP_Multiply | VmOpType::OP_Subtract | VmOpType::OP_Divide => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
+            vm.pushStack(match nowOp.vmOpType {
+              VmOpType::OP_Add => VmMem::MEM_INT(a + b),
+              VmOpType::OP_Multiply => VmMem::MEM_INT(a * b),
+              VmOpType::OP_Subtract => VmMem::MEM_INT(b - a),
+              VmOpType::OP_Divide => match a {
+                0 => VmMem::MEM_NULL,
+                _ => VmMem::MEM_INT(b / a),
+              },
+              _ => unreachable!(),
+            })
+          } else {
+            let a = a.realify();
+            let b = b.realify();
+            vm.pushStack(match nowOp.vmOpType {
+              VmOpType::OP_Add => VmMem::MEM_DOUBLE(a + b),
+              VmOpType::OP_Multiply => VmMem::MEM_DOUBLE(a * b),
+              VmOpType::OP_Subtract => VmMem::MEM_DOUBLE(b - a),
+              VmOpType::OP_Divide => VmMem::MEM_DOUBLE(b / a),
+              _ => unreachable!(),
+            })
+          }
+        }
+        VmOpType::OP_Max => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(std::cmp::max(a, b)));
+          } else {
+            let a = a.realify();
+            let b = b.realify();
+            vm.pushStack(VmMem::MEM_DOUBLE(a.max(b)));
+          }
+        }
+        VmOpType::OP_Min => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(std::cmp::min(a, b)));
+          } else {
+            let a = a.realify();
+            let b = b.realify();
+            vm.pushStack(VmMem::MEM_DOUBLE(a.min(b)));
+          }
+        }
+        VmOpType::OP_AddImm => {
+          let top = vm.popStack(1)?.into_iter().next().unwrap();
+          vm.pushStack(match top {
+            VmMem::MEM_INT(x) => VmMem::MEM_INT(x + nowOp.p1 as i128),
+            x @ _ => VmMem::MEM_DOUBLE(x.realify() + nowOp.p1 as f64),
+          })
+        }
+        VmOpType::OP_Eq => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          if a == b {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Ne => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          if a != b {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Lt => {
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if PartialOrd::lt(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Le => {
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if PartialOrd::le(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Gt => {
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if PartialOrd::gt(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Ge => {
+          let b = vm.popStack(1)?.into_iter().next().unwrap();
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if PartialOrd::ge(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_Like | VmOpType::OP_Glob => {
+          let any = match nowOp.vmOpType {
+            VmOpType::OP_Like => "%",
+            VmOpType::OP_Glob => "*",
+            _ => unreachable!(),
+          };
+          let one = match nowOp.vmOpType {
+            VmOpType::OP_Like => "_",
+            VmOpType::OP_Glob => ".",
+            _ => unreachable!(),
+          };
+          let pattern = String::from_utf8_lossy(
+            vm.popStack(1)?
+              .into_iter()
+              .next()
+              .unwrap()
+              .stringify()
+              .as_slice(),
+          )
+          .to_string();
+          let string = String::from_utf8_lossy(
+            vm.popStack(1)?
+              .into_iter()
+              .next()
+              .unwrap()
+              .stringify()
+              .as_slice(),
+          )
+          .to_string();
+          let regexPattern = pattern.replace(any, ".*").replace(one, ".");
+          let re = regex::Regex::new(regexPattern.as_str())
+            .expect(format!("unknown pattern {} ", pattern).as_str());
+          if re.is_match(string.as_str()) {
+            if nowOp.p1 == 0 {
+              pc = (nowOp.p2 - 1) as usize;
+            }
+          } else {
+            if nowOp.p1 == 1 {
+              pc = (nowOp.p2 - 1) as usize;
+            }
+          }
+        }
+        VmOpType::OP_And => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap().integerify();
+          let b = vm.popStack(1)?.into_iter().next().unwrap().integerify();
+          vm.pushStack(VmMem::MEM_INT(a & b));
+        }
+        VmOpType::OP_Or => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap().integerify();
+          let b = vm.popStack(1)?.into_iter().next().unwrap().integerify();
+          vm.pushStack(VmMem::MEM_INT(a | b));
+        }
+        VmOpType::OP_Negative => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if let &VmMem::MEM_INT(a) = &a {
+            vm.pushStack(VmMem::MEM_INT(-a));
+          } else {
+            vm.pushStack(VmMem::MEM_DOUBLE(-a.realify()))
+          }
+        }
+        VmOpType::OP_Not => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap().integerify();
+          vm.pushStack(VmMem::MEM_INT(!a));
+        }
+        VmOpType::OP_Noop => {}
+        VmOpType::OP_If => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          match a {
+            VmMem::MEM_INT(x) if x != 0 => {
+              pc = (nowOp.p2 - 1) as usize;
+            }
+            VmMem::MEM_STRING(x) if x.len() != 0 => {
+              pc = (nowOp.p2 - 1) as usize;
+            }
+            VmMem::MEM_DOUBLE(x) if x.ne(&0.0) => {
+              pc = (nowOp.p2 - 1) as usize;
+            }
+            _ => {}
+          }
+        }
+        VmOpType::OP_IsNull => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          if let VmMem::MEM_NULL = a {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        }
+        VmOpType::OP_NotNull => {
+          let a = vm.popStack(1)?.into_iter().next().unwrap();
+          match a {
+            VmMem::MEM_NULL => {}
+            _ => pc = (nowOp.p2 - 1) as usize,
+          }
+        }
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));
         }
       }
+      pc += 1;
     }
   }
 }
