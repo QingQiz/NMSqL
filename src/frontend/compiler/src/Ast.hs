@@ -9,7 +9,7 @@ data BinOp = Multiple | Divide   -- (*) (/)
            | Ls | LE  | Gr | GE  -- (<) (<=) (>) (>=)
            | Eq | NEq | In       -- (= ==) (!= <>) (IN)
            | And| Or             -- (AND) (OR)
-           deriving (Show)
+           deriving (Show, Eq)
 
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
