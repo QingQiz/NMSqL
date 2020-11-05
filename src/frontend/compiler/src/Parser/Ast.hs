@@ -14,7 +14,7 @@ data BinOp = Multiple | Divide   -- (*) (/)
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
             | Glob | NotGlob     -- (GLOB) (NOT GLOB)
-            deriving (Show)
+            deriving (Show, Eq)
 
 
 data CompoundOp = Union     | UnionAll

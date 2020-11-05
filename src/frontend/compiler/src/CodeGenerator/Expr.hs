@@ -20,15 +20,20 @@ cExpr expr rtype = do
             | op == In                                  -> throwError "not implemented"
             | op `elem` [Plus, Minus, Divide, Multiple] -> exprArith op e1 e2
             | otherwise                                 -> exprCompr op e1 e2
+        LikeExpr op e1 e2                               -> exprLike  op e1 e2
         _ -> throwError $ "expression `" ++ show expr ++ "` is not supported."
     retRes
 
 
--- code generaotr for arith-expr
-exprArith op e1 e2 = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cArithOp op 
+-- code generator for like-expr
+exprLike op e1 e2  = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cLikeOp  op
 
 
--- code generaotr for compare-expr
+-- code generator for arith-expr
+exprArith op e1 e2 = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cArithOp op
+
+
+-- code generator for compare-expr
 exprCompr op e1 e2 = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cComprOp op
 
 
@@ -54,6 +59,13 @@ exprOr e1 e2 = getLabel >>= \labelAva
     >> getLabel >>= mkLabel
 
 
+-- code generator for like/glob operators
+cLikeOp op = case op of
+    Like    -> trueAndMkRes  opLike
+    Glob    -> trueAndMkRes  opGlob
+    NotLike -> falseAndMkRes opLike
+    NotGlob -> falseAndMkRes opGlob
+
 -- code generator for arithmetic operators
 cArithOp op = case op of
     Plus     -> appendInst $ Instruction opAdd      0 0 ""
@@ -68,14 +80,6 @@ cComprOp op =
             (Ls, opLt), (LE, opLe), (Gr, opGt), (GE, opGe),
             (Eq, opEq), (NE, opNe)]
      in trueAndMkRes . snd . head . dropWhile ((op /=) . fst) $ chart
-     where
-        trueAndMkRes opCode = getLabel
-            >>= (\x -> appendInst $ Instruction opCode 0 x "")
-            >> putFalse
-            >> getLabel >>= (\x -> goto $ x + 1)
-            >> mkCurrentLabel
-            >> putTrue
-            >> mkCurrentLabel
 
 
 ----------------------------------------------------------
@@ -97,3 +101,15 @@ mkCurrentLabel = getLabel >>= mkLabel
 putTrue  = appendInst $ Instruction opInteger 1 0 ""
 putFalse = appendInst $ Instruction opInteger 0 0 ""
 
+
+-- put result to stack after insturction is executed
+-- opCode then goto true or fallback to false
+mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
+    >> putFalse
+    >> goto (p2 + 1)
+    >> mkCurrentLabel
+    >> putTrue
+    >> mkCurrentLabel
+
+trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
+falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
