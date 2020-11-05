@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module Expr (cExpr) where
 
 
@@ -18,11 +19,22 @@ cExpr expr rtype = do
             | op == And                                 -> exprAnd e1 e2
             | op == Or                                  -> exprOr  e1 e2
             | op == In                                  -> throwError "not implemented"
-            | op `elem` [Plus, Minus, Divide, Multiple] -> exprArith op e1 e2
+            | op `elem` [Plus, Minus, Divide, Multiple]
+                -> case rtype of
+                        TBool -> exprArith op e1 e2     >> convertToBool
+                        _     -> exprArith op e1 e2
             | otherwise                                 -> exprCompr op e1 e2
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
+        ConstValue val                                  -> exprConst val
         _ -> throwError $ "expression `" ++ show expr ++ "` is not supported."
     retRes
+
+
+-- code generator for const-expr
+exprConst val = case val of
+    ValStr str        -> appendInst $ Instruction opString  0   0 str
+    ValInt int        -> appendInst $ Instruction opInteger int 0 ""
+    ValDouble double  -> appendInst $ Instruction opString  0   0 $ show double
 
 
 -- code generator for like-expr
@@ -113,3 +125,7 @@ mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
 
 trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
 falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
+
+
+-- convert stack top to bool
+convertToBool = getLabel >>= \l -> mkBoolVal opIf 0 l ""
