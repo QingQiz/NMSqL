@@ -12,17 +12,14 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
-cExpr :: Expr -> ExprResultType -> CodeGenEnv
-cExpr expr rtype = do
+cExpr :: Expr -> CodeGenEnv
+cExpr expr = do
     case expr of
         BinExpr op e1 e2
             | op == And                                 -> exprAnd e1 e2
             | op == Or                                  -> exprOr  e1 e2
             | op == In                                  -> throwError "not implemented"
-            | op `elem` [Plus, Minus, Divide, Multiple]
-                -> case rtype of
-                        TBool -> exprArith op e1 e2     >> convertToBool
-                        _     -> exprArith op e1 e2
+            | op `elem` [Plus, Minus, Divide, Multiple] -> exprArith op e1 e2
             | otherwise                                 -> exprCompr op e1 e2
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
         ConstValue val                                  -> exprConst val
@@ -32,28 +29,28 @@ cExpr expr rtype = do
 
 -- code generator for const-expr
 exprConst val = case val of
-    ValStr str        -> appendInst $ Instruction opString  0   0 str
-    ValInt int        -> appendInst $ Instruction opInteger int 0 ""
-    ValDouble double  -> appendInst $ Instruction opString  0   0 $ show double
+    ValStr str       -> appendInst $ Instruction opString  0   0 str
+    ValInt int       -> appendInst $ Instruction opInteger int 0 ""
+    ValDouble double -> appendInst $ Instruction opString  0   0 $ show double
 
 
 -- code generator for like-expr
-exprLike op e1 e2  = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cLikeOp  op
+exprLike op e1 e2  = cExpr e1 >> cExpr e2 >> cLikeOp  op
 
 
 -- code generator for arith-expr
-exprArith op e1 e2 = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cArithOp op
+exprArith op e1 e2 = cExpr e1 >> cExpr e2 >> cArithOp op
 
 
 -- code generator for compare-expr
-exprCompr op e1 e2 = cExpr e1 TAsIs >> cExpr e2 TAsIs >> cComprOp op
+exprCompr op e1 e2 = cExpr e1 >> cExpr e2 >> cComprOp op
 
 
 -- code generator for and-expr
 exprAnd e1 e2 = getLabel >>= \labelAva
     -> updateLabel
-    >> cExpr e1 TBool >> gotoWhenFalse labelAva
-    >> cExpr e2 TBool >> gotoWhenFalse labelAva
+    >> cExpr e1 >> gotoWhenFalse labelAva
+    >> cExpr e2 >> gotoWhenFalse labelAva
     >> putTrue        >> getLabel >>= goto
     >> mkLabelWithoutUpdate labelAva
     >> putFalse
@@ -63,8 +60,8 @@ exprAnd e1 e2 = getLabel >>= \labelAva
 -- code generator for or-expr
 exprOr e1 e2 = getLabel >>= \labelAva
     -> updateLabel
-    >> cExpr e1 TBool >> gotoWhenTrue labelAva
-    >> cExpr e2 TBool >> gotoWhenTrue labelAva
+    >> cExpr e1 >> gotoWhenTrue labelAva
+    >> cExpr e2 >> gotoWhenTrue labelAva
     >> putFalse       >> getLabel >>= goto
     >> mkLabelWithoutUpdate labelAva
     >> putTrue
@@ -125,7 +122,3 @@ mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
 
 trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
 falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
-
-
--- convert stack top to bool
-convertToBool = getLabel >>= \l -> mkBoolVal opIf 0 l ""

@@ -320,11 +320,11 @@ expr = pd1 where
     --       | table-name . column-name
     --       | column-name
     --       | value
-    pd0 = surroundByBrackets pd1                                                     <|>
-          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                        <|>
-          (FunctionCall <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))      <|>
-          (Column       <$> ident)                                                   <|>
-          (ConstValue   <$> value)                                                   <|>
+    pd0 = surroundByBrackets pd1                                                                <|>
+          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                                   <|>
+          (FunctionCall <$> map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1)) <|>
+          (Column       <$> ident)                                                              <|>
+          (ConstValue   <$> value)                                                              <|>
           (SelectExpr   <$> surroundByBrackets select)
 
 
