@@ -5,6 +5,8 @@ dependencies:
   - base >= 4.7 && < 5
   - mtl == 2.2.2
 
-
 library:
-  source-dirs: src
+  source-dirs:
+    - src/Parser
+    - src/CodeGenerator
+    - src/FFI
