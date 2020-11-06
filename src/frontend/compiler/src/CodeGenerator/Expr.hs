@@ -23,8 +23,23 @@ cExpr expr = do
             | otherwise                                 -> exprCompr op e1 e2
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
         ConstValue val                                  -> exprConst val
+        FunctionCall fn pl                              -> exprFuncCall fn pl
         _ -> throwError $ "expression `" ++ show expr ++ "` is not supported."
     retRes
+
+
+-- code generator for function-call-expr
+exprFuncCall :: String -> [Expr] -> CodeGenEnv
+exprFuncCall fn pl  =
+    let fnChecker   = [("max", 2, opMax), ("min", 2, opMin)]
+        plLength    = length pl
+        pl'         = map cExpr pl
+     in case dropWhile ((fn/=) . fst3) fnChecker of
+             []  -> throwError $ "No such function: " ++ fn
+             x:_ | plLength < snd3 x -> throwError $ "Too few arguments to function: "  ++ fn
+                 | plLength < snd3 x -> throwError $ "Too many arguments to function: " ++ fn
+                 | otherwise -> foldr (>>) retRes pl'
+                             >> appendInst (Instruction (trd3 x) 0 0 "")
 
 
 -- code generator for const-expr

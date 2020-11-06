@@ -31,3 +31,7 @@ updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
 
 appendInst :: Instruction -> CodeGenEnv
 appendInst inst = get >>= (\(a, b, c) -> put (a, b ++ [inst], c)) >> retRes
+
+fst3 (a, _, _) = a
+snd3 (_, a, _) = a
+trd3 (_, _, a) = a
