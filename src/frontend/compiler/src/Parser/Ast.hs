@@ -7,7 +7,7 @@ module Ast where
 data BinOp = Multiple | Divide   -- (*) (/)
            | Plus     | Minus    -- (+) (-)
            | Ls | LE  | Gt | GE  -- (<) (<=) (>) (>=)
-           | Eq | NE  | In       -- (= ==) (!= <>) (IN)
+           | Eq | NE             -- (= ==) (!= <>)
            | And| Or             -- (AND) (OR)
            deriving (Show, Eq)
 

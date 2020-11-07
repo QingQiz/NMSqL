@@ -31,4 +31,4 @@ getTableMetadata :: String -> IO TableMetadata
 getTableMetadata tableName = do
     tbName <- newCString tableName
     metadata_c <- peek $ getTableMetadata_c tbName
-    fromTableMetadata_c metadata_c
+    fromTableMetadata_c tableName metadata_c

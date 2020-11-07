@@ -18,7 +18,6 @@ cExpr expr = do
         BinExpr op e1 e2
             | op == And                                 -> exprAnd e1 e2
             | op == Or                                  -> exprOr  e1 e2
-            | op == In                                  -> throwError "not implemented"
             | op `elem` [Plus, Minus, Divide, Multiple] -> exprArith op e1 e2
             | otherwise                                 -> exprCompr op e1 e2
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
@@ -26,7 +25,12 @@ cExpr expr = do
         FunctionCall fn pl                              -> exprFuncCall fn pl
         IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
         Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
-        _ -> throwError $ "expression `" ++ show expr ++ "` is not supported."
+        InExpr _ _                                      -> throwError "not implemented"
+        NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
+        SelectExpr _                                    -> throwError "not implemented"
+        Column _                                        -> throwError "not implemented"
+        AnyColumn                                       -> throwError "not implemented"
+        TableColumn _ _                                 -> throwError "not implemented"
     retRes
 
 
