@@ -22,10 +22,10 @@ data ExprResultType = TBool | TAsIs
 -- some help functions
 ----------------------------------------------------------
 retRes :: CodeGenEnv
-retRes = (\(_, b, _) -> b) <$> lift get
+retRes = snd3 <$> lift get
 
 -- functions to operate label
-getLabel    = (\(_, _, c) -> c) <$> lift get
+getLabel    = trd3 <$> lift get
 putLabel l  = get >>= (\(a, b, _) -> put (a, b, l)) >> retRes
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
 

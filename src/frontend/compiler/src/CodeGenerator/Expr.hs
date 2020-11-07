@@ -24,6 +24,8 @@ cExpr expr = do
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
         ConstValue val                                  -> exprConst val
         FunctionCall fn pl                              -> exprFuncCall fn pl
+        IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
+        Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
         _ -> throwError $ "expression `" ++ show expr ++ "` is not supported."
     retRes
 
@@ -101,7 +103,7 @@ cArithOp op = case op of
 -- code generator for comparison operators
 cComprOp op =
     let chart = [
-            (Ls, opLt), (LE, opLe), (Gr, opGt), (GE, opGe),
+            (Ls, opLt), (LE, opLe), (Gt, opGt), (GE, opGe),
             (Eq, opEq), (NE, opNe)]
      in trueAndMkRes . snd . head . dropWhile ((op /=) . fst) $ chart
 

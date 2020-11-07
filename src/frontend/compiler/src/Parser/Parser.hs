@@ -286,7 +286,7 @@ expr = pd1 where
     -- pd4 ::= pd5 [(< | <= | <> | < | >= | > | == | = | !=) pd5]*
     pd4 = chainl opList pd5
         where
-            opToData = [("<=", LE), ("<>", NE), ("<", Ls), (">=", GE), (">", Gr), ("==", Eq), ("=", Eq), ("!=", NE)]
+            opToData = [("<=", LE), ("<>", NE), ("<", Ls), (">=", GE), (">", Gt), ("==", Eq), ("=", Eq), ("!=", NE)]
             opList'  = map (\(a, b) -> pBinNode a b) opToData
             opList   = foldl (\z x -> z <|> x) (head opList') (tail opList')
 
