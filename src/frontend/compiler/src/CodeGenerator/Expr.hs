@@ -4,8 +4,10 @@ module Expr (cExpr) where
 
 import Ast
 import Instruction
+import FFIStructure
 import CodeGeneratorUtils
 
+import Data.List
 import Control.Monad.Except
 
 
@@ -30,8 +32,19 @@ cExpr expr = do
         SelectExpr _                                    -> throwError "not implemented"
         Column _                                        -> throwError "not implemented"
         AnyColumn                                       -> throwError "not implemented"
-        TableColumn _ _                                 -> throwError "not implemented"
+        TableColumn tn cn                               -> exprTableColumn tn cn
     retRes
+
+
+-- code generator for table-column
+exprTableColumn :: String -> String -> CodeGenEnv
+exprTableColumn tn cn =
+    let tbIdx = getMetadata >>= return . findIndex ((==tn) . metadata_name)
+     in tbIdx >>= \case
+            Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
+            Just  i -> getMetadata >>= (\x -> return $ findIndex (==cn) $ metadata_column $ x !! i) >>= \case
+                Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
+                Just  j -> appendInst $ Instruction opColumn i j ""
 
 
 -- code generator for function-call-expr

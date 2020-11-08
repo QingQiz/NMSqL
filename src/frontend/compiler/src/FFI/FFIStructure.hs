@@ -48,7 +48,7 @@ type TableIndex = (String, [String])            -- (index-name, [column-name])
 data TableMetadata = TableMetadata {
     metadata_name        :: String,             -- table-name
     metadata_index       :: [TableIndex],
-    metadata_column      :: [(String, Int)],    -- (column-name, column-index)
+    metadata_column      :: [String],
     metadata_cookie      :: Int
 } deriving (Show)
 
@@ -57,7 +57,7 @@ fromTableMetadata_c tn metadata_c =
     let tableIndex  = map parseIndex <$> peekStringArray(fromIntegral $ c_metadata_index_cnt  metadata_c) (c_metadata_index metadata_c)
         tableColumn = peekStringArray (fromIntegral $ c_metadata_column_cnt metadata_c) (c_metadata_column metadata_c)
         tableCookie = return (fromIntegral $ c_metadata_cookie metadata_c)
-     in TableMetadata tn <$> tableIndex <*> ((\x-> zipWith (,) x [0..]) <$> tableColumn) <*> tableCookie
+     in TableMetadata tn <$> tableIndex <*> tableColumn <*> tableCookie
     where
         -- inedx-name:column-name[,column-name]*
         parseIndex = fmap (unfoldr (\case {[] -> Nothing; l -> Just . fmap (drop 1). break (==',') $ l})) . fmap (drop 1) . break (==':')
