@@ -111,4 +111,4 @@ data Instruction = Instruction {
     p1     :: Int,
     p2     :: Int,
     p3     :: String
-} deriving (Show)
+} deriving (Show, Eq)

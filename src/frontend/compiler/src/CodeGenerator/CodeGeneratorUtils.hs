@@ -15,6 +15,8 @@ type CodeGenState = ([TableMetadata], [Instruction], Int)
 
 type CodeGenEnv   = ExceptT String (State CodeGenState) [Instruction]
 
+type CodeGenRes   = Either String [Instruction]
+
 
 ----------------------------------------------------------
 -- some help functions
