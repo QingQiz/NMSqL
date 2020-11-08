@@ -8,6 +8,7 @@ import FFIStructure
 import CodeGeneratorUtils
 
 import Data.List
+import Data.Maybe
 import Control.Monad.Except
 
 
@@ -30,10 +31,22 @@ cExpr expr = do
         InExpr _ _                                      -> throwError "not implemented"
         NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
         SelectExpr _                                    -> throwError "not implemented"
-        Column _                                        -> throwError "not implemented"
+        Column cn                                       -> exprColumn cn
         AnyColumn                                       -> throwError "not implemented"
         TableColumn tn cn                               -> exprTableColumn tn cn
     retRes
+
+
+-- code generator for column
+exprColumn :: String -> CodeGenEnv
+exprColumn cn =
+    let valid     md = cn `elem` (metadata_column md)
+        getColIdx md = fromMaybe (-1) $ findIndex (==cn) $ metadata_column md
+     in getMetadata >>= return . findIndices valid >>= \case
+            [i] -> getMetadata >>= (\md -> return $ getColIdx $ md !! i)
+                               >>= (\j  -> appendInst $ Instruction opColumn i j "")
+            []  -> throwError $ "No such column: " ++ cn
+            _   -> throwError $ "Ambiguous column name: " ++ cn
 
 
 -- code generator for table-column
@@ -85,7 +98,7 @@ exprAnd e1 e2 = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr e1 >> gotoWhenFalse labelAva
     >> cExpr e2 >> gotoWhenFalse labelAva
-    >> putTrue        >> getLabel >>= goto
+    >> putTrue  >> getLabel >>= goto
     >> mkLabelWithoutUpdate labelAva
     >> putFalse
     >> getLabel >>= mkLabel
@@ -96,7 +109,7 @@ exprOr e1 e2 = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr e1 >> gotoWhenTrue labelAva
     >> cExpr e2 >> gotoWhenTrue labelAva
-    >> putFalse       >> getLabel >>= goto
+    >> putFalse >> getLabel >>= goto
     >> mkLabelWithoutUpdate labelAva
     >> putTrue
     >> getLabel >>= mkLabel
