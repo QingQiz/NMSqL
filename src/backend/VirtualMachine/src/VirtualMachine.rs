@@ -1,4 +1,5 @@
 pub mod VirtualMachine {
+  use crate::wrapper::wrapper::rustLayer as DbWrapper;
   use crate::wrapper::wrapper::rustLayer::Cursor;
   #[derive(Debug, Copy, Clone, FromPrimitive)]
   enum VmOpType {
@@ -168,7 +169,7 @@ pub mod VirtualMachine {
 
   #[derive(Copy, Clone)]
   struct VmCursor {
-    cursor: Cursor,
+    cursor: *mut Cursor,
   }
   #[derive(Debug, Clone, PartialEq, PartialOrd)]
   enum VmMem {
@@ -178,12 +179,31 @@ pub mod VirtualMachine {
     MEM_STRING(Vec<u8>),
   }
   impl VmMem {
+    /// turn value into string and make it like C string
     pub fn stringify(self: Self) -> Vec<u8> {
       match self {
-        VmMem::MEM_INT(x) => x.to_string().as_bytes().iter().map(|&x| x).collect(),
-        VmMem::MEM_DOUBLE(x) => x.to_string().as_bytes().iter().map(|&x| x).collect(),
+        VmMem::MEM_INT(x) => {
+          let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
+          ret.push(0u8);
+          ret
+        }
+        VmMem::MEM_DOUBLE(x) => {
+          let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
+          ret.push(0u8);
+          ret
+        }
         VmMem::MEM_NULL => vec![0],
-        VmMem::MEM_STRING(x) => x,
+        VmMem::MEM_STRING(mut x) => {
+          if_chain! {
+              if x.len() != 0;
+              if let Some(&0u8) = x.last();
+              then{}
+              else {
+                  x.push(0u8);
+              }
+          }
+          x
+        }
       }
     }
     pub fn integerify(self: Self) -> i128 {
@@ -271,6 +291,7 @@ pub mod VirtualMachine {
       }
       let nowOp = &ops[pc];
       match nowOp.vmOpType {
+        // implement of every operations
         // goto
         VmOpType::OP_Goto => {
           pc = nowOp.p2 as usize - 1;
@@ -567,7 +588,7 @@ pub mod VirtualMachine {
           vm.pushStack(VmMem::MEM_STRING(
             [
               vec![
-                (key >> 24) as u8,
+                ((key >> 24) & 0xff) as u8,
                 ((key >> 16) & 0xff) as u8,
                 ((key >> 8) & 0xff) as u8,
                 ((key) & 0xff) as u8,
@@ -581,6 +602,15 @@ pub mod VirtualMachine {
             ]
             .concat(),
           ))
+        }
+        VmOpType::OP_Transaction => unimplemented!(),
+        VmOpType::OP_Commit => unimplemented!(),
+        VmOpType::OP_Rollback => unimplemented!(),
+        VmOpType::OP_ReadCookie => {
+          vm.pushStack(VmMem::MEM_INT(DbWrapper::getCookies() as i128));
+        }
+        VmOpType::OP_SetCookie => {
+          DbWrapper::setCookies(nowOp.p1);
         }
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));

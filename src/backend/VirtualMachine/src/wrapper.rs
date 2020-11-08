@@ -10,7 +10,7 @@ pub mod wrapper {
       pub cursorType: CursorType,
     }
     // open the index of dbTable
-    pub fn open(dbTable: &str, indexName: &str) -> Cursor {
+    pub fn open(dbTable: &str, indexName: &str) -> *mut Cursor {
       unimplemented!()
     }
     // create dbTable with indexName indexType indexColumnCnt and indexColumns
@@ -24,27 +24,27 @@ pub mod wrapper {
       unimplemented!();
     }
     // get the key of the data that current cursor points to
-    pub fn getKey(cursor: &mut Cursor) {
+    pub fn getKey(cursor: *mut Cursor) {
       unimplemented!()
     }
     // get the value of the data that current cursor points to
-    pub fn getValue(cursor: &mut Cursor) {
+    pub fn getValue(cursor: *mut Cursor) {
       unimplemented!()
     }
     // insert into Cursor with key and value
-    pub fn insert<T, U>(cursor: &mut Cursor, key: &T, value: &U) -> i32 {
+    pub fn insert<T, U>(cursor: *mut Cursor, key: &T, value: &U) -> i32 {
       unimplemented!()
     }
     // erase the element that cursor points to
-    pub fn erase(cursor: &mut Cursor) -> i32 {
+    pub fn erase(cursor: *mut Cursor) -> i32 {
       unimplemented!()
     }
     // move the cursor to the next
-    pub fn next(cursor: &mut Cursor) -> i32 {
+    pub fn next(cursor: *mut Cursor) -> i32 {
       unimplemented!()
     }
     // reset the cursor to the first
-    pub fn reset(cursor: &mut Cursor) -> i32 {
+    pub fn reset(cursor: *mut Cursor) -> i32 {
       unimplemented!()
     }
     pub fn createTable(sql: &str) -> i32 {
@@ -56,7 +56,10 @@ pub mod wrapper {
     pub fn getMetaData(tableName: &str) {
       unimplemented!()
     }
-    pub fn getCookies() {
+    pub fn getCookies() -> i32 {
+      unimplemented!()
+    }
+    pub fn setCookies(cookies: i32) {
       unimplemented!()
     }
     pub fn getTableColumns(tableName: &str) -> &[&str] {

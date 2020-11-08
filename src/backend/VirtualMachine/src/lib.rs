@@ -9,3 +9,6 @@ use wrapper::wrapper::cLayer;
 extern crate num;
 #[macro_use]
 extern crate num_derive;
+
+#[macro_use]
+extern crate if_chain;
