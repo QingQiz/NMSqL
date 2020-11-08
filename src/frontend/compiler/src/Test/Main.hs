@@ -7,6 +7,4 @@ import Test.HUnit
 
 
 main :: IO ()
-main = do
-    runTestTT cgTests
-    return ()
+main = runTestTT cgTests >> return ()

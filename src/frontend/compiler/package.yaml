@@ -7,7 +7,6 @@ ghc-options:
 dependencies:
   - base >= 4.7 && < 5
   - mtl == 2.2.2
-  - HUnit == 1.6.0.0
 
 library:
   source-dirs:
@@ -21,6 +20,7 @@ tests:
     source-dirs:  src/Test
     dependencies:
       - compiler
+      - HUnit == 1.6.0.0
     ghc-options:
       - -threaded
       - -rtsopts
