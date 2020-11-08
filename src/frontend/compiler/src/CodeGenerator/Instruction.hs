@@ -1,4 +1,6 @@
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Instruction where
+
 
 opTransaction  = "opTransaction"   --1
 opCommit       = "opCommit"        --2
@@ -105,10 +107,11 @@ opStrlen       = "opStrlen"        --102
 opSubstr       = "opSubstr"        --103
 opMAX          = "opMAX"           --104
 
+type OpCode = String
 
 data Instruction = Instruction {
-    opCode :: String,
-    p1     :: Int,
-    p2     :: Int,
-    p3     :: String
+    iOpCode :: OpCode,
+    iP1     :: Int,
+    iP2     :: Int,
+    iP3     :: String
 } deriving (Show, Eq)

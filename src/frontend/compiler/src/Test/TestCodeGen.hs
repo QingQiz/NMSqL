@@ -9,22 +9,33 @@ import Instruction
 import Test.HUnit
 
 
+-- NOTE assume that
+--  table xxx has 3 columns: a, b, c
+--  table yyy has 3 columns: a, b, d
+
 cgTestCases :: [CGTestCase]
 cgTestCases = [
 ----------------------------------------------------------
 -- Test code generator for expr
 ----------------------------------------------------------
         -- table-column-expr
-          (cExpr (TableColumn "zzz" "a"), Left "No such column: zzz.a")
-        , (cExpr (TableColumn "xxx" "d"), Left "No such column: xxx.d")
-        , (cExpr (TableColumn "xxx" "b"), Right [Instruction opColumn 0 1 ""])
-        , (cExpr (TableColumn "yyy" "b"), Right [Instruction opColumn 1 1 ""])
+          (cExpr (TableColumn "zzz" "a")    , Left "No such column: zzz.a")
+        , (cExpr (TableColumn "xxx" "d")    , Left "No such column: xxx.d")
+        , (cExpr (TableColumn "xxx" "b")    , Right [Instruction opColumn 0 1 ""])
+        , (cExpr (TableColumn "yyy" "b")    , Right [Instruction opColumn 1 1 ""])
         -- column-expr
-        , (cExpr (Column "e"), Left "No such column: e")
-        , (cExpr (Column "a"), Left "Ambiguous column name: a")
-        , (cExpr (Column "b"), Left "Ambiguous column name: b")
-        , (cExpr (Column "c"), Right [Instruction opColumn 0 2 ""])
-        , (cExpr (Column "d"), Right [Instruction opColumn 1 2 ""])
+        , (cExpr (Column "e")               , Left "No such column: e")
+        , (cExpr (Column "a")               , Left "Ambiguous column name: a")
+        , (cExpr (Column "b")               , Left "Ambiguous column name: b")
+        , (cExpr (Column "c")               , Right [Instruction opColumn 0 2 ""])
+        , (cExpr (Column "d")               , Right [Instruction opColumn 1 2 ""])
+        -- TODO BinExpr
+        -- TODO LikeExpr
+        -- TODO ConstValue
+        -- TODO FunctionCall
+        -- TODO IsNull
+        -- TODO Between
+        -- TODO NotExpr
     ]
 
 

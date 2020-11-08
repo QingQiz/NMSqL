@@ -32,8 +32,8 @@ cExpr expr = do
         NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
         SelectExpr _                                    -> throwError "not implemented"
         Column cn                                       -> exprColumn cn
-        AnyColumn                                       -> throwError "not implemented"
         TableColumn tn cn                               -> exprTableColumn tn cn
+        _                                               -> throwError "Semantic error"
     retRes
 
 
@@ -75,6 +75,7 @@ exprFuncCall fn pl  =
 
 
 -- code generator for const-expr
+exprConst :: Value -> CodeGenEnv
 exprConst val = case val of
     ValStr str       -> appendInst $ Instruction opString  0   0 str
     ValInt int       -> appendInst $ Instruction opInteger int 0 ""
@@ -82,18 +83,22 @@ exprConst val = case val of
 
 
 -- code generator for like-expr
+exprLike :: LikeOp -> Expr -> Expr -> CodeGenEnv
 exprLike op e1 e2  = cExpr e1 >> cExpr e2 >> cLikeOp  op
 
 
 -- code generator for arith-expr
+exprArith :: BinOp -> Expr -> Expr -> CodeGenEnv
 exprArith op e1 e2 = cExpr e1 >> cExpr e2 >> cArithOp op
 
 
 -- code generator for compare-expr
+exprCompr :: BinOp -> Expr -> Expr -> CodeGenEnv
 exprCompr op e1 e2 = cExpr e1 >> cExpr e2 >> cComprOp op
 
 
 -- code generator for and-expr
+exprAnd :: Expr -> Expr -> CodeGenEnv
 exprAnd e1 e2 = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr e1 >> gotoWhenFalse labelAva
@@ -105,6 +110,7 @@ exprAnd e1 e2 = getLabel >>= \labelAva
 
 
 -- code generator for or-expr
+exprOr :: Expr -> Expr -> CodeGenEnv
 exprOr e1 e2 = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr e1 >> gotoWhenTrue labelAva
@@ -116,6 +122,7 @@ exprOr e1 e2 = getLabel >>= \labelAva
 
 
 -- code generator for like/glob operators
+cLikeOp :: LikeOp -> CodeGenEnv
 cLikeOp op = case op of
     Like    -> trueAndMkRes  opLike
     Glob    -> trueAndMkRes  opGlob
@@ -123,6 +130,7 @@ cLikeOp op = case op of
     NotGlob -> falseAndMkRes opGlob
 
 -- code generator for arithmetic operators
+cArithOp :: BinOp -> CodeGenEnv
 cArithOp op = case op of
     Plus     -> appendInst $ Instruction opAdd      0 0 ""
     Minus    -> appendInst $ Instruction opSubtract 0 0 ""
@@ -131,6 +139,7 @@ cArithOp op = case op of
 
 
 -- code generator for comparison operators
+cComprOp :: BinOp -> CodeGenEnv
 cComprOp op =
     let chart = [
             (Ls, opLt), (LE, opLe), (Gt, opGt), (GE, opGe),
@@ -142,24 +151,38 @@ cComprOp op =
 -- help functions
 ----------------------------------------------------------
 -- make goto instruction
+goto :: Int -> CodeGenEnv
 goto          label = appendInst $ Instruction opGoto 0 label ""
+
+gotoWhenTrue :: Int -> CodeGenEnv
 gotoWhenTrue  label = appendInst $ Instruction opIf   0 label ""
+
+gotoWhenFalse :: Int -> CodeGenEnv
 gotoWhenFalse label = appendInst  (Instruction opNot  0 0     "") >> gotoWhenTrue label
 
 
 -- make label
+mkLabelWithoutUpdate :: Int -> CodeGenEnv
 mkLabelWithoutUpdate label = appendInst (Instruction opNoop 0 label "")
+
+mkLabel :: Int -> CodeGenEnv
 mkLabel label  = mkLabelWithoutUpdate label >> updateLabel
+
+mkCurrentLabel :: CodeGenEnv
 mkCurrentLabel = getLabel >>= mkLabel
 
 
 -- put true/false to stack
+putTrue :: CodeGenEnv
 putTrue  = appendInst $ Instruction opInteger 1 0 ""
+
+putFalse :: CodeGenEnv
 putFalse = appendInst $ Instruction opInteger 0 0 ""
 
 
 -- put result to stack after insturction is executed
 -- opCode then goto true or fallback to false
+mkBoolVal :: OpCode -> Int -> Int -> String -> CodeGenEnv
 mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
     >> putFalse
     >> goto (p2 + 1)
@@ -167,5 +190,8 @@ mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
     >> putTrue
     >> mkCurrentLabel
 
+trueAndMkRes :: OpCode -> CodeGenEnv
 trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
+
+falseAndMkRes :: OpCode -> CodeGenEnv
 falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
