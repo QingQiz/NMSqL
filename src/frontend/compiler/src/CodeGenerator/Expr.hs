@@ -28,13 +28,32 @@ cExpr expr = do
         FunctionCall fn pl                              -> exprFuncCall fn pl
         IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
         Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
-        InExpr _ _                                      -> throwError "not implemented"
+        InExpr a b                                      -> exprIn a b
         NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
         SelectExpr _                                    -> throwError "not implemented"
         Column cn                                       -> exprColumn cn
         TableColumn tn cn                               -> exprTableColumn tn cn
         _                                               -> throwError "Semantic error"
-    retRes
+    getRes
+
+
+-- code generator for in-expr
+exprIn :: Expr -> ValueList -> CodeGenEnv
+exprIn a (ValueList vl) =
+    let genValueList = do
+            oldRes    <- getRes
+            calcValue <- foldr (>>) getRes (map cExpr vl)
+            insertSet <- getSet >>= \x -> return $ map (\_ -> Instruction opSetInsert x 0 "") vl
+            putRes $ calcValue ++ insertSet ++ oldRes
+        mkRes = do
+            lab <- getLabel
+            set <- getSet
+            mkBoolVal opSetFound set lab ""
+     in case vl of
+            [] -> putFalse
+            _  -> genValueList >> cExpr a >> mkRes >> updateSet
+
+exprIn _ (SelectResult _) = throwError "not implemented"
 
 
 -- code generator for column
@@ -70,7 +89,7 @@ exprFuncCall fn pl  =
              []  -> throwError $ "No such function: " ++ fn
              x:_ | plLength < snd3 x -> throwError $ "Too few arguments to function: "  ++ fn
                  | plLength < snd3 x -> throwError $ "Too many arguments to function: " ++ fn
-                 | otherwise -> foldr (>>) retRes pl'
+                 | otherwise -> foldr (>>) getRes pl'
                              >> appendInst (Instruction (trd3 x) 0 0 "")
 
 

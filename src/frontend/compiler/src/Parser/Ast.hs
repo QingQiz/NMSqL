@@ -37,7 +37,7 @@ data Value = ValStr String
            | Null
            deriving (Show)
 
-data ValueList = ValueList [Value]
+data ValueList = ValueList [Expr]
                | SelectResult Select
                deriving (Show)
 

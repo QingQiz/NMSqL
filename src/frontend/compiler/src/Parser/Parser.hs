@@ -301,7 +301,7 @@ expr = pd1 where
                 where makeNode x = matchAndRet "between" (Between x) <|>
                                    matchTwoAndRet "not" "between" (\a b -> NotExpr $ Between x a b)
 
-            inExpr = \x -> makeNode x <*> (SelectResult <$> maySurroundByBrackets select <|> ValueList <$> surroundByBrackets (argsListOrEmpty value))
+            inExpr = \x -> makeNode x <*> (SelectResult <$> maySurroundByBrackets select <|> ValueList <$> surroundByBrackets (argsListOrEmpty expr))
                 where makeNode x = matchAndRet "in" (InExpr x) <|> matchTwoAndRet "not" "in" (NotExpr . InExpr x)
 
             likeExpr = \x -> makeNode x <*> pd6

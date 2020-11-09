@@ -11,7 +11,9 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- some data structure
 ----------------------------------------------------------
-type CodeGenState = ([TableMetadata], [Instruction], Int)
+type CodeGenCnt   = (Int, Int) -- (label-cnt, set-cnt)
+
+type CodeGenState = ([TableMetadata], [Instruction], CodeGenCnt)
 
 type ExceptTEnv a = ExceptT String (State CodeGenState) a
 
@@ -23,22 +25,40 @@ type CodeGenRes   = Either String [Instruction]
 ----------------------------------------------------------
 -- some help functions
 ----------------------------------------------------------
-retRes :: CodeGenEnv
-retRes = snd3 <$> lift get
+getRes :: CodeGenEnv
+getRes = snd3 <$> lift get
+
+putRes :: [Instruction] -> CodeGenEnv
+putRes is = get >>= (\(a, _, c) -> put (a, is, c)) >> getRes
+
+clrRes :: CodeGenEnv
+clrRes = putRes []
+
 
 -- functions to operate label
 getLabel :: ExceptTEnv Int
-getLabel    = trd3 <$> lift get
+getLabel = fst . trd3 <$> lift get
 
 putLabel :: Int -> CodeGenEnv
-putLabel l  = get >>= (\(a, b, _) -> put (a, b, l)) >> retRes
+putLabel l = get >>= (\(a, b, (_, d)) -> put (a, b, (l, d))) >> getRes
 
 updateLabel :: CodeGenEnv
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
 
+
+-- functions to operate set
+getSet :: ExceptTEnv Int
+getSet = snd . trd3 <$> lift get
+
+putSet :: Int -> CodeGenEnv
+putSet s = get >>= (\(a, b, (c, _)) -> put (a, b, (c, s))) >> getRes
+
+updateSet :: CodeGenEnv
+updateSet = getSet >>= \x -> putSet $ x + 1
+
 -- append an instruction to env
 appendInst :: Instruction -> CodeGenEnv
-appendInst inst = get >>= (\(a, b, c) -> put (a, b ++ [inst], c)) >> retRes
+appendInst inst = get >>= (\(a, b, c) -> put (a, b ++ [inst], c)) >> getRes
 
 -- fst, snd, trd for (,,)
 fst3 :: (a, b, c) -> a

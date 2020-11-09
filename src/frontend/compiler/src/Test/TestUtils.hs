@@ -16,7 +16,7 @@ testEnv = (
     [ TableMetadata "xxx" [] ["a", "b", "c"] 0
     , TableMetadata "yyy" [] ["a", "b", "d"] 0]
     , []
-    , 0)
+    , (0, 0))
 
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
