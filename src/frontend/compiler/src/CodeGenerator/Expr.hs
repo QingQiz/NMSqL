@@ -42,7 +42,7 @@ exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
     let genValueList = do
             oldRes    <- getRes
-            calcValue <- foldr (>>) getRes (map cExpr vl)
+            calcValue <- foldr (>>) getRes (map throwErrorIfNotConst vl)
             insertSet <- getSet >>= \x -> return $ map (\_ -> Instruction opSetInsert x 0 "") vl
             putRes $ calcValue ++ insertSet ++ oldRes
         mkRes = do
@@ -214,3 +214,18 @@ trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
 
 falseAndMkRes :: OpCode -> CodeGenEnv
 falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
+
+throwErrorIfNotConst :: Expr -> CodeGenEnv
+throwErrorIfNotConst expr =
+    case expr of
+        BinExpr  _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b >> cExpr expr
+        LikeExpr _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b >> cExpr expr
+        ConstValue _           -> cExpr expr
+        FunctionCall _ a       -> foldr (>>) (return []) (map throwErrorIfNotConst a) >> cExpr expr
+        IsNull a               -> throwErrorIfNotConst a >> cExpr expr
+        Between a b c          -> throwErrorIfNotConst a >> throwErrorIfNotConst b
+                               >> throwErrorIfNotConst c >> cExpr expr
+        InExpr a (ValueList b) -> throwErrorIfNotConst a
+                               >> foldr (>>) (return []) (map throwErrorIfNotConst b) >> cExpr expr
+        NotExpr a              -> throwErrorIfNotConst a >> cExpr expr
+        _                      -> throwError "Right-hand side of IN operator must be constant"
