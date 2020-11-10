@@ -23,9 +23,5 @@ runCodeGen :: CodeGenEnv -> CodeGenRes
 runCodeGen x = evalState (runExceptT x) testEnv
 
 
-connectTestCase :: (CodeGenEnv, CodeGenRes) -> Test
-connectTestCase (a, b) = b ~=? runCodeGen a
-
-
-connectLabelWithCase :: [(String, String)] -> [CGTestCase] -> Test
-connectLabelWithCase labels cs = test $ zipWith (\(a,b) c -> a ~: b ~: connectTestCase c) labels cs
+(?:) :: CodeGenEnv -> CodeGenRes -> Test
+a ?: b = runCodeGen a ~?= b

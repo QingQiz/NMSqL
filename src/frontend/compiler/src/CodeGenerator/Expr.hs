@@ -42,7 +42,7 @@ exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
     let genValueList = do
             oldRes    <- getRes
-            calcValue <- foldr (>>) getRes (map throwErrorIfNotConst vl)
+            calcValue <- foldr (>>) getRes $ map (\x -> throwErrorIfNotConst x >> cExpr x) vl
             insertSet <- getSet >>= \x -> return $ map (\_ -> Instruction opSetInsert x 0 "") vl
             putRes $ calcValue ++ insertSet ++ oldRes
         mkRes = do

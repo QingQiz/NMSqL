@@ -7,4 +7,4 @@ import Test.HUnit
 
 
 main :: IO ()
-main = runTestTT cgTests >> return ()
+main = runTestTT codeGeneratorTest >> return ()

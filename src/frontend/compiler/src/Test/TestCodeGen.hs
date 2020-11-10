@@ -13,46 +13,71 @@ import Test.HUnit
 --  table xxx has 3 columns: a, b, c
 --  table yyy has 3 columns: a, b, d
 
-cgTestCases :: [CGTestCase]
-cgTestCases = [
+codeGeneratorTest :: Test
+codeGeneratorTest = test [
 ----------------------------------------------------------
 -- Test code generator for expr
 ----------------------------------------------------------
-        -- table-column-expr
-          (cExpr (TableColumn "zzz" "a")    , Left "No such column: zzz.a")
-        , (cExpr (TableColumn "xxx" "d")    , Left "No such column: xxx.d")
-        , (cExpr (TableColumn "xxx" "b")    , Right [Instruction opColumn 0 1 ""])
-        , (cExpr (TableColumn "yyy" "b")    , Right [Instruction opColumn 1 1 ""])
-        -- column-expr
-        , (cExpr (Column "e")               , Left "No such column: e")
-        , (cExpr (Column "a")               , Left "Ambiguous column name: a")
-        , (cExpr (Column "b")               , Left "Ambiguous column name: b")
-        , (cExpr (Column "c")               , Right [Instruction opColumn 0 2 ""])
-        , (cExpr (Column "d")               , Right [Instruction opColumn 1 2 ""])
-        -- TODO BinExpr
-        -- TODO LikeExpr
-        -- TODO ConstValue
-        -- TODO FunctionCall
-        -- TODO IsNull
-        -- TODO Between
-        -- TODO NotExpr
-        -- TODO InExpr
+      "table-column" ~: "wrong table name"
+                     ~: cExpr (TableColumn "zzz" "a")
+                     ?: Left "No such column: zzz.a"
+
+    , "table-column" ~: "wrong column name"
+                     ~: cExpr (TableColumn "xxx" "d")
+                     ?: Left "No such column: xxx.d"
+
+    , "table-column" ~: ""
+                     ~: cExpr (TableColumn "xxx" "b")
+                     ?: Right [Instruction opColumn 0 1 ""]
+
+    , "table-column" ~: ""
+                     ~: cExpr (TableColumn "yyy" "b")
+                     ?: Right [Instruction opColumn 1 1 ""]
+----------------------------------------------------------
+    , "column"       ~: "wrong column name"
+                     ~: cExpr (Column "e")
+                     ?: Left "No such column: e"
+
+    , "column"       ~: "anbigous column name"
+                     ~: cExpr (Column "a")
+                     ?: Left "Ambiguous column name: a"
+
+    , "column"       ~: "anbigous column name"
+                     ~: cExpr (Column "b")
+                     ?: Left "Ambiguous column name: b"
+
+    , "column"       ~: ""
+                     ~: cExpr (Column "c")
+                     ?: Right [Instruction opColumn 0 2 ""]
+
+    , "column"       ~: ""
+                     ~: cExpr (Column "d")
+                     ?: Right [Instruction opColumn 1 2 ""]
+----------------------------------------------------------
+    , "const value"  ~: "string"
+                     ~: cExpr (ConstValue $ ValStr "a")
+                     ?: Right [Instruction opString 0 0 "a"]
+
+    , "const value"  ~: "integer"
+                     ~: cExpr (ConstValue $ ValInt 123)
+                     ?: Right [Instruction opInteger 123 0 ""]
+
+    , "const value"  ~: "double"
+                     ~: cExpr (ConstValue $ ValDouble 12.3)
+                     ?: Right [Instruction opString 0 0 "12.3"]
+----------------------------------------------------------
+    -- TODO BinExpr
+----------------------------------------------------------
+    -- TODO LikeExpr
+----------------------------------------------------------
+    -- TODO FunctionCall
+----------------------------------------------------------
+    -- TODO IsNull
+----------------------------------------------------------
+    -- TODO Between
+----------------------------------------------------------
+    -- TODO NotExpr
+----------------------------------------------------------
+    -- TODO InExpr
+----------------------------------------------------------
     ]
-
-
-cgTests :: Test
-cgTests =
-    let labels = [
-            -- table-column-expr
-              ("test1", "table-column: wrong table name"    )
-            , ("test1", "table-column: wrong column name"   )
-            , ("test1", "table-column: right case"          )
-            , ("test1", "table-column: right case"          )
-            -- column-expr
-            , ("test2", "column: wrong column name"         )
-            , ("test2", "column: ambigous column name"      )
-            , ("test2", "column: ambigous column name"      )
-            , ("test2", "column: right case"                )
-            , ("test2", "column: right case"                )
-            ]
-     in connectLabelWithCase labels cgTestCases
