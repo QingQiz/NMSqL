@@ -218,14 +218,14 @@ falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
 throwErrorIfNotConst :: Expr -> CodeGenEnv
 throwErrorIfNotConst expr =
     case expr of
-        BinExpr  _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b >> cExpr expr
-        LikeExpr _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b >> cExpr expr
-        ConstValue _           -> cExpr expr
-        FunctionCall _ a       -> foldr (>>) (return []) (map throwErrorIfNotConst a) >> cExpr expr
-        IsNull a               -> throwErrorIfNotConst a >> cExpr expr
+        BinExpr  _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b
+        LikeExpr _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b
+        ConstValue _           -> return []
+        FunctionCall _ a       -> foldr (>>) (return []) (map throwErrorIfNotConst a)
+        IsNull a               -> throwErrorIfNotConst a
         Between a b c          -> throwErrorIfNotConst a >> throwErrorIfNotConst b
-                               >> throwErrorIfNotConst c >> cExpr expr
+                               >> throwErrorIfNotConst c
         InExpr a (ValueList b) -> throwErrorIfNotConst a
-                               >> foldr (>>) (return []) (map throwErrorIfNotConst b) >> cExpr expr
-        NotExpr a              -> throwErrorIfNotConst a >> cExpr expr
+                               >> foldr (>>) (return []) (map throwErrorIfNotConst b)
+        NotExpr a              -> throwErrorIfNotConst a
         _                      -> throwError "Right-hand side of IN operator must be constant"
