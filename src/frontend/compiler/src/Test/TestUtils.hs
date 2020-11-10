@@ -23,5 +23,21 @@ runCodeGen :: CodeGenEnv -> CodeGenRes
 runCodeGen x = evalState (runExceptT x) testEnv
 
 
+infixl 1 +:
+(+:) :: CodeGenEnv -> CodeGenEnv -> CodeGenEnv
+a +: b = a >> b
+
+
+infixr 0 >:
+(>:) :: CodeGenEnv -> CodeGenRes -> CodeGenRes
+x >: y =
+    case evalState (runExceptT x) testEnv of
+         Right res  -> case y of
+            Right res' -> Right $ res ++ res'
+            _          -> y
+         l@(Left _) -> l
+
+
+infixr 0 ?:
 (?:) :: CodeGenEnv -> CodeGenRes -> Test
 a ?: b = runCodeGen a ~?= b
