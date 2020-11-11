@@ -16,25 +16,23 @@ import Control.Monad.Except
 -- Code Generator
 ----------------------------------------------------------
 cExpr :: Expr -> CodeGenEnv
-cExpr expr = do
-    case expr of
-        BinExpr op e1 e2
-            | op == And                                 -> exprAnd e1 e2
-            | op == Or                                  -> exprOr  e1 e2
-            | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
-            | otherwise                                 -> exprCompr op e1 e2
-        LikeExpr op e1 e2                               -> exprLike  op e1 e2
-        ConstValue val                                  -> exprConst val
-        FunctionCall fn pl                              -> exprFuncCall fn pl
-        IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
-        Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
-        InExpr a b                                      -> exprIn a b
-        NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
-        SelectExpr _                                    -> throwError "not implemented"
-        Column cn                                       -> exprColumn cn
-        TableColumn tn cn                               -> exprTableColumn tn cn
-        _                                               -> throwError "Semantic error"
-    getRes
+cExpr expr = case expr of
+    BinExpr op e1 e2
+        | op == And                                 -> exprAnd e1 e2
+        | op == Or                                  -> exprOr  e1 e2
+        | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
+        | otherwise                                 -> exprCompr op e1 e2
+    LikeExpr op e1 e2                               -> exprLike  op e1 e2
+    ConstValue val                                  -> exprConst val
+    FunctionCall fn pl                              -> exprFuncCall fn pl
+    IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
+    Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
+    InExpr a b                                      -> exprIn a b
+    NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
+    SelectExpr _                                    -> throwError "not implemented"
+    Column cn                                       -> exprColumn cn
+    TableColumn tn cn                               -> exprTableColumn tn cn
+    _                                               -> throwError "Semantic error"
 
 
 -- code generator for in-expr
@@ -99,6 +97,7 @@ exprConst val = case val of
     ValStr str       -> appendInst $ Instruction opString  0   0 str
     ValInt int       -> appendInst $ Instruction opInteger int 0 ""
     ValDouble double -> appendInst $ Instruction opString  0   0 $ show double
+    Null             -> appendInst $ Instruction opNull    0   0 ""
 
 
 -- code generator for like-expr
@@ -155,6 +154,7 @@ cArithOp op = case op of
     Minus    -> appendInst $ Instruction opSubtract 0 0 ""
     Multiply -> appendInst $ Instruction opMultiply 0 0 ""
     Divide   -> appendInst $ Instruction opDivide   0 0 ""
+    _        -> throwError "Wrong op type"
 
 
 -- code generator for comparison operators

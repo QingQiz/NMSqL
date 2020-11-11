@@ -71,6 +71,10 @@ codeGeneratorTest =
     , "const value"  ~: "double"
                      ~: cExpr (ConstValue $ ValDouble 12.3)
                      ?: Right [Instruction opString 0 0 "12.3"]
+
+    , "const value"  ~: "null"
+                     ~: cExpr (ConstValue Null)
+                     ?: Right [Instruction opNull 0 0 ""]
 ----------------------------------------------------------
     , "binary expr"  ~: "plus (+)"
                      ~: cExpr (BinExpr Plus (Column "c") (Column "d"))
@@ -154,7 +158,29 @@ codeGeneratorTest =
                      >: Right [Instruction opNe 0 0 ""]
                      /: toBool
 ----------------------------------------------------------
-    -- TODO LikeExpr
+    , "like expr"    ~: "like"
+                     ~: cExpr (LikeExpr Like (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opLike 0 0 ""]
+                     /: toBool
+
+    , "like expr"    ~: "notlike"
+                     ~: cExpr (LikeExpr NotLike (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opLike 1 0 ""]
+                     /: toBool
+
+    , "like expr"    ~: "glob"
+                     ~: cExpr (LikeExpr Glob (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opGlob 0 0 ""]
+                     /: toBool
+
+    , "like expr"    ~: "notglob"
+                     ~: cExpr (LikeExpr NotGlob (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opGlob 1 0 ""]
+                     /: toBool
 ----------------------------------------------------------
     -- TODO FunctionCall
 ----------------------------------------------------------
