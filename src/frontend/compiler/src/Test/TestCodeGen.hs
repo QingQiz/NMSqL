@@ -14,7 +14,13 @@ import Test.HUnit
 --  table yyy has 3 columns: a, b, d
 
 codeGeneratorTest :: Test
-codeGeneratorTest = test [
+codeGeneratorTest =
+    let toBool = Right [Instruction opInteger 0 0 ""
+                       ,Instruction opGoto    0 1 ""
+                       ,Instruction opNoop    0 0 ""
+                       ,Instruction opInteger 1 0 ""
+                       ,Instruction opNoop    0 1 ""]
+     in test [
 ----------------------------------------------------------
 -- Test code generator for expr
 ----------------------------------------------------------
@@ -66,22 +72,22 @@ codeGeneratorTest = test [
                      ~: cExpr (ConstValue $ ValDouble 12.3)
                      ?: Right [Instruction opString 0 0 "12.3"]
 ----------------------------------------------------------
-    , "binary expr"  ~: "plus"
+    , "binary expr"  ~: "plus (+)"
                      ~: cExpr (BinExpr Plus (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opAdd 0 0 ""]
 
-    , "binary expr"  ~: "minus"
+    , "binary expr"  ~: "minus (-)"
                      ~: cExpr (BinExpr Minus (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opSubtract 0 0 ""]
 
-    , "binary expr"  ~: "multiply"
+    , "binary expr"  ~: "multiply (*)"
                      ~: cExpr (BinExpr Multiply (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opMultiply 0 0 ""]
 
-    , "binary expr"  ~: "divide"
+    , "binary expr"  ~: "divide (/)"
                      ~: cExpr (BinExpr Divide (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opDivide 0 0 ""]
@@ -112,8 +118,41 @@ codeGeneratorTest = test [
                               ,Instruction opInteger 1 0 ""
                               ,Instruction opNoop    0 1 ""]
 
-    -- TODO trueAndMkRes
-    -- TODO bin-expr: Gt Ls GE LE Eq Ne
+    , "binary expr"  ~: "Great (>)"
+                     ~: cExpr (BinExpr Gt (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opGt 0 0 ""]
+                     /: toBool
+
+    , "binary expr"  ~: "less (<)"
+                     ~: cExpr (BinExpr Ls (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opLt 0 0 ""]
+                     /: toBool
+
+    , "binary expr"  ~: "great or equal (>=)"
+                     ~: cExpr (BinExpr GE (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opGe 0 0 ""]
+                     /: toBool
+
+    , "binary expr"  ~: "less or equal (<=)"
+                     ~: cExpr (BinExpr LE (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opLe 0 0 ""]
+                     /: toBool
+
+    , "binary expr"  ~: "equal (=) (==)"
+                     ~: cExpr (BinExpr Eq (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opEq 0 0 ""]
+                     /: toBool
+
+    , "binary expr"  ~: "not equal (<>) (!=)"
+                     ~: cExpr (BinExpr NE (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opNe 0 0 ""]
+                     /: toBool
 ----------------------------------------------------------
     -- TODO LikeExpr
 ----------------------------------------------------------
