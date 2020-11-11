@@ -1,7 +1,7 @@
 module Main where
 
 
-import TestCodeGen
+import TestCodeGenerator
 
 import Test.HUnit
 

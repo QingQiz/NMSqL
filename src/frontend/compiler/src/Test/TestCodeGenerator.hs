@@ -1,4 +1,4 @@
-module TestCodeGen where
+module TestCodeGenerator where
 
 
 import Ast
@@ -23,7 +23,7 @@ codeGeneratorTest =
                        ,Instruction opNoop    0 1 ""]
      in test [
 ----------------------------------------------------------
--- Test code generator for expr
+-- Test code generator: expr
 ----------------------------------------------------------
       "table-column" ~: "wrong table name"
                      ~: cExpr (TableColumn "zzz" "a")
