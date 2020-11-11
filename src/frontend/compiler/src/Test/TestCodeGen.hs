@@ -182,7 +182,27 @@ codeGeneratorTest =
                      >: Right [Instruction opGlob 1 0 ""]
                      /: toBool
 ----------------------------------------------------------
-    -- TODO FunctionCall
+    , "func call"    ~: "no such function"
+                     ~: cExpr (FunctionCall "asd" [])
+                     ?: Left "No such function: asd"
+
+    , "func call"    ~: "too few arguments"
+                     ~: cExpr (FunctionCall "min" [])
+                     ?: Left "Too few arguments to function: min"
+
+    , "func call"    ~: "too many arguments"
+                     ~: cExpr (FunctionCall "max" [ConstValue Null, ConstValue Null, ConstValue Null])
+                     ?: Left "Too many arguments to function: max"
+
+    , "func call"    ~: ""
+                     ~: cExpr (FunctionCall "max" [Column "c", Column "d"])
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opMax 0 0 ""]
+
+    , "func call"    ~: ""
+                     ~: cExpr (FunctionCall "min" [Column "c", Column "d"])
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opMin 0 0 ""]
 ----------------------------------------------------------
     -- TODO IsNull
 ----------------------------------------------------------

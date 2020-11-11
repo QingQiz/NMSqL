@@ -86,7 +86,7 @@ exprFuncCall fn pl  =
      in case dropWhile ((fn/=) . fst3) fnChecker of
              []  -> throwError $ "No such function: " ++ fn
              x:_ | plLength < snd3 x -> throwError $ "Too few arguments to function: "  ++ fn
-                 | plLength < snd3 x -> throwError $ "Too many arguments to function: " ++ fn
+                 | plLength > snd3 x -> throwError $ "Too many arguments to function: " ++ fn
                  | otherwise -> foldr (>>) getRes pl'
                              >> appendInst (Instruction (trd3 x) 0 0 "")
 
