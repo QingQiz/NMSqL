@@ -13,8 +13,8 @@ type CGTestCase = (CodeGenEnv, CodeGenRes)
 
 testEnv :: CodeGenState
 testEnv = (
-    [ TableMetadata "xxx" [] ["a", "b", "c"] 0
-    , TableMetadata "yyy" [] ["a", "b", "d"] 0]
+    [ TableMetadata "xxx" [] ["a", "b", "c", "x"] 0
+    , TableMetadata "yyy" [] ["a", "b", "d", "y"] 0]
     , []
     , (0, 0))
 

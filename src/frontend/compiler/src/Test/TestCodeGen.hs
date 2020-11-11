@@ -10,8 +10,8 @@ import Test.HUnit
 
 
 -- NOTE assume that
---  table xxx has 3 columns: a, b, c
---  table yyy has 3 columns: a, b, d
+--  table xxx has 3 columns: a, b, c, x
+--  table yyy has 3 columns: a, b, d, y
 
 codeGeneratorTest :: Test
 codeGeneratorTest =
@@ -204,9 +204,26 @@ codeGeneratorTest =
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opMin 0 0 ""]
 ----------------------------------------------------------
-    -- TODO IsNull
+    , "is null"      ~: ""
+                     ~: cExpr (IsNull $ Column "c")
+                     ?: cExpr (Column "c")
+                     >: Right [Instruction opIsNull 0 0 ""]
+                     /: toBool
 ----------------------------------------------------------
-    -- TODO Between
+    , "between"      ~: ""
+                     ~: cExpr (Between (Column "x") (Column "c") (Column "d"))
+                     ?: cExpr (Column "d") +: cExpr (Column "x")
+                     >: Right [Instruction opLe  0 0 ""
+                              ,Instruction opIf  0 0 ""
+                              ,Instruction opDup 0 0 ""]
+                     /: cExpr (Column "c")
+                     >: Right [Instruction opLe      0 0 ""
+                              ,Instruction opIf      0 0 ""
+                              ,Instruction opInteger 1 0 ""
+                              ,Instruction opGoto    0 1 ""
+                              ,Instruction opNoop    0 0 ""
+                              ,Instruction opInteger 0 0 ""
+                              ,Instruction opNoop    0 1 ""]
 ----------------------------------------------------------
     -- TODO InExpr
 ----------------------------------------------------------

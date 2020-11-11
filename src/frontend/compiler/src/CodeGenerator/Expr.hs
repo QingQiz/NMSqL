@@ -26,13 +26,28 @@ cExpr expr = case expr of
     ConstValue val                                  -> exprConst val
     FunctionCall fn pl                              -> exprFuncCall fn pl
     IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
-    Between e1 e2 e3                                -> cExpr $ BinExpr And (BinExpr Ls e1 e3) (BinExpr Gt e1 e2)
+    Between e1 e2 e3                                -> exprBetween e1 e2 e3
     InExpr a b                                      -> exprIn a b
     NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
     SelectExpr _                                    -> throwError "not implemented"
     Column cn                                       -> exprColumn cn
     TableColumn tn cn                               -> exprTableColumn tn cn
     _                                               -> throwError "Semantic error"
+
+
+-- code generator for between-expr
+exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
+exprBetween a b c = getLabel >>= \labelAva 
+    -> updateLabel
+    >> cExpr c >> cExpr a >> appendInst (Instruction opLe 0 0 "")
+    >> gotoWhenTrue labelAva
+    >> appendInst (Instruction opDup 0 0 "") >> cExpr b >> appendInst (Instruction opLe 0 0 "")
+    >> gotoWhenTrue labelAva
+    >> putTrue
+    >> getLabel >>= goto
+    >> mkLabelWithoutUpdate labelAva
+    >> putFalse
+    >> getLabel >>= mkLabel
 
 
 -- code generator for in-expr
