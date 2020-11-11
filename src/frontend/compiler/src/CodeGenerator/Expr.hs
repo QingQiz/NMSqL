@@ -37,7 +37,7 @@ cExpr expr = case expr of
 
 -- code generator for between-expr
 exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
-exprBetween a b c = getLabel >>= \labelAva 
+exprBetween a b c = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr c >> cExpr a >> appendInst (Instruction opLe 0 0 "")
     >> gotoWhenTrue labelAva
@@ -54,10 +54,13 @@ exprBetween a b c = getLabel >>= \labelAva
 exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
     let genValueList = do
-            oldRes    <- getRes
-            calcValue <- foldr (>>) getRes $ map (\x -> throwErrorIfNotConst x >> cExpr x) vl
-            insertSet <- getSet >>= \x -> return $ map (\_ -> Instruction opSetInsert x 0 "") vl
-            putRes $ calcValue ++ insertSet ++ oldRes
+            oldRes <- getRes
+            insSet <- (>>) (putRes []) $ foldr (>>) (getRes)
+                          $ map (\x -> throwErrorIfNotConst x
+                                    >> cExpr x
+                                    >> getSet >>= \sn
+                                    -> appendInst (Instruction opSetInsert sn 0 "")) vl
+            putRes $ insSet ++ oldRes
         mkRes = do
             lab <- getLabel
             set <- getSet

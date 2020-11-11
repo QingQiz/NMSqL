@@ -5,6 +5,7 @@ import Ast
 import Expr
 import TestUtils
 import Instruction
+import CodeGeneratorUtils
 
 import Test.HUnit
 
@@ -225,7 +226,49 @@ codeGeneratorTest =
                               ,Instruction opInteger 0 0 ""
                               ,Instruction opNoop    0 1 ""]
 ----------------------------------------------------------
-    -- TODO InExpr
+    , "in expr"      ~: "empty list"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [])
+                     ?: Right [Instruction opInteger 0 0 ""]
+
+    , "in expr"      ~: ""
+                     ~: putRes [Instruction opNoop 0 (-1) ""]
+                     +: cExpr (InExpr (Column "x") $ ValueList $ map (ConstValue . ValInt) [1, 2])
+                     ?: Right [Instruction opInteger 1 0 ""
+                              ,Instruction opSetInsert 0 0 ""
+                              ,Instruction opInteger 2 0 ""
+                              ,Instruction opSetInsert 0 0 ""
+                              ,Instruction opNoop 0 (-1) ""]
+                     /: cExpr (Column "x")
+                     >: Right [Instruction opSetFound 0 0 ""]
+                     /: toBool
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (column)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [Column "x"])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (function-call)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [FunctionCall "min" [Column "x"]])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (bin-expr)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [BinExpr Gt (Column "x") (ConstValue Null)])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (like-expr)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [LikeExpr Like (Column "x") (ConstValue Null)])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (isnull-expr)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [IsNull (Column "x")])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (between-expr)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [Between (Column "x") (ConstValue Null) (ConstValue Null)])
+                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"      ~: "right-hand side of IN is not a constant (not-expr)"
+                     ~: cExpr (InExpr (Column "x") $ ValueList [NotExpr (Column "x")])
+                     ?: Left "Right-hand side of IN operator must be constant"
 ----------------------------------------------------------
     , "not expr"     ~: ""
                      ~: cExpr (NotExpr $ Column "c")
