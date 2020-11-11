@@ -21,7 +21,7 @@ cExpr expr = do
         BinExpr op e1 e2
             | op == And                                 -> exprAnd e1 e2
             | op == Or                                  -> exprOr  e1 e2
-            | op `elem` [Plus, Minus, Divide, Multiple] -> exprArith op e1 e2
+            | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
             | otherwise                                 -> exprCompr op e1 e2
         LikeExpr op e1 e2                               -> exprLike  op e1 e2
         ConstValue val                                  -> exprConst val
@@ -153,7 +153,7 @@ cArithOp :: BinOp -> CodeGenEnv
 cArithOp op = case op of
     Plus     -> appendInst $ Instruction opAdd      0 0 ""
     Minus    -> appendInst $ Instruction opSubtract 0 0 ""
-    Multiple -> appendInst $ Instruction opMultiply 0 0 ""
+    Multiply -> appendInst $ Instruction opMultiply 0 0 ""
     Divide   -> appendInst $ Instruction opDivide   0 0 ""
 
 
@@ -171,13 +171,13 @@ cComprOp op =
 ----------------------------------------------------------
 -- make goto instruction
 goto :: Int -> CodeGenEnv
-goto          label = appendInst $ Instruction opGoto 0 label ""
+goto label = appendInst $ Instruction opGoto 0 label ""
 
 gotoWhenTrue :: Int -> CodeGenEnv
-gotoWhenTrue  label = appendInst $ Instruction opIf   0 label ""
+gotoWhenTrue label = appendInst $ Instruction opIf 0 label ""
 
 gotoWhenFalse :: Int -> CodeGenEnv
-gotoWhenFalse label = appendInst  (Instruction opNot  0 0     "") >> gotoWhenTrue label
+gotoWhenFalse label = appendInst (Instruction opNot  0 0 "") >> gotoWhenTrue label
 
 
 -- make label

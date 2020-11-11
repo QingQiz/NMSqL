@@ -66,7 +66,54 @@ codeGeneratorTest = test [
                      ~: cExpr (ConstValue $ ValDouble 12.3)
                      ?: Right [Instruction opString 0 0 "12.3"]
 ----------------------------------------------------------
-    -- TODO BinExpr
+    , "binary expr"  ~: "plus"
+                     ~: cExpr (BinExpr Plus (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opAdd 0 0 ""]
+
+    , "binary expr"  ~: "minus"
+                     ~: cExpr (BinExpr Minus (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opSubtract 0 0 ""]
+
+    , "binary expr"  ~: "multiply"
+                     ~: cExpr (BinExpr Multiply (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opMultiply 0 0 ""]
+
+    , "binary expr"  ~: "divide"
+                     ~: cExpr (BinExpr Divide (Column "c") (Column "d"))
+                     ?: cExpr (Column "c") +: cExpr (Column "d")
+                     >: Right [Instruction opDivide 0 0 ""]
+
+    , "binary expr"  ~: "and"
+                     ~: cExpr (BinExpr And (Column "c") (Column "d"))
+                     ?: cExpr (Column "c")
+                     >: Right [Instruction opNot 0 0 ""
+                              ,Instruction opIf  0 0 ""]
+                     /: cExpr (Column "d")
+                     >: Right [Instruction opNot     0 0 ""
+                              ,Instruction opIf      0 0 ""
+                              ,Instruction opInteger 1 0 ""
+                              ,Instruction opGoto    0 1 ""
+                              ,Instruction opNoop    0 0 ""
+                              ,Instruction opInteger 0 0 ""
+                              ,Instruction opNoop    0 1 ""]
+
+    , "binary expr"  ~: "or"
+                     ~: cExpr (BinExpr Or (Column "c") (Column "d"))
+                     ?: cExpr (Column "c")
+                     >: Right [Instruction opIf  0 0 ""]
+                     /: cExpr (Column "d")
+                     >: Right [Instruction opIf      0 0 ""
+                              ,Instruction opInteger 0 0 ""
+                              ,Instruction opGoto    0 1 ""
+                              ,Instruction opNoop    0 0 ""
+                              ,Instruction opInteger 1 0 ""
+                              ,Instruction opNoop    0 1 ""]
+
+    -- TODO trueAndMkRes
+    -- TODO bin-expr: Gt Ls GE LE Eq Ne
 ----------------------------------------------------------
     -- TODO LikeExpr
 ----------------------------------------------------------

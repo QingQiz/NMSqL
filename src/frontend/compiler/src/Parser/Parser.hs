@@ -314,7 +314,7 @@ expr = pd1 where
     pd6 = chainl (pBinNode "+" Plus     <|> pBinNode "-" Minus ) pd7
 
     -- pd7 ::= pd0 [(* | /) pd0]*
-    pd7 = chainl (pBinNode "*" Multiple <|> pBinNode "/" Divide) pd0
+    pd7 = chainl (pBinNode "*" Multiply <|> pBinNode "/" Divide) pd0
 
     -- pd0 ::= \( pd1 \)
     --       | table-name . column-name

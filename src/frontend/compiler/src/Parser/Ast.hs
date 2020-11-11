@@ -4,7 +4,7 @@ module Ast where
 ----------------------------------------------------------
 -- Some Operators
 ----------------------------------------------------------
-data BinOp = Multiple | Divide   -- (*) (/)
+data BinOp = Multiply | Divide   -- (*) (/)
            | Plus     | Minus    -- (+) (-)
            | Ls | LE  | Gt | GE  -- (<) (<=) (>) (>=)
            | Eq | NE             -- (= ==) (!= <>)
