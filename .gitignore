@@ -2,4 +2,5 @@
 tmp
 **/target
 .DS_Store
-/.idea
+.idea
+src/backend/DBEngine/cmake-build-debug
