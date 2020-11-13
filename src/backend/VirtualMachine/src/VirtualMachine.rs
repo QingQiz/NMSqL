@@ -612,6 +612,13 @@ pub mod VirtualMachine {
         VmOpType::OP_SetCookie => {
           DbWrapper::setCookies(nowOp.p1);
         }
+        VmOpType::OP_VerifyCookie => {
+          let cookies = DbWrapper::getCookies();
+          if cookies != nowOp.p1 {
+            return Err(String::from("cookies is not right"));
+          }
+        }
+        VmOpType::OP_Open => unimplemented!(),
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));
         }
