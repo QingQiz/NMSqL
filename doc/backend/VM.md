@@ -102,9 +102,9 @@ Cursor是有状态的
 
 需要的接口：
 
-#### open(dbTable,indexName)
+#### open(dbTable,indexName,flag)
 
-打开指定数据库表dbTable的指定名为indexName的Cursor。
+打开指定数据库表dbTable的指定名为indexName的Cursor，flag表示打开方式。
 
 #### create(dbTable,indexName,indexType,indexColumn)
 

@@ -20,7 +20,9 @@ typedef struct Cursor Cursor;
 /*
  * Cursor相关操作
  */
-Cursor* open(const char* dbTable, const char* indexName);
+#define CURSOR_OPEN_READONLY 1
+#define CURSOR_OPEN_WRITE 2
+Cursor* open(const char* dbTable, const char* indexName, int flag);
 int create(const char* dbTable, const char* indexName, CursorType indexType,
            const int indexColumnCnt, const char** indexColumns);
 int find(Cursor* cursor, const void* key);
