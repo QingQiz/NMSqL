@@ -1,16 +1,10 @@
-GHC = stack ghc --
-GHC_Flags = -c -dynamic -O2
+lib:
+	stack build
 
-Parser.o: Parser.hs Ast.hs Ast.o
-	$(GHC) $(GHC_Flags) $< -o $@
-
-
-Ast.o: Ast.hs
-	$(GHC) $(GHC_Flags) $< -o $@
-
+test:
+	stack test
 
 clean:
-	rm -f *.hi *.o
+	stack clean --full
 
-
-
+.PHONY: clean lib test

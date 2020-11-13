@@ -4,17 +4,17 @@ module Ast where
 ----------------------------------------------------------
 -- Some Operators
 ----------------------------------------------------------
-data BinOp = Multiple | Divide   -- (*) (/)
+data BinOp = Multiply | Divide   -- (*) (/)
            | Plus     | Minus    -- (+) (-)
-           | Ls | LE  | Gr | GE  -- (<) (<=) (>) (>=)
-           | Eq | NEq | In       -- (= ==) (!= <>) (IN)
+           | Ls | LE  | Gt | GE  -- (<) (<=) (>) (>=)
+           | Eq | NE             -- (= ==) (!= <>)
            | And| Or             -- (AND) (OR)
-           deriving (Show)
+           deriving (Show, Eq)
 
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
             | Glob | NotGlob     -- (GLOB) (NOT GLOB)
-            deriving (Show)
+            deriving (Show, Eq)
 
 
 data CompoundOp = Union     | UnionAll
@@ -37,7 +37,7 @@ data Value = ValStr String
            | Null
            deriving (Show)
 
-data ValueList = ValueList [Value]
+data ValueList = ValueList [Expr]
                | SelectResult Select
                deriving (Show)
 

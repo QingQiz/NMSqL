@@ -286,7 +286,7 @@ expr = pd1 where
     -- pd4 ::= pd5 [(< | <= | <> | < | >= | > | == | = | !=) pd5]*
     pd4 = chainl opList pd5
         where
-            opToData = [("<=", LE), ("<>", NEq), ("<", Ls), (">=", GE), (">", Gr), ("==", Eq), ("=", Eq), ("!=", NEq)]
+            opToData = [("<=", LE), ("<>", NE), ("<", Ls), (">=", GE), (">", Gt), ("==", Eq), ("=", Eq), ("!=", NE)]
             opList'  = map (\(a, b) -> pBinNode a b) opToData
             opList   = foldl (\z x -> z <|> x) (head opList') (tail opList')
 
@@ -301,7 +301,7 @@ expr = pd1 where
                 where makeNode x = matchAndRet "between" (Between x) <|>
                                    matchTwoAndRet "not" "between" (\a b -> NotExpr $ Between x a b)
 
-            inExpr = \x -> makeNode x <*> (SelectResult <$> maySurroundByBrackets select <|> ValueList <$> surroundByBrackets (argsListOrEmpty value))
+            inExpr = \x -> makeNode x <*> (SelectResult <$> maySurroundByBrackets select <|> ValueList <$> surroundByBrackets (argsListOrEmpty expr))
                 where makeNode x = matchAndRet "in" (InExpr x) <|> matchTwoAndRet "not" "in" (NotExpr . InExpr x)
 
             likeExpr = \x -> makeNode x <*> pd6
@@ -314,17 +314,17 @@ expr = pd1 where
     pd6 = chainl (pBinNode "+" Plus     <|> pBinNode "-" Minus ) pd7
 
     -- pd7 ::= pd0 [(* | /) pd0]*
-    pd7 = chainl (pBinNode "*" Multiple <|> pBinNode "/" Divide) pd0
+    pd7 = chainl (pBinNode "*" Multiply <|> pBinNode "/" Divide) pd0
 
     -- pd0 ::= \( pd1 \)
     --       | table-name . column-name
     --       | column-name
     --       | value
-    pd0 = surroundByBrackets pd1                                                     <|>
-          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                        <|>
-          (FunctionCall <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))      <|>
-          (Column       <$> ident)                                                   <|>
-          (ConstValue   <$> value)                                                   <|>
+    pd0 = surroundByBrackets pd1                                                                <|>
+          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                                   <|>
+          (FunctionCall <$> map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1)) <|>
+          (Column       <$> ident)                                                              <|>
+          (ConstValue   <$> value)                                                              <|>
           (SelectExpr   <$> surroundByBrackets select)
 
 
@@ -333,7 +333,7 @@ expr = pd1 where
 insert = matchTwoAndRet "insert" "into" Insert
     <*> ident
     <*> (surroundByBrackets (argsList ident) <|> return [])
-    <*> (matchAndRet "values" ValueList <*> (surroundByBrackets (argsList value)) <|> SelectResult <$> maySurroundByBrackets select)
+    <*> (matchAndRet "values" ValueList <*> (surroundByBrackets (argsList expr)) <|> SelectResult <$> maySurroundByBrackets select)
 
 
 -- sql ::= UPDATE table-name SET assignment [, assignment]* [WHERE expression]

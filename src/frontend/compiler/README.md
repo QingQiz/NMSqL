@@ -3,5 +3,8 @@
 
 ### requirements
 
-- [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
-- [HUnit](https://hackage.haskell.org/package/HUnit): `stack install HUnit`
+- [stack v2.5.1](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
+
+## test
+
+- `make test` or `stack test`
