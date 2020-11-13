@@ -105,7 +105,6 @@ opConcat       = "opConcat"        --100
 opNoop         = "opNoop"          --101
 opStrlen       = "opStrlen"        --102
 opSubstr       = "opSubstr"        --103
-opMAX          = "opMAX"           --104
 
 type OpCode = String
 
