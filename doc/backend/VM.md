@@ -106,6 +106,10 @@ Cursor是有状态的
 
 打开指定数据库表dbTable的指定名为indexName的Cursor，flag为只读、可写。
 
+### close(cursor)
+
+关闭cursor
+
 #### create(dbTable,indexName,indexType,indexColumn)
 
 对指定数据库表dbTable创建指定类型indexType的名为indexName的Cursor，cursor指定的列为indexColumn，对于正常顺序访问，则列为recordNumber。
