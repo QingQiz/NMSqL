@@ -1,5 +1,7 @@
 pub mod wrapper {
   pub mod rustLayer {
+    pub const CURSOR_READ_ONLY: i32 = 1;
+    pub const CURSOR_WRITE: i32 = 2;
     #[derive(Debug, Copy, Clone)]
     pub enum CursorType {
       CURSOR_BTREE,
@@ -9,8 +11,12 @@ pub mod wrapper {
     pub struct Cursor {
       pub cursorType: CursorType,
     }
-    // open the index of dbTable
-    pub fn open(dbTable: &str, indexName: &str) -> *mut Cursor {
+    // open the index
+    pub fn open(indexName: &str, flag: i32) -> *mut Cursor {
+      unimplemented!()
+    }
+    // close the cursor
+    pub fn close(cursor: *mut Cursor) -> i32 {
       unimplemented!()
     }
     // create dbTable with indexName indexType indexColumnCnt and indexColumns

@@ -171,6 +171,18 @@ pub mod VirtualMachine {
   struct VmCursor {
     cursor: *mut Cursor,
   }
+  impl Default for VmCursor {
+    fn default() -> Self {
+      VmCursor {
+        cursor: 0 as *mut Cursor,
+      }
+    }
+  }
+  impl VmCursor {
+    fn new(cursor: *mut Cursor) -> Self {
+      VmCursor { cursor }
+    }
+  }
   #[derive(Debug, Clone, PartialEq, PartialOrd)]
   enum VmMem {
     MEM_INT(i128),
@@ -269,6 +281,25 @@ pub mod VirtualMachine {
     }
     pub fn pushStack(self: &mut Self, value: VmMem) {
       self.stack.push(value);
+    }
+    pub fn setCursor(self: &mut Self, num: usize, cursor: VmCursor) {
+      if (self.vmCursors.len() <= num) {
+        self.vmCursors.resize(num + 1, VmCursor::default());
+      }
+      self.closeCursor(num);
+      self.vmCursors[num] = cursor;
+    }
+    pub fn getCursor(self: &Self, num: usize) -> Result<VmCursor, String> {
+      if num < self.vmCursors.len() {
+        Ok(self.vmCursors[num])
+      } else {
+        Err(format!("no cursor numbered {}", num))
+      }
+    }
+    pub fn closeCursor(self: &Self, num: usize) {
+      if num < self.vmCursors.len() && self.vmCursors[num].cursor as usize != 0 {
+        DbWrapper::close(self.vmCursors[num].cursor);
+      }
     }
   }
 
@@ -618,7 +649,19 @@ pub mod VirtualMachine {
             return Err(String::from("cookies is not right"));
           }
         }
-        VmOpType::OP_Open => unimplemented!(),
+        VmOpType::OP_Open => vm.setCursor(
+          nowOp.p1 as usize,
+          VmCursor::new(DbWrapper::open(
+            nowOp.p3.as_str(),
+            DbWrapper::CURSOR_READ_ONLY,
+          )),
+        ),
+        VmOpType::OP_OpenWrite => vm.setCursor(
+          nowOp.p1 as usize,
+          VmCursor::new(DbWrapper::open(nowOp.p3.as_str(), DbWrapper::CURSOR_WRITE)),
+        ),
+        VmOpType::OP_OpenTemp => unimplemented!(),
+        VmOpType::OP_Close => vm.closeCursor(nowOp.p1 as usize),
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));
         }
