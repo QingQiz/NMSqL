@@ -3,14 +3,12 @@ pub mod VirtualMachine {
   use crate::wrapper::wrapper::rustLayer::Cursor;
   #[derive(Debug, Copy, Clone, FromPrimitive)]
   enum VmOpType {
-    OP_Transaction = 1,
+    OP_Transaction,
     OP_Commit,
     OP_Rollback,
-
     OP_ReadCookie,
     OP_SetCookie,
     OP_VerifyCookie,
-
     OP_Open,
     OP_OpenTemp,
     OP_OpenWrite,
@@ -29,27 +27,22 @@ pub mod VirtualMachine {
     OP_FullKey,
     OP_Rewind,
     OP_Next,
-
     OP_Destroy,
     OP_Clear,
     OP_CreateIndex,
     OP_CreateTable,
     OP_Reorganize,
-
     OP_BeginIdx,
     OP_NextIdx,
     OP_PutIdx,
     OP_DeleteIdx,
-
     OP_MemLoad,
     OP_MemStore,
-
     OP_ListOpen,
     OP_ListWrite,
     OP_ListRewind,
     OP_ListRead,
     OP_ListClose,
-
     OP_SortOpen,
     OP_SortPut,
     OP_SortMakeRec,
@@ -59,36 +52,29 @@ pub mod VirtualMachine {
     OP_SortKey,
     OP_SortCallback,
     OP_SortClose,
-
     OP_FileOpen,
     OP_FileRead,
     OP_FileColumn,
     OP_FileClose,
-
     OP_AggReset,
     OP_AggFocus,
     OP_AggIncr,
     OP_AggNext,
     OP_AggSet,
     OP_AggGet,
-
     OP_SetInsert,
     OP_SetFound,
     OP_SetNotFound,
     OP_SetClear,
-
     OP_MakeRecord,
     OP_MakeKey,
     OP_MakeIdxKey,
-
     OP_Goto,
-    OP_If,
+    OP_JIf,
     OP_Halt,
-
     OP_ColumnCount,
     OP_ColumnName,
     OP_Callback,
-
     OP_Integer,
     OP_String,
     OP_Null,
@@ -102,16 +88,16 @@ pub mod VirtualMachine {
     OP_Divide,
     OP_Min,
     OP_Max,
-    OP_Like,
-    OP_Glob,
-    OP_Eq,
-    OP_Ne,
-    OP_Lt,
-    OP_Le,
-    OP_Gt,
-    OP_Ge,
-    OP_IsNull,
-    OP_NotNull,
+    OP_JLike,
+    OP_JGlob,
+    OP_JEq,
+    OP_JNe,
+    OP_JLt,
+    OP_JLe,
+    OP_JGt,
+    OP_JGe,
+    OP_JIsNull,
+    OP_JNotNull,
     OP_Negative,
     OP_And,
     OP_Or,
@@ -120,7 +106,17 @@ pub mod VirtualMachine {
     OP_Noop,
     OP_Strlen,
     OP_Substr,
-    OP_MAX,
+    OP_SetIf,
+    OP_SetLike,
+    OP_SetGlob,
+    OP_SetEq,
+    OP_SetNe,
+    OP_SetLt,
+    OP_SetLe,
+    OP_SetGt,
+    OP_SetGe,
+    OP_SetIsNull,
+    OP_SetNotNull,
   }
 
   #[derive(Debug, Clone)]
@@ -444,57 +440,57 @@ pub mod VirtualMachine {
             x @ _ => VmMem::MEM_DOUBLE(x.realify() + nowOp.p1 as f64),
           })
         }
-        VmOpType::OP_Eq => {
+        VmOpType::OP_JEq => {
           let a = popOneMem(&mut vm)?;
           let b = popOneMem(&mut vm)?;
           if a == b {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Ne => {
+        VmOpType::OP_JNe => {
           let a = popOneMem(&mut vm)?;
           let b = popOneMem(&mut vm)?;
           if a != b {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Lt => {
+        VmOpType::OP_JLt => {
           let b = popOneMem(&mut vm)?;
           let a = popOneMem(&mut vm)?;
           if PartialOrd::lt(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Le => {
+        VmOpType::OP_JLe => {
           let b = popOneMem(&mut vm)?;
           let a = popOneMem(&mut vm)?;
           if PartialOrd::le(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Gt => {
+        VmOpType::OP_JGt => {
           let b = popOneMem(&mut vm)?;
           let a = popOneMem(&mut vm)?;
           if PartialOrd::gt(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Ge => {
+        VmOpType::OP_JGe => {
           let b = popOneMem(&mut vm)?;
           let a = popOneMem(&mut vm)?;
           if PartialOrd::ge(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_Like | VmOpType::OP_Glob => {
+        VmOpType::OP_JLike | VmOpType::OP_JGlob => {
           let any = match nowOp.vmOpType {
-            VmOpType::OP_Like => "%",
-            VmOpType::OP_Glob => "*",
+            VmOpType::OP_JLike => "%",
+            VmOpType::OP_JGlob => "*",
             _ => unreachable!(),
           };
           let one = match nowOp.vmOpType {
-            VmOpType::OP_Like => "_",
-            VmOpType::OP_Glob => ".",
+            VmOpType::OP_JLike => "_",
+            VmOpType::OP_JGlob => ".",
             _ => unreachable!(),
           };
           let pattern = String::from_utf8_lossy(
@@ -551,7 +547,7 @@ pub mod VirtualMachine {
           vm.pushStack(VmMem::MEM_INT(!a));
         }
         VmOpType::OP_Noop => {}
-        VmOpType::OP_If => {
+        VmOpType::OP_JIf => {
           let a = popOneMem(&mut vm)?;
           match a {
             VmMem::MEM_INT(x) if x != 0 => {
@@ -566,13 +562,13 @@ pub mod VirtualMachine {
             _ => {}
           }
         }
-        VmOpType::OP_IsNull => {
+        VmOpType::OP_JIsNull => {
           let a = popOneMem(&mut vm)?;
           if let VmMem::MEM_NULL = a {
             pc = (nowOp.p2 - 1) as usize;
           }
         }
-        VmOpType::OP_NotNull => {
+        VmOpType::OP_JNotNull => {
           let a = popOneMem(&mut vm)?;
           match a {
             VmMem::MEM_NULL => {}
