@@ -39,14 +39,15 @@ cExpr expr = case expr of
 exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
 exprBetween a b c = getLabel >>= \labelAva
     -> updateLabel
-    >> cExpr a >> appendInst (Instruction opDup 0 0 "")          -- stack: a,a
+    >> cExpr a >> dup                                            -- stack: a,a
     >> cExpr c >> appendInst (Instruction opJGe 0 labelAva "")   -- stack: a,a,c -> a
-    >> cExpr b >> appendInst (Instruction opJLe 0 labelAva "")   -- stack: a,b   ->
-    >> putTrue
+    >> dup                                                       -- stack: a,a
+    >> cExpr b >> appendInst (Instruction opJLe 0 labelAva "")   -- stack: a,a,b -> a
+    >> pop 1 >> putTrue
     >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
-    >> putFalse
-    >> getLabel >>= mkLabel
+    >> mkLabel' labelAva
+    >> pop 1 >> putFalse
+    >> mkCurrentLabel
 
 
 -- code generator for in-expr
@@ -139,9 +140,9 @@ exprAnd e1 e2 = getLabel >>= \labelAva
     >> cExpr e1 >> gotoWhenFalse labelAva
     >> cExpr e2 >> gotoWhenFalse labelAva
     >> putTrue  >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
+    >> mkLabel' labelAva
     >> putFalse
-    >> getLabel >>= mkLabel
+    >> mkCurrentLabel
 
 
 -- code generator for or-expr
@@ -151,9 +152,9 @@ exprOr e1 e2 = getLabel >>= \labelAva
     >> cExpr e1 >> gotoWhenTrue labelAva
     >> cExpr e2 >> gotoWhenTrue labelAva
     >> putFalse >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
+    >> mkLabel' labelAva
     >> putTrue
-    >> getLabel >>= mkLabel
+    >> mkCurrentLabel
 
 
 -- code generator for like/glob operators
@@ -197,20 +198,26 @@ gotoWhenFalse :: Int -> CodeGenEnv
 gotoWhenFalse label = appendInst (Instruction opNot  0 0 "") >> gotoWhenTrue label
 
 
--- make label
-mkLabelWithoutUpdate :: Int -> CodeGenEnv
-mkLabelWithoutUpdate label = appendInst (Instruction opNoop 0 label "")
+-- make label without update
+mkLabel' :: Int -> CodeGenEnv
+mkLabel' label = appendInst (Instruction opNoop 0 label "")
 
+-- make label and update label number
 mkLabel :: Int -> CodeGenEnv
-mkLabel label  = mkLabelWithoutUpdate label >> updateLabel
+mkLabel label  = mkLabel' label >> updateLabel
 
 mkCurrentLabel :: CodeGenEnv
 mkCurrentLabel = getLabel >>= mkLabel
 
+dup :: CodeGenEnv
+dup = appendInst $ Instruction opDup 0 0 ""
+
+pop :: Int -> CodeGenEnv
+pop cnt = appendInst $ Instruction opPop cnt 0 ""
 
 -- put true/false to stack
 putTrue :: CodeGenEnv
-putTrue  = appendInst $ Instruction opInteger 1 0 ""
+putTrue = appendInst $ Instruction opInteger 1 0 ""
 
 putFalse :: CodeGenEnv
 putFalse = appendInst $ Instruction opInteger 0 0 ""
