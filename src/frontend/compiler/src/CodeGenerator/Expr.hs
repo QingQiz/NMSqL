@@ -25,7 +25,7 @@ cExpr expr = case expr of
     LikeExpr op e1 e2                               -> exprLike  op e1 e2
     ConstValue val                                  -> exprConst val
     FunctionCall fn pl                              -> exprFuncCall fn pl
-    IsNull e                                        -> cExpr e >> trueAndMkRes opIsNull
+    IsNull e                                        -> cExpr e >> appendInst (Instruction opSetIsNull 0 1 "")
     Between e1 e2 e3                                -> exprBetween e1 e2 e3
     InExpr a b                                      -> exprIn a b
     NotExpr e                                       -> cExpr e >> appendInst (Instruction opNot 0 0 "")
@@ -39,15 +39,15 @@ cExpr expr = case expr of
 exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
 exprBetween a b c = getLabel >>= \labelAva
     -> updateLabel
-    >> cExpr c >> cExpr a >> appendInst (Instruction opLe 0 0 "")
-    >> gotoWhenTrue labelAva
-    >> appendInst (Instruction opDup 0 0 "") >> cExpr b >> appendInst (Instruction opLe 0 0 "")
-    >> gotoWhenTrue labelAva
-    >> putTrue
+    >> cExpr a >> dup                                            -- stack: a,a
+    >> cExpr c >> appendInst (Instruction opJGe 0 labelAva "")   -- stack: a,a,c -> a
+    >> dup                                                       -- stack: a,a
+    >> cExpr b >> appendInst (Instruction opJLe 0 labelAva "")   -- stack: a,a,b -> a
+    >> pop 1 >> putTrue
     >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
-    >> putFalse
-    >> getLabel >>= mkLabel
+    >> mkLabel' labelAva
+    >> pop 1 >> putFalse
+    >> mkCurrentLabel
 
 
 -- code generator for in-expr
@@ -140,9 +140,9 @@ exprAnd e1 e2 = getLabel >>= \labelAva
     >> cExpr e1 >> gotoWhenFalse labelAva
     >> cExpr e2 >> gotoWhenFalse labelAva
     >> putTrue  >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
+    >> mkLabel' labelAva
     >> putFalse
-    >> getLabel >>= mkLabel
+    >> mkCurrentLabel
 
 
 -- code generator for or-expr
@@ -152,18 +152,19 @@ exprOr e1 e2 = getLabel >>= \labelAva
     >> cExpr e1 >> gotoWhenTrue labelAva
     >> cExpr e2 >> gotoWhenTrue labelAva
     >> putFalse >> getLabel >>= goto
-    >> mkLabelWithoutUpdate labelAva
+    >> mkLabel' labelAva
     >> putTrue
-    >> getLabel >>= mkLabel
+    >> mkCurrentLabel
 
 
 -- code generator for like/glob operators
 cLikeOp :: LikeOp -> CodeGenEnv
 cLikeOp op = case op of
-    Like    -> trueAndMkRes  opLike
-    Glob    -> trueAndMkRes  opGlob
-    NotLike -> falseAndMkRes opLike
-    NotGlob -> falseAndMkRes opGlob
+    Like    -> appendInst $ Instruction opSetLike 0 1 ""
+    Glob    -> appendInst $ Instruction opSetGlob 0 1 ""
+    NotLike -> appendInst $ Instruction opSetLike 1 1 ""
+    NotGlob -> appendInst $ Instruction opSetGlob 1 1 ""
+
 
 -- code generator for arithmetic operators
 cArithOp :: BinOp -> CodeGenEnv
@@ -179,9 +180,8 @@ cArithOp op = case op of
 cComprOp :: BinOp -> CodeGenEnv
 cComprOp op =
     let chart = [
-            (Ls, opLt), (LE, opLe), (Gt, opGt), (GE, opGe),
-            (Eq, opEq), (NE, opNe)]
-     in trueAndMkRes . snd . head . dropWhile ((op /=) . fst) $ chart
+            (Ls, opSetLt), (LE, opSetLe), (Gt, opSetGt), (GE, opSetGe), (Eq, opSetEq), (NE, opSetNe)]
+     in (\x -> appendInst $ Instruction x 0 1 "") . snd . head . dropWhile ((op /=) . fst) $ chart
 
 
 ----------------------------------------------------------
@@ -192,33 +192,37 @@ goto :: Int -> CodeGenEnv
 goto label = appendInst $ Instruction opGoto 0 label ""
 
 gotoWhenTrue :: Int -> CodeGenEnv
-gotoWhenTrue label = appendInst $ Instruction opIf 0 label ""
+gotoWhenTrue label = appendInst $ Instruction opJIf 0 label ""
 
 gotoWhenFalse :: Int -> CodeGenEnv
 gotoWhenFalse label = appendInst (Instruction opNot  0 0 "") >> gotoWhenTrue label
 
 
--- make label
-mkLabelWithoutUpdate :: Int -> CodeGenEnv
-mkLabelWithoutUpdate label = appendInst (Instruction opNoop 0 label "")
+-- make label without update
+mkLabel' :: Int -> CodeGenEnv
+mkLabel' label = appendInst (Instruction opNoop 0 label "")
 
+-- make label and update label number
 mkLabel :: Int -> CodeGenEnv
-mkLabel label  = mkLabelWithoutUpdate label >> updateLabel
+mkLabel label  = mkLabel' label >> updateLabel
 
 mkCurrentLabel :: CodeGenEnv
 mkCurrentLabel = getLabel >>= mkLabel
 
+dup :: CodeGenEnv
+dup = appendInst $ Instruction opDup 0 0 ""
+
+pop :: Int -> CodeGenEnv
+pop cnt = appendInst $ Instruction opPop cnt 0 ""
 
 -- put true/false to stack
 putTrue :: CodeGenEnv
-putTrue  = appendInst $ Instruction opInteger 1 0 ""
+putTrue = appendInst $ Instruction opInteger 1 0 ""
 
 putFalse :: CodeGenEnv
 putFalse = appendInst $ Instruction opInteger 0 0 ""
 
 
--- put result to stack after insturction is executed
--- opCode then goto true or fallback to false
 mkBoolVal :: OpCode -> Int -> Int -> String -> CodeGenEnv
 mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
     >> putFalse
@@ -226,12 +230,6 @@ mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
     >> mkCurrentLabel
     >> putTrue
     >> mkCurrentLabel
-
-trueAndMkRes :: OpCode -> CodeGenEnv
-trueAndMkRes  opCode = getLabel >>= \l -> mkBoolVal opCode 0 l ""
-
-falseAndMkRes :: OpCode -> CodeGenEnv
-falseAndMkRes opCode = getLabel >>= \l -> mkBoolVal opCode 1 l ""
 
 throwErrorIfNotConst :: Expr -> CodeGenEnv
 throwErrorIfNotConst expr =
