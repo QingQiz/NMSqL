@@ -75,11 +75,11 @@ exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
     let genValueList = do
             oldRes <- getRes
-            insSet <- (>>) (putRes []) $ foldr (>>) (getRes)
-                          $ map (\x -> throwErrorIfNotConst x
-                                    >> cExpr x
-                                    >> getSet >>= \sn
-                                    -> appendInst (Instruction opSetInsert sn 0 "")) vl
+            insSet <- (>>) (putRes []) $ foldr ((>>) . \x
+                        -> throwErrorIfNotConst x
+                        >> cExpr x
+                        >> getSet >>= \sn
+                        -> appendInst (Instruction opSetInsert sn 0 "")) getRes vl
             putRes $ insSet ++ oldRes
         mkRes = do
             lab <- getLabel
@@ -95,9 +95,9 @@ exprIn _ (SelectResult _) = throwError "not implemented"
 -- code generator for column
 exprColumn :: String -> CodeGenEnv
 exprColumn cn =
-    let valid     md = cn `elem` (metadata_column md)
-        getColIdx md = fromMaybe (-1) $ findIndex (==cn) $ metadata_column md
-     in getMetadata >>= return . findIndices valid >>= \case
+    let valid     md = cn `elem` metadata_column md
+        getColIdx md = fromMaybe (-1) $ elemIndex cn $ metadata_column md
+     in findIndices valid <$> getMetadata >>= \case
             [i] -> getMetadata >>= (\md -> return $ getColIdx $ md !! i)
                                >>= (\j  -> appendInst $ Instruction opColumn i j "")
             []  -> throwError $ "No such column: " ++ cn
@@ -107,10 +107,10 @@ exprColumn cn =
 -- code generator for table-column
 exprTableColumn :: String -> String -> CodeGenEnv
 exprTableColumn tn cn =
-    let tbIdx = getMetadata >>= return . findIndex ((==tn) . metadata_name)
+    let tbIdx =  findIndex ((==tn) . metadata_name) <$> getMetadata
      in tbIdx >>= \case
             Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
-            Just  i -> getMetadata >>= (\x -> return $ findIndex (==cn) $ metadata_column $ x !! i) >>= \case
+            Just  i -> getMetadata >>= (\x -> return $ elemIndex cn $ metadata_column $ x !! i) >>= \case
                 Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
                 Just  j -> appendInst $ Instruction opColumn i j ""
 
@@ -260,10 +260,10 @@ isConstExpr expr =
         BinExpr  _ a b         -> isConstExpr a && isConstExpr b
         LikeExpr _ a b         -> isConstExpr a && isConstExpr b
         ConstValue _           -> True
-        FunctionCall _ a       -> foldr (&&) True  (map isConstExpr a)
+        FunctionCall _ a       -> foldr ((&&) . isConstExpr) True a
         IsNull a               -> isConstExpr a
         Between a b c          -> isConstExpr a && isConstExpr b && isConstExpr c
-        InExpr a (ValueList b) -> foldr (&&) (isConstExpr a) (map isConstExpr b)
+        InExpr a (ValueList b) -> foldr ((&&) . isConstExpr) (isConstExpr a) b
         NotExpr a              -> isConstExpr a
         _                      -> False
 

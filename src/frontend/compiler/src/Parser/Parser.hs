@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Parser where
 
 import Ast
@@ -60,11 +62,10 @@ instance Alternative Parser where
 
 -- give a function, return a parser
 satisfy :: (Char -> Bool) -> Parser Char
-satisfy f = Parser $ \inp ->
-    case inp of
-         (c:cs) | f c -> Just (c, cs)
-                | otherwise -> Nothing
-         "" -> Nothing
+satisfy f = Parser $ \case
+    (c : cs) | f c -> Just (c, cs)
+             | otherwise -> Nothing
+    "" -> Nothing
 
 checkChar :: (Char -> Bool) -> Parser Char
 checkChar f = Parser $ \inp ->
@@ -113,8 +114,8 @@ sepBy sep a = (:) <$> a <*> many (sep >> a)
 sepByOrEmpty sep a = sepBy sep a <|> return []
 
 -- parse string like: a,a,a,a
-argsList x = sepBy (spcChar ',') x
-argsListOrEmpty x = sepByOrEmpty (spcChar ',') x
+argsList = sepBy (spcChar ',')
+argsListOrEmpty = sepByOrEmpty (spcChar ',')
 
 -- parse string like ((a op b) op c)
 -- result:    op
@@ -145,7 +146,7 @@ surroundByBrackets p = spcChar '(' >> p <* spcChar ')'
 maySurroundByBrackets p = surroundByBrackets p <|> p
 
 -- parser surrounded by quotation mark
-surroundByQm p = (many space >> char '"') >> p <* (char '"')
+surroundByQm p = (many space >> char '"') >> p <* char '"'
 
 -- parse a string value
 strValue = many space >> char '"' >> (concat <$> many tryTakeChar) <* char '"'
@@ -167,12 +168,12 @@ strValue = many space >> char '"' >> (concat <$> many tryTakeChar) <* char '"'
         transform c    = ['\\', c]
 
 -- parse a int value
-intValue = toInt <$> (some digit <* (checkChar (/='.')))
-    where toInt x = (read x)::Int
+intValue = toInt <$> (some digit <* checkChar (/='.'))
+    where toInt x = read x :: Int
 
 -- parse a float value
-floatValue = toDouble <$> ((\a b -> a ++ "." ++ b) <$> (some digit) <*> ((char '.' >> some digit) <|> return "0"))
-    where toDouble x = (read x)::Double
+floatValue = toDouble <$> ((\a b -> a ++ "." ++ b) <$> some digit <*> ((char '.' >> some digit) <|> return "0"))
+    where toDouble x = read x :: Double
 
 ----------------------------------------------------------
 -- SQL parser implementation
@@ -182,13 +183,13 @@ floatValue = toDouble <$> ((\a b -> a ++ "." ++ b) <$> (some digit) <*> ((char '
 value = (ValStr <$> strValue)       <|>
         (ValInt <$> intValue)       <|>
         (ValDouble <$> floatValue)  <|>
-        (matchAndRet "null" Null)
+        matchAndRet "null" Null
 
 
 -- identification matches regex: `[_a-zA-Z]+[_a-zA-Z0-9]*`
 ident = (++)
     <$> (many space >> some (letter <|> char '_'))
-    <*> (many (letter <|> digit <|> char '_'))
+    <*> many (letter <|> digit <|> char '_')
 
 
 -- sort order ::= asc | desc | default
@@ -214,10 +215,10 @@ dropIndex = DropIndex <$> (spcStrIgnoreCase "drop index " >> ident)
 
 
 -- sql ::= CREATE TABLE table-name \( column-def [,column-def]* [,table-constraint]* \)
-createTable = (matchTwoAndRet "create" "table" CreateTable)
+createTable = matchTwoAndRet "create" "table" CreateTable
     <*> ident
     <*> (spcChar '(' >> argsList columnDef)
-    <*> (many (spcChar ',' >> tableConstraint)) <* spcChar ')'
+    <*> many (spcChar ',' >> tableConstraint) <* spcChar ')'
     where
         -- column-type ::= int | double | string [\( int-value \)]
         columnType = (spcStrIgnoreCase "int" >> return TInt)        -- int
@@ -242,9 +243,9 @@ createTable = (matchTwoAndRet "create" "table" CreateTable)
         --                     | unique
         --                     | check \( expr \)
         --                     | default value
-        columnConstraint = (matchTwoAndRet "not" "null" ColNotNull) -- NOT NULL
+        columnConstraint = matchTwoAndRet "not" "null" ColNotNull -- NOT NULL
                        <|> (matchTwoAndRet "primary" "key" ColPrimaryKey <*> sortOrder) -- PRIARY KEY [ASC | DESC]
-                       <|> (matchAndRet "unique" ColUnique)    -- UNIQUE
+                       <|> matchAndRet "unique" ColUnique      -- UNIQUE
                        <|> (ColCheck <$> check)                -- CHECK(Expr)
                        <|> (ColDefault <$> defaultVal)         -- DEFAULT value
             where
@@ -269,7 +270,7 @@ dropTable = matchTwoAndRet "drop" "table" DropTable <*> ident
 -- expr ::= pd1
 expr :: Parser Expr
 expr = pd1 where
-    pNode opStr op ret = matchAndRet opStr op >>= (\x -> return (ret x))
+    pNode opStr op ret = matchAndRet opStr op >>= \x -> return (ret x)
     pBinNode optStr op = pNode optStr op BinExpr
 
     -- pd1 ::= pd2 [(and | or) pd2]*
@@ -279,16 +280,16 @@ expr = pd1 where
     pd2 = unaryChain (matchAndRet "not " NotExpr) pd3
 
     -- pd3 ::= pd4 [is null | not null]
-    pd3 = pd4 >>= (\x -> (matchTwoAndRet "is"  "null" (IsNull x)           <|>
-                          matchTwoAndRet "not" "null" (NotExpr $ IsNull x) <|>
-                          return x))
+    pd3 = pd4 >>= \x -> matchTwoAndRet "is"  "null" (IsNull x)           <|>
+                        matchTwoAndRet "not" "null" (NotExpr $ IsNull x) <|>
+                        return x
 
     -- pd4 ::= pd5 [(< | <= | <> | < | >= | > | == | = | !=) pd5]*
     pd4 = chainl opList pd5
         where
             opToData = [("<=", LE), ("<>", NE), ("<", Ls), (">=", GE), (">", Gt), ("==", Eq), ("=", Eq), ("!=", NE)]
-            opList'  = map (\(a, b) -> pBinNode a b) opToData
-            opList   = foldl (\z x -> z <|> x) (head opList') (tail opList')
+            opList'  = map (uncurry pBinNode) opToData
+            opList   = foldl1 (<|>) opList'
 
     -- pd5 ::= pd6 between pd6 and pd6
     --       | pd6 in value-list
@@ -322,7 +323,7 @@ expr = pd1 where
     --       | value
     pd0 = surroundByBrackets pd1                                                                <|>
           (TableColumn  <$> ident <*> (spcChar '.' >> ident))                                   <|>
-          (FunctionCall <$> map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1)) <|>
+          (FunctionCall . map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))   <|>
           (Column       <$> ident)                                                              <|>
           (ConstValue   <$> value)                                                              <|>
           (SelectExpr   <$> surroundByBrackets select)
@@ -333,7 +334,7 @@ expr = pd1 where
 insert = matchTwoAndRet "insert" "into" Insert
     <*> ident
     <*> (surroundByBrackets (argsList ident) <|> return [])
-    <*> (matchAndRet "values" ValueList <*> (surroundByBrackets (argsList expr)) <|> SelectResult <$> maySurroundByBrackets select)
+    <*> (matchAndRet "values" ValueList <*> surroundByBrackets (argsList expr) <|> SelectResult <$> maySurroundByBrackets select)
 
 
 -- sql ::= UPDATE table-name SET assignment [, assignment]* [WHERE expression]
@@ -365,7 +366,7 @@ select = matchAndRet "select" Select
     <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
     <*> ((matchTwoAndRet "group" "by" id >> argsList expr) <|> return [])
     <*> (matchAndRet "having" Just <*> expr <|> return Nothing)
-    <*> (many ((,) <$> compoundOp <*> maySurroundByBrackets (surroundByBrackets select)))
+    <*> many ((,) <$> compoundOp <*> maySurroundByBrackets (surroundByBrackets select))
     <*> ((matchTwoAndRet "order" "by" id >> argsList sortExpr) <|> return [])
     where
         -- column-result ::= expression [AS string]

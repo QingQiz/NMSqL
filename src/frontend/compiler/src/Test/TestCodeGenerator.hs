@@ -212,10 +212,10 @@ codeGeneratorTest =
                      ?: cExpr (Column "x")
                      >: Right [Instruction opDup 0 0 ""]
                      /: cExpr (Column "d")
-                     >: Right [Instruction opJGe 0 0 ""
+                     >: Right [Instruction opJGt 0 0 ""
                               ,Instruction opDup 0 0 ""]
                      /: cExpr (Column "c")
-                     >: Right [Instruction opJLe     0 0 ""
+                     >: Right [Instruction opJLt     0 0 ""
                               ,Instruction opPop     1 0 ""
                               ,Instruction opInteger 1 0 ""
                               ,Instruction opGoto    0 1 ""
