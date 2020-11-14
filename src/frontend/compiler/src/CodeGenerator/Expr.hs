@@ -35,6 +35,26 @@ cExpr expr = case expr of
     _                                               -> throwError "Semantic error"
 
 
+cAndChains :: Expr -> CodeGenEnv
+cAndChains expr =
+    let (eqPair, otherExpr) = collectExpr expr
+     in undefined
+    where
+        collectExpr e = collectExpr' e [] []
+
+        collectExpr' e@(BinExpr Eq e1 e2) a b =
+            case (e1, e2) of
+                 (e1'@(Column _)       , e2') | isConstExpr e2' -> ((e1', e2') : a, b)
+                 (e1'@(TableColumn _ _), e2') | isConstExpr e2' -> ((e1', e2') : a, b)
+                 (e1', e2'@(Column _))        | isConstExpr e1' -> ((e2', e1') : a, b)
+                 (e1', e2'@(TableColumn _ _)) | isConstExpr e1' -> ((e2', e1') : a, b)
+                 _ -> (a, e : b)
+        collectExpr' (BinExpr And e1 e2) a b =
+            let (e1a, e1b) = collectExpr' e1 a b
+             in collectExpr' e2 e1a e1b
+        collectExpr' e a b = (a, e : b)
+
+
 -- code generator for between-expr
 exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
 exprBetween a b c = getLabel >>= \labelAva
@@ -97,16 +117,17 @@ exprTableColumn tn cn =
 
 -- code generator for function-call-expr
 exprFuncCall :: String -> [Expr] -> CodeGenEnv
-exprFuncCall fn pl  =
-    let fnChecker   = [("max", 2, opMax), ("min", 2, opMin)]
-        plLength    = length pl
-        pl'         = map cExpr pl
-     in case dropWhile ((fn/=) . fst3) fnChecker of
+exprFuncCall fn pl =
+    let plLength   = length pl
+        pl'        = map cExpr pl
+     in getFuncDef >>= \fnDef -> case dropWhile ((fn/=) . fst3) fnDef of
              []  -> throwError $ "No such function: " ++ fn
-             x:_ | plLength < snd3 x -> throwError $ "Too few arguments to function: "  ++ fn
-                 | plLength > snd3 x -> throwError $ "Too many arguments to function: " ++ fn
+             (_, args, Just op):_
+                 | plLength < args -> throwError $ "Too few arguments to function: "  ++ fn
+                 | plLength > args -> throwError $ "Too many arguments to function: " ++ fn
                  | otherwise -> foldr (>>) getRes pl'
-                             >> appendInst (Instruction (trd3 x) 0 0 "")
+                             >> appendInst (Instruction op 0 0 "")
+             (_, _, Nothing):_ -> throwError "Not implemented"
 
 
 -- code generator for const-expr
@@ -231,17 +252,22 @@ mkBoolVal opCode p1 p2 p3 = appendInst (Instruction opCode p1 p2 p3)
     >> putTrue
     >> mkCurrentLabel
 
-throwErrorIfNotConst :: Expr -> CodeGenEnv
-throwErrorIfNotConst expr =
+
+-- const expr checker
+isConstExpr :: Expr -> Bool
+isConstExpr expr =
     case expr of
-        BinExpr  _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b
-        LikeExpr _ a b         -> throwErrorIfNotConst a >> throwErrorIfNotConst b
-        ConstValue _           -> return []
-        FunctionCall _ a       -> foldr (>>) (return []) (map throwErrorIfNotConst a)
-        IsNull a               -> throwErrorIfNotConst a
-        Between a b c          -> throwErrorIfNotConst a >> throwErrorIfNotConst b
-                               >> throwErrorIfNotConst c
-        InExpr a (ValueList b) -> throwErrorIfNotConst a
-                               >> foldr (>>) (return []) (map throwErrorIfNotConst b)
-        NotExpr a              -> throwErrorIfNotConst a
-        _                      -> throwError "Right-hand side of IN operator must be constant"
+        BinExpr  _ a b         -> isConstExpr a && isConstExpr b
+        LikeExpr _ a b         -> isConstExpr a && isConstExpr b
+        ConstValue _           -> True
+        FunctionCall _ a       -> foldr (&&) True  (map isConstExpr a)
+        IsNull a               -> isConstExpr a
+        Between a b c          -> isConstExpr a && isConstExpr b && isConstExpr c
+        InExpr a (ValueList b) -> foldr (&&) (isConstExpr a) (map isConstExpr b)
+        NotExpr a              -> isConstExpr a
+        _                      -> False
+
+throwErrorIfNotConst :: Expr -> CodeGenEnv
+throwErrorIfNotConst expr
+    | isConstExpr expr = return []
+    | otherwise        = throwError "Right-hand side of IN operator must be constant"

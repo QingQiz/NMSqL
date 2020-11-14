@@ -1,10 +1,10 @@
 module TestUtils where
 
-
-import Test.HUnit
+import Instruction
 import FFIStructure
 import CodeGeneratorUtils
 
+import Test.HUnit
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -13,10 +13,10 @@ type CGTestCase = (CodeGenEnv, CodeGenRes)
 
 testEnv :: CodeGenState
 testEnv = (
-    [ TableMetadata "xxx" [] ["a", "b", "c", "x"] 0
-    , TableMetadata "yyy" [] ["a", "b", "d", "y"] 0]
+    ([TableMetadata "xxx" [] ["a", "b", "c", "x"] 0, TableMetadata "yyy" [] ["a", "b", "d", "y"] 0]
+    ,[("max", 2, Just opMax), ("min", 2, Just opMin), ("substr", 3, Just opSubstr)])
     , []
-    , (0, 0))
+    , (0, 0, 0))
 
 
 runCodeGen :: CodeGenEnv -> CodeGenRes

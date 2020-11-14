@@ -194,6 +194,13 @@ codeGeneratorTest =
                      ~: cExpr (FunctionCall "min" [Column "c", Column "d"])
                      ?: cExpr (Column "c") +: cExpr (Column "d")
                      >: Right [Instruction opMin 0 0 ""]
+
+    , "func call"    ~: ""
+                     ~: cExpr (FunctionCall "substr" [Column "c", ConstValue $ ValInt 1, ConstValue $ ValInt 2])
+                     ?: cExpr (Column "c")
+                     >: Right [Instruction opInteger 1 0 ""
+                              ,Instruction opInteger 2 0 ""
+                              ,Instruction opSubstr  0 0 ""]
 ----------------------------------------------------------
     , "is null"      ~: ""
                      ~: cExpr (IsNull $ Column "c")
