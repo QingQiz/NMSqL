@@ -101,10 +101,10 @@ codeGeneratorTest =
                      ~: cExpr (BinExpr And (Column "c") (Column "d"))
                      ?: cExpr (Column "c")
                      >: Right [Instruction opNot 0 0 ""
-                              ,Instruction opIf  0 0 ""]
+                              ,Instruction opJIf 0 0 ""]
                      /: cExpr (Column "d")
                      >: Right [Instruction opNot     0 0 ""
-                              ,Instruction opIf      0 0 ""
+                              ,Instruction opJIf     0 0 ""
                               ,Instruction opInteger 1 0 ""
                               ,Instruction opGoto    0 1 ""
                               ,Instruction opNoop    0 0 ""
@@ -114,9 +114,9 @@ codeGeneratorTest =
     , "binary expr"  ~: "or"
                      ~: cExpr (BinExpr Or (Column "c") (Column "d"))
                      ?: cExpr (Column "c")
-                     >: Right [Instruction opIf  0 0 ""]
+                     >: Right [Instruction opJIf 0 0 ""]
                      /: cExpr (Column "d")
-                     >: Right [Instruction opIf      0 0 ""
+                     >: Right [Instruction opJIf     0 0 ""
                               ,Instruction opInteger 0 0 ""
                               ,Instruction opGoto    0 1 ""
                               ,Instruction opNoop    0 0 ""
@@ -126,62 +126,52 @@ codeGeneratorTest =
     , "binary expr"  ~: "Great (>)"
                      ~: cExpr (BinExpr Gt (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opGt 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetGt 0 1 ""]
 
     , "binary expr"  ~: "less (<)"
                      ~: cExpr (BinExpr Ls (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opLt 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetLt 0 1 ""]
 
     , "binary expr"  ~: "great or equal (>=)"
                      ~: cExpr (BinExpr GE (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opGe 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetGe 0 1 ""]
 
     , "binary expr"  ~: "less or equal (<=)"
                      ~: cExpr (BinExpr LE (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opLe 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetLe 0 1 ""]
 
     , "binary expr"  ~: "equal (=) (==)"
                      ~: cExpr (BinExpr Eq (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opEq 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetEq 0 1 ""]
 
     , "binary expr"  ~: "not equal (<>) (!=)"
                      ~: cExpr (BinExpr NE (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opNe 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetNe 0 1 ""]
 ----------------------------------------------------------
     , "like expr"    ~: "like"
                      ~: cExpr (LikeExpr Like (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opLike 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetLike 0 1 ""]
 
     , "like expr"    ~: "notlike"
                      ~: cExpr (LikeExpr NotLike (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opLike 1 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetLike 1 1 ""]
 
     , "like expr"    ~: "glob"
                      ~: cExpr (LikeExpr Glob (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opGlob 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetGlob 0 1 ""]
 
     , "like expr"    ~: "notglob"
                      ~: cExpr (LikeExpr NotGlob (Column "c") (Column "d"))
                      ?: cExpr (Column "c") +: cExpr (Column "d")
-                     >: Right [Instruction opGlob 1 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetGlob 1 1 ""]
 ----------------------------------------------------------
     , "func call"    ~: "no such function"
                      ~: cExpr (FunctionCall "asd" [])
@@ -208,18 +198,16 @@ codeGeneratorTest =
     , "is null"      ~: ""
                      ~: cExpr (IsNull $ Column "c")
                      ?: cExpr (Column "c")
-                     >: Right [Instruction opIsNull 0 0 ""]
-                     /: toBool
+                     >: Right [Instruction opSetIsNull 0 1 ""]
 ----------------------------------------------------------
     , "between"      ~: ""
                      ~: cExpr (Between (Column "x") (Column "c") (Column "d"))
-                     ?: cExpr (Column "d") +: cExpr (Column "x")
-                     >: Right [Instruction opLe  0 0 ""
-                              ,Instruction opIf  0 0 ""
-                              ,Instruction opDup 0 0 ""]
+                     ?: cExpr (Column "x")
+                     >: Right [Instruction opDup 0 0 ""]
+                     /: cExpr (Column "d")
+                     >: Right [Instruction opJGe 0 0 ""]
                      /: cExpr (Column "c")
-                     >: Right [Instruction opLe      0 0 ""
-                              ,Instruction opIf      0 0 ""
+                     >: Right [Instruction opJLe     0 0 ""
                               ,Instruction opInteger 1 0 ""
                               ,Instruction opGoto    0 1 ""
                               ,Instruction opNoop    0 0 ""
