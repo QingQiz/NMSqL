@@ -60,9 +60,9 @@ exprBetween :: Expr -> Expr -> Expr -> CodeGenEnv
 exprBetween a b c = getLabel >>= \labelAva
     -> updateLabel
     >> cExpr a >> dup                                            -- stack: a,a
-    >> cExpr c >> appendInst (Instruction opJGe 0 labelAva "")   -- stack: a,a,c -> a
+    >> cExpr c >> appendInst (Instruction opJGt 0 labelAva "")   -- stack: a,a,c -> a
     >> dup                                                       -- stack: a,a
-    >> cExpr b >> appendInst (Instruction opJLe 0 labelAva "")   -- stack: a,a,b -> a
+    >> cExpr b >> appendInst (Instruction opJLt 0 labelAva "")   -- stack: a,a,b -> a
     >> pop 1 >> putTrue
     >> getLabel >>= goto
     >> mkLabel' labelAva
