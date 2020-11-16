@@ -11,12 +11,13 @@ import Data.List
 import Data.Maybe
 import Control.Monad.Except
 
+import qualified Data.Map as Map
 
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
 cExpr :: Expr -> CodeGenEnv
-cExpr expr = case expr of
+cExpr = \case
     BinExpr op e1 e2
         | op == And                                 -> exprAnd e1 e2
         | op == Or                                  -> exprOr  e1 e2
@@ -35,24 +36,68 @@ cExpr expr = case expr of
     _                                               -> throwError "Semantic error"
 
 
-cAndChains :: Expr -> CodeGenEnv
-cAndChains expr =
+cExprWrapper :: Expr -> CodeGenEnv
+cExprWrapper expr =
     let (eqPair, otherExpr) = collectExpr expr
      in undefined
     where
-        collectExpr e = collectExpr' e [] []
+        collectExpr expr' = collectExpr' expr' [] [] where
+            collectExpr' e@(BinExpr Eq e1 e2) a b =
+                case (e1, e2) of
+                    (e1'@(Column _)       , e2') | isConstExpr e2' -> ((e1', e2') : a, b)
+                    (e1'@(TableColumn _ _), e2') | isConstExpr e2' -> ((e1', e2') : a, b)
+                    (e1', e2'@(Column _))        | isConstExpr e1' -> ((e2', e1') : a, b)
+                    (e1', e2'@(TableColumn _ _)) | isConstExpr e1' -> ((e2', e1') : a, b)
+                    _ -> (a, e : b)
+            collectExpr' (BinExpr And e1 e2) a b =
+                let (e1a, e1b) = collectExpr' e1 a b
+                in collectExpr' e2 e1a e1b
+            collectExpr' e a b = (a, e : b)
 
-        collectExpr' e@(BinExpr Eq e1 e2) a b =
-            case (e1, e2) of
-                 (e1'@(Column _)       , e2') | isConstExpr e2' -> ((e1', e2') : a, b)
-                 (e1'@(TableColumn _ _), e2') | isConstExpr e2' -> ((e1', e2') : a, b)
-                 (e1', e2'@(Column _))        | isConstExpr e1' -> ((e2', e1') : a, b)
-                 (e1', e2'@(TableColumn _ _)) | isConstExpr e1' -> ((e2', e1') : a, b)
-                 _ -> (a, e : b)
-        collectExpr' (BinExpr And e1 e2) a b =
-            let (e1a, e1b) = collectExpr' e1 a b
-             in collectExpr' e2 e1a e1b
-        collectExpr' e a b = (a, e : b)
+        groupEqPairByTable :: [(Expr, Expr)] -> [TableMetadata] -> Maybe [(Int, [(Expr, Expr)])]
+        groupEqPairByTable eqPair mds = groupEqPairByTable' eqPair $ Map.fromList [] where
+            groupEqPairByTable' [] m = Just $ Map.toList m
+            groupEqPairByTable' (p:ps) m = case p of
+                (TableColumn tn cn, _) -> case tableColumnIdx tn cn mds of
+                    (-1, _) -> Nothing
+                    (i , _) -> groupEqPairByTable' ps $ updateMap i p m
+                (Column cn, x) -> case columnIdx cn mds of
+                    (-1, _) -> Nothing
+                    (i , _) -> groupEqPairByTable' ps $ updateMap i (TableColumn (metadata_name $ mds !! i) cn, x) m
+                _ -> Nothing
+                where
+                    updateMap tbIdx pair m' =
+                        let oldVal = fromMaybe [] $ Map.lookup tbIdx m'
+                         in Map.insert tbIdx (pair:oldVal) m'
+
+        findBestIndexInColumnList :: [TableIndex] -> [Expr] -> Maybe TableIndex
+        findBestIndexInColumnList tbIdxes cols =
+            let allProb = findAllProbIndex tbIdxes []
+             in findBestIndex allProb 0 Nothing
+            where
+                colNames = map (\(TableColumn _ cn) -> cn) cols
+
+                findAllProbIndex [] res = res
+                findAllProbIndex (i:is) res =
+                    if all (`elem` colNames) $ snd i
+                    then findAllProbIndex is $ i : res
+                    else findAllProbIndex is res
+
+                findBestIndex [] _ res = res
+                findBestIndex (i:is) len res =
+                    let len' = length $ snd i
+                    in if   len' > len
+                        then findBestIndex is len' $ Just i
+                        else findBestIndex is len res
+
+        splitEqPairToMkKey :: [(Expr, Expr)] -> [TableMetadata] -> ([(TableIndex, [Expr])], [Expr])
+        splitEqPairToMkKey pairs mds =
+            let groupedPair = fromMaybe [] $ groupEqPairByTable pairs mds
+                idxToUse    = map (\(a, b) -> findBestIndexInColumnList (getTbIdx a) $ map fst b) groupedPair
+             in undefined
+                -- TODO re-split grouped pair, combine useless eq-pair to bin-expr, collect const-expr and produce opMakeKey
+            where
+                getTbIdx i = metadata_index $ mds !! i
 
 
 -- code generator for between-expr
@@ -94,25 +139,17 @@ exprIn _ (SelectResult _) = throwError "not implemented"
 
 -- code generator for column
 exprColumn :: String -> CodeGenEnv
-exprColumn cn =
-    let valid     md = cn `elem` metadata_column md
-        getColIdx md = fromMaybe (-1) $ elemIndex cn $ metadata_column md
-     in findIndices valid <$> getMetadata >>= \case
-            [i] -> getMetadata >>= (\md -> return $ getColIdx $ md !! i)
-                               >>= (\j  -> appendInst $ Instruction opColumn i j "")
-            []  -> throwError $ "No such column: " ++ cn
-            _   -> throwError $ "Ambiguous column name: " ++ cn
+exprColumn cn = getMetadata >>= \mds -> case columnIdx cn mds of
+    (-1,  0) -> throwError $ "Ambiguous column name: " ++ cn
+    (-1, -1) -> throwError $ "No such column: " ++ cn
+    (i ,  j) -> appendInst $ Instruction opColumn i j ""
 
 
 -- code generator for table-column
 exprTableColumn :: String -> String -> CodeGenEnv
-exprTableColumn tn cn =
-    let tbIdx =  findIndex ((==tn) . metadata_name) <$> getMetadata
-     in tbIdx >>= \case
-            Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
-            Just  i -> getMetadata >>= (\x -> return $ elemIndex cn $ metadata_column $ x !! i) >>= \case
-                Nothing -> throwError $ "No such column: " ++ tn ++ "." ++ cn
-                Just  j -> appendInst $ Instruction opColumn i j ""
+exprTableColumn tn cn = getMetadata >>= \mds -> case tableColumnIdx tn cn mds of
+    (-1, _) -> throwError $ "No such column: " ++ tn ++ "." ++ cn
+    (i , j) -> appendInst $ Instruction opColumn i j ""
 
 
 -- code generator for function-call-expr
@@ -271,3 +308,23 @@ throwErrorIfNotConst :: Expr -> CodeGenEnv
 throwErrorIfNotConst expr
     | isConstExpr expr = return []
     | otherwise        = throwError "Right-hand side of IN operator must be constant"
+
+
+-- get column index from metadatas, return: (table-index, column-index)
+columnIdx :: String -> [TableMetadata] -> (Int, Int)
+columnIdx cn mds =
+    let valid     md = cn `elem` metadata_column md
+        getColIdx md = fromMaybe (-1) $ elemIndex cn $ metadata_column md
+     in case findIndices valid mds of
+            [i] -> (i, getColIdx $ mds !! i)
+            []  -> (-1, -1)  -- can not found
+            _   -> (-1,  0)  -- can find column but can not determine which table to use
+
+
+-- get table-column index from metadatas, return: (table-index, column-index)
+tableColumnIdx :: String -> String -> [TableMetadata] -> (Int, Int)
+tableColumnIdx tn cn mds = case findIndex ((==tn) . metadata_name) mds of
+    Nothing -> (-1, 0)     -- no such table
+    Just  i -> case elemIndex cn $ metadata_column $ mds !! i of
+        Nothing -> (-1, 0) -- no such table
+        Just  j -> (i, j)
