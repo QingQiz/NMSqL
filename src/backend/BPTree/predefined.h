@@ -9,6 +9,10 @@
 
 typedef int pgno_t;
 typedef int offset_t;
+typedef struct address_t{
+    pgno_t pgno;
+    offset_t offset;
+};
 
 struct key_t{
     char data[16];
@@ -47,33 +51,33 @@ struct meta_t{
     int internal_node_num;
     int leaf_node_num;
     int height;
-    offset_t slot; // where is the place to insert data
-    offset_t root; // where is the root of B+Tree
-    offset_t first; // where is the first of leaf
+    address_t slot; // where is the place to insert data
+    address_t root; // where is the root of B+Tree
+    address_t first; // where is the first of leaf
 };
 
 struct index_t {
     key_t key;
-    offset_t child; // offset of child's node
+    address_t child; // offset of child's node
 };
 
 struct internal_node_t{
-    offset_t parent;
-    offset_t next;
-    offset_t prev;
+    address_t parent;
+    address_t next;
+    address_t prev;
     int child_num; 
     index_t* children; // children array, dynamic memory allocation
 };
 
 struct record_t{
     key_t key;
-    offset_t data; // offset of the data
+    address_t data; // offset of the data
 };
 
 struct leaf_node_t {
-    offset_t parent; // parent node offset
-    offset_t next;
-    offset_t prev;
+    address_t parent; // parent node offset
+    address_t next;
+    address_t prev;
     size_t record_num;
     record_t* records; // records array, dynamic memory allocation
 };
