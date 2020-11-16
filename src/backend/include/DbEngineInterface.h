@@ -13,6 +13,7 @@ typedef enum CursorType CursorType;
 
 struct Cursor {
   CursorType cursorType;
+  void* cursor;
 };
 
 typedef struct Cursor Cursor;
