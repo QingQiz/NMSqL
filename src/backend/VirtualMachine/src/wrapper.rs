@@ -29,16 +29,19 @@ pub mod wrapper {
     ) -> i32 {
       unimplemented!();
     }
+    pub fn find(cursor: *mut Cursor, key: &Vec<u8>) -> i32 {
+      unimplemented!()
+    }
     // get the key of the data that current cursor points to
-    pub fn getKey(cursor: *mut Cursor) {
+    pub fn getKey(cursor: *mut Cursor) -> Vec<u8> {
       unimplemented!()
     }
     // get the value of the data that current cursor points to
-    pub fn getValue(cursor: *mut Cursor) {
+    pub fn getValue(cursor: *mut Cursor) -> Vec<u8> {
       unimplemented!()
     }
     // insert into Cursor with key and value
-    pub fn insert<T, U>(cursor: *mut Cursor, key: &T, value: &U) -> i32 {
+    pub fn insert(cursor: *mut Cursor, key: &Vec<u8>, value: &Vec<u8>) -> i32 {
       unimplemented!()
     }
     // erase the element that cursor points to
