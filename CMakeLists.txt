@@ -8,7 +8,9 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(MAIN_FILE src/backend/DBEngine/main.cpp )
 SET(WORK_DIRECTORY src/backend/DBEngine/)
+SET(HEAD_DIRECTORY ${WORK_DIRECTORY}include/)
+SET(SRC_DIRECTORY ${WORK_DIRECTORY}src/)
 
 add_executable(dbEngine ${MAIN_FILE}
-        ${WORK_DIRECTORY}.include/helloword.h
-        ${WORK_DIRECTORY}.src/helloworld.cpp)
+        ${HEAD_DIRECTORY}helloword.h
+        ${SRC_DIRECTORY}helloworld.cpp)
