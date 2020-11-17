@@ -46,7 +46,7 @@ IR大致可以分为以下几类：
 |28|CreateTable|N|N|Y|创建一个新表 将此表的页编号压栈 将新表的根页写入数据库的根页中 将新表的根页号写入P3指定的内存中|
 |29|Reorganize|Y|N|N|压缩 优化 根页编号为P1的表或索引|
 |30|BeginIdx|Y|N|N|出栈一个元素作为key 此key需要是由MakeKey产生的 将游标P1移到此记录的位置 此指令后续应不断使用NextIdx指定|
-|31|NextIdx|Y|Y|N|P1游标已指向一个索引位置 此指令不断访问下一条与BeginIdx中key相同的记录 若记录已结束 则跳转到P2|
+|31|NextIdx|Y|Y|N|P1游标已指向一个索引位置 将此位置的record压栈 并将cursor指向下一条记录 此指令不断访问下一条与BeginIdx中key相同的记录 若记录已结束 则跳转到P2|
 |32|PutIdx|Y|Y|Y|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中插入此key 其对应的值为Nil 若P2为1则此key必须为非重复的 若P3为非Null 则P3是报错信息|
 |33|DeleteIdx|Y|N|N|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中删除此key|
 |34|MemLoad|Y|N|N|将P1内存位置的元素压栈|
