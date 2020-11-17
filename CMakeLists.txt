@@ -11,4 +11,4 @@ SET(WORK_DIRECTORY src/backend/DBEngine/)
 
 add_executable(dbEngine ${MAIN_FILE}
         ${WORK_DIRECTORY}.include/helloword.h
-        ${WORK_DIRECTORY}src/helloworld.cpp)
+        ${WORK_DIRECTORY}.src/helloworld.cpp)
