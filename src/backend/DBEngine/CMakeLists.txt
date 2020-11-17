@@ -7,4 +7,4 @@ set(CMAKE_CXX_STANDARD 14)
 # add the executable
 add_executable(dbEngine main.cpp
 		include/helloword.h
-		src/helloworld.cpp)
+		src/helloworld.cpp include/DBEngine.h)
