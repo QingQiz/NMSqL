@@ -1,5 +1,6 @@
 module TestUtils where
 
+import Parser
 import Instruction
 import FFIStructure
 import CodeGeneratorUtils
@@ -13,7 +14,8 @@ type CGTestCase = (CodeGenEnv, CodeGenRes)
 
 testEnv :: CodeGenState
 testEnv = (
-    ([TableMetadata "xxx" [] ["a", "b", "c", "x"] 0, TableMetadata "yyy" [] ["a", "b", "d", "y"] 0]
+    ([TableMetadata "xxx" [("idx_xxx_a", ["a"]), ("idx_xxx_a_b", ["a", "b"])] ["a", "b", "c", "x"] 0
+     ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 0]
     ,[("max", 2, Just opMax), ("min", 2, Just opMin), ("substr", 3, Just opSubstr)])
     , []
     , (0, 0, 0))
@@ -21,6 +23,11 @@ testEnv = (
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
 runCodeGen x = evalState (runExceptT x) testEnv
+
+runParser :: Parser a -> String -> a
+runParser p s = case parse p s of
+    Just (a, _) -> a
+    _           -> error $ "parse error: " ++ s
 
 
 infixl 3 +:

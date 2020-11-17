@@ -308,8 +308,8 @@ expr = pd1 where
             likeExpr = \x -> makeNode x <*> pd6
                 where makeNode x = matchAndRet "like" (LikeExpr Like x) <|>
                                    matchAndRet "glob" (LikeExpr Glob x) <|>
-                                   matchTwoAndRet "not" "like" (NotExpr . LikeExpr NotLike x) <|>
-                                   matchTwoAndRet "not" "glob" (NotExpr . LikeExpr NotGlob x)
+                                   matchTwoAndRet "not" "like" (LikeExpr NotLike x) <|>
+                                   matchTwoAndRet "not" "glob" (LikeExpr NotGlob x)
 
     -- pd6 ::= pd7 [(+ | -) pd7]*
     pd6 = chainl (pBinNode "+" Plus     <|> pBinNode "-" Minus ) pd7

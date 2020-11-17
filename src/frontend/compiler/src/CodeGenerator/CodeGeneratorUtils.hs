@@ -71,8 +71,8 @@ updateCursor = getCursor >>= \x -> putCursor $ x + 1
 
 
 -- append an instruction to env
-appendInst :: Instruction -> CodeGenEnv
-appendInst inst = get >>= (\(a, b, c) -> put (a, b ++ [inst], c)) >> getRes
+appendInst :: OpCode -> Int -> Int -> String -> CodeGenEnv
+appendInst opCode p1 p2 p3 = get >>= (\(a, b, c) -> put (a, b ++ [Instruction opCode p1 p2 p3], c)) >> getRes
 
 -- fst, snd, trd for (,,)
 fst3 :: (a, b, c) -> a
