@@ -1,18 +1,22 @@
 #ifndef _DBENGINEINTERFACE_H
 #define _DBENGINEINTERFACE_H
-#include <stdint.h>
+
+#include <cstdint>
 
 
 /***********************************
  * for vm
  ***********************************/
 
-enum CursorType { CURSOR_BTREE, CURSOR_LIST };
+enum CursorType {
+	CURSOR_BTREE, CURSOR_LIST
+};
 
 typedef enum CursorType CursorType;
 
 struct Cursor {
-  CursorType cursorType;
+	CursorType cursorType;
+	void *cursor;
 };
 
 typedef struct Cursor Cursor;
@@ -22,25 +26,39 @@ typedef struct Cursor Cursor;
  */
 #define CURSOR_READ_ONLY 1
 #define CURSOR_WRITE 2
-Cursor* open(const char* indexName, int flag);
-int close(Cursor* cursor);
-int create(const char* dbTable, const char* indexName, CursorType indexType,
-           const int indexColumnCnt, const char** indexColumns);
-int find(Cursor* cursor, const void* key);
-void* getKey(Cursor* cursor);
-void* getValue(Cursor* cursor);
+
+Cursor *open(const char *indexName, int flag);
+
+int close(Cursor *cursor);
+
+int create(const char *dbTable, const char *indexName, CursorType indexType,
+           const int indexColumnCnt, const char **indexColumns);
+
+int find(Cursor *cursor, const void *key);
+
+void *getKey(Cursor *cursor);
+
+void *getValue(Cursor *cursor);
+
 // void* getRecordNumber(Cursor* cursor);
-int insert(Cursor* cursor, const void* key, const void* value);
-int erase(Cursor* cursor);
-int next(Cursor* cursor);
-int reset(Cursor* cursor);
+int insert(Cursor *cursor, const void *key, const void *value);
+
+int erase(Cursor *cursor);
+
+int next(Cursor *cursor);
+
+int reset(Cursor *cursor);
 
 
-int createTable(const char* sql);
+int createTable(const char *sql);
+
 int reorganize();
-void* getMetaData(const char* tableName);
+
+void *getMetaData(const char *tableName);
+
 int getCookies();
-char** getTableColumns(const char* tableName);
+
+char **getTableColumns(const char *tableName);
 
 
 /***********************************
@@ -48,17 +66,18 @@ char** getTableColumns(const char* tableName);
  ***********************************/
 
 struct TableMetadata {
-    int32_t indexCnt;       // 索引数量
-    char** index;           // 索引
-                            //   格式：索引名:逗号分隔的列名
-                            //   例如：index_a_b:a,b
-                            //     代表 a，b 上的索引，名为 index_a_b
+	int32_t indexCnt;       // 索引数量
+	char **index;           // 索引
+	//   格式：索引名:逗号分隔的列名
+	//   例如：index_a_b:a,b
+	//     代表 a，b 上的索引，名为 index_a_b
 
-    int32_t columnCnt;      // 列的数量
-    char** column;          // 列名
+	int32_t columnCnt;      // 列的数量
+	char **column;          // 列名
 
-    int32_t cookie;         // 表 Cookie
+	int32_t cookie;         // 表 Cookie
 };
 
-struct TableMetadata* getTableMetadata(char* tableName);
+struct TableMetadata *getTableMetadata(char *tableName);
+
 #endif
