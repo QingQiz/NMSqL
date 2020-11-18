@@ -43,6 +43,13 @@ void* getMetaData(const char* tableName);
 int getCookies();
 char** getTableColumns(const char* tableName);
 
+/*
+ * 事务相关
+ */
+
+int transaction();
+int commit();
+int rollback();
 
 /***********************************
  * for compiler
