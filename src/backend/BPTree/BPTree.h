@@ -19,7 +19,7 @@ ReturnCode clear();
 ReturnCode open(btCursor*, pgno_t root_page);
 ReturnCode close();
 
-ReturnCode Search(btCursor*, key_t key);
+ReturnCode search(btCursor*, key_t key);
 ReturnCode search(btCursor*, key_t lowerKey, key_t upperKey);
 ReturnCode insert(btCursor*, key_t key);
 ReturnCode remove(btCursor*, key_t key);

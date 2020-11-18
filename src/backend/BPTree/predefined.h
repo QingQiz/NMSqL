@@ -21,10 +21,8 @@ typedef struct address_t{
 struct key_t{
     char data[16];
     key_t(const char *str = ""){
-        bzero(data, sizeof(data));
         strcpy(data, str);
     }
-
 };
 
 inline int keycmp(const key_t &a, const key_t &b) {

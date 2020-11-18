@@ -35,7 +35,7 @@ ReturnCode BPTreeSearch(btCursor* cursor, key_t key){ //在该节点中进行搜
             if(key == record.key){
                 cursor->address = record.data;
                 isFound = 1;
-                continue;
+                break;
             }
         }
         return isFound;
