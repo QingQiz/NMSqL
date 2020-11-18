@@ -5,6 +5,9 @@
 #ifndef DBENGINE_DBENGINE_H
 #define DBENGINE_DBENGINE_H
 
-
+struct DBECursor{
+	void* key;
+	void* cursor;
+};
 
 #endif //DBENGINE_DBENGINE_H
