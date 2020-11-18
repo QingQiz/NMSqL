@@ -5,9 +5,6 @@
 #ifndef DBENGINE_DBENGINE_H
 #define DBENGINE_DBENGINE_H
 
-class Cursor{
-private:
-public:
-};
+
 
 #endif //DBENGINE_DBENGINE_H
