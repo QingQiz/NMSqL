@@ -54,7 +54,7 @@ IR大致可以分为以下几类：
 |36|ListOpen|Y|N|N|新建一个顺序表来暂时存储记录号 P1表示此表的标识符 若已存在 则将原P1表示的表关闭|
 |37|ListWrite|Y|N|N|将栈顶的数字写入P1所指向的表中|
 |38|ListRewind|Y|N|N|将P1指向的临时存储中 已读部分重置为此存储开始|
-|39|ListRead|Y|Y|N|从临时存储P1中读取一个数字并压栈 若P1为空 则跳转到P2 此指令会将一度部分++|
+|39|ListRead|Y|Y|N|从临时存储P1中读取一个元素并压栈 若P1为空 则跳转到P2 此指令会将List当前读取位置++|
 |40|ListClose|Y|N|N|关闭并清空P1所指向的临时存储|
 |41|SortOpen|Y|N|N|开启一个编号为P1的sorter|
 |42|SortPut|Y|N|N|将栈顶作为key 栈中第二个元素为value 将其放入sorter中 出栈此两个元素|
