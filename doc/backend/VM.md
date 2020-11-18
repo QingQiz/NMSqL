@@ -154,6 +154,18 @@ cursor后移
 
 重置到第一个位置
 
+#### transaction()
+
+开启一个事务
+
+#### commit()
+
+提交事务
+
+#### rollback()
+
+回滚事务
+
 ### 数据库相关操作
 
 #### create(createTableSql)
