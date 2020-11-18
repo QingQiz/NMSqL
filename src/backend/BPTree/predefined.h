@@ -46,8 +46,8 @@ inline int keycmp(const key_t &a, const key_t &b) {
 /* meta information of B+ tree */
 struct meta_t{
     int capacity; // capacity of the node
-    int value_size;
-    int key_size; 
+    int value_size; // size of the value
+    int key_size; // size of the key
     int internal_node_num;
     int leaf_node_num;
     int height;
@@ -65,13 +65,14 @@ struct internal_node_t{
     address_t parent;
     address_t next;
     address_t prev;
-    int child_num; 
-    index_t* children; // children array, dynamic memory allocation
+    size_t child_num; 
+    index_t children[10]; // children array, dynamic memory allocation
 };
 
 struct record_t{
     key_t key;
     address_t data; // offset of the data
+    int size;
 };
 
 struct leaf_node_t {
@@ -79,10 +80,22 @@ struct leaf_node_t {
     address_t next;
     address_t prev;
     size_t record_num;
-    record_t* records; // records array, dynamic memory allocation
+    record_t records[10]; // records array, dynamic memory allocation
 };
 
+struct btCursor{
+    address_t address;
+    pgno_t rootPage;
 
+    
+};
 
+/*
+ *
+ */
+struct MemPage{
+    bool isLeaf; //True if is leaf node
+
+};
 
 #endif //BPTREE_PREDEFINED_H

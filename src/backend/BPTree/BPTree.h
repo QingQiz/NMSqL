@@ -16,13 +16,13 @@ ReturnCode create(char* fileName);
 ReturnCode drop();
 ReturnCode clear();
 
-ReturnCode open(pgno_t root_page);
+ReturnCode open(btCursor*, pgno_t root_page);
 ReturnCode close();
 
-ReturnCode search(key_t key);
-ReturnCode search(key_t lowerKey, key_t upperKey);
-ReturnCode inseart(key_t key);
-ReturnCode remove(key_t key);
+ReturnCode search(btCursor*, key_t key);
+ReturnCode search(btCursor*, key_t lowerKey, key_t upperKey);
+ReturnCode insert(btCursor*, key_t key);
+ReturnCode remove(btCursor*, key_t key);
 
 private:
 meta_t metaData;
