@@ -28,7 +28,7 @@ IR大致可以分为以下几类：
 |10|Close|Y|N|N|关闭标识符为P1的游标|
 |11|MoveTo|Y|N|N|出栈一个元素 将其作为key 将标识符为P1的游标重定位为此key所在位置 若无此key 则指向大于它的最小的元素|
 |12|Fcnt|N|N|N|压栈当前虚拟机已执行的MoveTo指令数|
-|13|NewRecno|Y|N|N|获取一个记录数压栈 此记录数应该在游标P1指向的数据库表中未出现过 **DELETED**|
+|13|NewRecno|Y|N|N|~~获取一个记录数压栈 此记录数应该在游标P1指向的数据库表中未出现过~~|
 |14|Put|Y|N|N|将栈顶元素作为值 将下一个元素作为键 写入游标P1 出栈两个元素|
 |15|Distinct|Y|Y|N|将栈顶元素作为key 若在游标P1中不存在 则跳转到P2 游标指向此key或大于它的最小的元素|
 |16|Found|Y|Y|N|出栈一个元素作为key 若在游标P1中存在 则跳转到P2 游标指向此key或大于它的最小的元素|
@@ -36,7 +36,7 @@ IR大致可以分为以下几类：
 |18|Delete|Y|N|N|将P1游标此时所指元素删除 游标置为大于它的最小的元素|
 |19|Column|Y|Y|N|读取P1指向的数据 按照MakeRecord指令输出的形式取出第P2列的值并压栈 若开启了key-as-data模式 则处理的是P1的key (再研究一下)|
 |20|KeyAsData|Y|Y|N|将P1游标的key-as-data模式开启(P2==1)或关闭(P2==0)|
-|21|Recno|Y|N|N|将游标P1指向key的前4个字节作为一个int压栈 **DELETED**|
+|21|Recno|Y|N|N|~~将游标P1指向key的前4个字节作为一个int压栈~~|
 |22|FullKey|Y|N|N|将游标P1指向的key作为字符串压栈|
 |23|Rewind|Y|N|N|将游标P1重置(指向数据库第一个值)|
 |24|Next|Y|Y|N|将游标P1移向下一个位置 若已经是最后一个值 则跳转到P2|
@@ -47,8 +47,8 @@ IR大致可以分为以下几类：
 |29|Reorganize|Y|N|N|压缩 优化 根页编号为P1的表或索引|
 |30|BeginIdx|Y|N|N|出栈一个元素作为key 此key需要是由MakeKey产生的 将游标P1移到此记录的位置 此指令后续应不断使用NextIdx指定|
 |31|NextIdx|Y|Y|N|P1游标已指向一个索引位置 将此位置的record压栈 并将cursor指向下一条记录 此指令不断访问下一条与BeginIdx中key相同的记录 若记录已结束 则跳转到P2|
-|32|PutIdx|Y|Y|Y|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中插入此key 其对应的值为Nil 若P2为1则此key必须为非重复的 若P3为非Null 则P3是报错信息 **DELETED**|
-|33|DeleteIdx|Y|N|N|出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中删除此key **DELETED**|
+|32|PutIdx|Y|Y|Y|~~出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中插入此key 其对应的值为Nil 若P2为1则此key必须为非重复的 若P3为非Null 则P3是报错信息~~|
+|33|DeleteIdx|Y|N|N|~~出栈一个元素 此元素需要是MakeIdxKey的输出 在P1中删除此key~~|
 |34|MemLoad|Y|N|N|将P1内存位置的元素压栈|
 |35|MemStore|Y|N|N|出栈一个元素 将其存至P1内存位置|
 |36|ListOpen|Y|N|N|新建一个顺序表来暂时存储数据 P1表示此表的标识符 若已存在 则将原P1表示的表关闭|
@@ -81,7 +81,7 @@ IR大致可以分为以下几类：
 |63|SetClear|Y|N|N|清空第P1个Set|
 |64|MakeRecord|Y|N|N|将栈中P1个元素出栈 构造字符串作为Record并压栈 字符串格式为 [len,string]+ 其中 null string长度为0 len为四个0  元素顺序为 后出栈的元素在字符串前部|
 |65|MakeKey|Y|Y|N|将栈中P1个元素构造字符串作为key并压栈 [len,string]+ 其中 null string长度为0 len为四个0 元素顺序为 后出栈的元素在字符串前部 若P2为非0则P1个元素不出栈 否则P1个元素出栈|
-|66|MakeIdxKey|Y|N|N|将栈中P1个元素字符串化 再将下一个元素出栈 作为整数放在字符串结尾(占4字节) 作为key并压栈 [len,string]+ 其中 null string长度为0 len为四个0 元素顺序为 后出栈的元素在字符串前部 **DELETED**|
+|66|MakeIdxKey|Y|N|N|~~将栈中P1个元素字符串化 再将下一个元素出栈 作为整数放在字符串结尾(占4字节) 作为key并压栈 [len,string]+ 其中 null string长度为0 len为四个0 元素顺序为 后出栈的元素在字符串前部~~|
 |67|Goto|N|Y|N|向第P2条指令跳转|
 |68|JIf|N|Y|N|一个元素出栈 若为true则跳转到P2 string长度0为false|
 |69|Halt|N|N|N|结束程序|
