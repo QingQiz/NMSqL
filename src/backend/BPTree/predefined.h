@@ -12,6 +12,10 @@ typedef int offset_t;
 typedef struct address_t{
     pgno_t pgno;
     offset_t offset;
+    address_t(pgno_t no, offset_t offset){
+        this->pgno = no;
+        this->offset = offset;
+    }
 };
 
 struct key_t{
@@ -20,6 +24,7 @@ struct key_t{
         bzero(data, sizeof(data));
         strcpy(data, str);
     }
+
 };
 
 inline int keycmp(const key_t &a, const key_t &b) {
@@ -27,19 +32,17 @@ inline int keycmp(const key_t &a, const key_t &b) {
     return x == 0 ? strcmp(a.data, b.data) : x;
 }
 
-#define OPERATOR_KEYCMP(type) \
-    bool operator< (const key_t &l, const type &r) {\
-        return keycmp(l, r.key) < 0;\
-    }\
-    bool operator< (const type &l, const key_t &r) {\
-        return keycmp(l.key, r) < 0;\
-    }\
-    bool operator== (const key_t &l, const type &r) {\
-        return keycmp(l, r.key) == 0;\
-    }\
-    bool operator== (const type &l, const key_t &r) {\
-        return keycmp(l.key, r) == 0;\
-    }
+bool operator<(const key_t &l, const key_t &r){
+    return keycmp(l, r) < 0;
+}
+
+bool operator==(const key_t &l, const key_t &r){
+    return keycmp(l, r) == 0;
+}
+
+bool operator<=(const key_t &l, const key_t &r){
+    return keycmp(l, r) <= 0;
+}
 
 
 
@@ -59,14 +62,16 @@ struct meta_t{
 struct index_t {
     key_t key;
     address_t child; // offset of child's node
+    int size;
 };
 
 struct internal_node_t{
+    bool isLeaf;
     address_t parent;
     address_t next;
     address_t prev;
     size_t child_num; 
-    index_t children[10]; // children array, dynamic memory allocation
+    index_t *children; // children array, dynamic memory allocation
 };
 
 struct record_t{
@@ -76,22 +81,22 @@ struct record_t{
 };
 
 struct leaf_node_t {
+    bool isLeaf;
     address_t parent; // parent node offset
     address_t next;
     address_t prev;
     size_t record_num;
-    record_t records[10]; // records array, dynamic memory allocation
+    record_t *records; // records array, dynamic memory allocation
 };
 
 struct btCursor{
     address_t address;
     pgno_t rootPage;
 
-    
 };
 
 /*
- *
+ * 
  */
 struct MemPage{
     bool isLeaf; //True if is leaf node

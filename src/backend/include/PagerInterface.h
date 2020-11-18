@@ -2,7 +2,7 @@
 #define _PAGERINTERFACE_H
 #include <string>
 
-void* getPhyAddr(int virtualAddr);
+void* getMemPage(pgno_t pgno);
 
 // 分配 size 大小的空闲存储
 void* pageMalloc(int size);
