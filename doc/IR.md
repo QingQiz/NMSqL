@@ -62,7 +62,7 @@ IR大致可以分为以下几类：
 |44|SortMakeKey|Y|N|Y|出栈(P3长度)个元素 按照一个P3字符 一个元素 一个\000 的顺序构造串(第一个元素是栈顶) 将构造的串压栈 P1在SortCallback中使用|
 |45|Sort|Y|N|N|对P1标识的Sorter排序|
 |46|SortNext|Y|Y|N|将Sorter中的第一个元素压栈 并移除此元素 若Sorter为空 则跳转到P2|
-|47|SortKey|Y|N|N|将Sorter中第一个元素的key压栈 不改变Sorter|
+|47|SortKey|Y|Y|N|将Sorter中第一个元素的key压栈 不改变Sorter 若Sorter为空 则跳转到P2|
 |48|SortCallback|Y|Y|N|栈顶需要是SortMakeKey的结果 并且P1相同(事实上不检测) 出栈此元素 作为xCallback的参数并执行xCallback|
 |49|SortClose|Y|N|N|关闭P1所指定的Sorter并清空|
 |50|FileOpen|N|N|Y|以只读形式打开P3指定的文件|
