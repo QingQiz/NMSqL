@@ -23,6 +23,7 @@ typedef struct Cursor Cursor;
 #define CURSOR_READ_ONLY 1
 #define CURSOR_WRITE 2
 Cursor* open(const char* indexName, int flag);
+int close(Cursor* cursor);
 int create(const char* dbTable, const char* indexName, CursorType indexType,
            const int indexColumnCnt, const char** indexColumns);
 int find(Cursor* cursor, const void* key);
