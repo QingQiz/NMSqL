@@ -5,18 +5,20 @@
 #include "BPTree.h"
 #include "../include/PagerInterface.h"
 
-ReturnCode move2root(btCursor* cursor){
+ReturnCode BPTree::root(btCursor* cursor){
     // move cursor to the root
     cursor->address = address_t(cursor->rootPage, 0);
 }
 
-ReturnCode search(btCursor* cursor, key_t key){
-    move2root(cursor);
-    BPTreeSearch(cursor, key); //从root开始搜索
+//return 0:not find; 1:find and move the cursor to the data 
+ReturnCode BPTree::search(btCursor* cursor, key_t key){
+    root(cursor);
+    return BPTreeSearch(cursor, key);
 }
 
-ReturnCode BPTreeSearch(btCursor* cursor, key_t key){ //在该节点中进行搜索
-    internal_node_t* node = (internal_node_t*)getMemPage(cursor->rootPage); //get the node the cursor pointed to
+//return 0:not find; 1:find and move the cursor to the data 
+ReturnCode BPTreeSearch(btCursor* cursor, key_t key){ //seach in the node to which the cursor pointed
+    internal_node_t* node = (internal_node_t*)getMemPage(cursor->address.pgno); //get the node the cursor pointed to
     if(!node->isLeaf){
         for(int i = 0; i < node->child_num; i++){
             index_t index = node->children[i];
@@ -40,5 +42,29 @@ ReturnCode BPTreeSearch(btCursor* cursor, key_t key){ //在该节点中进行搜
         }
         return isFound;
     }
+}
+
+ReturnCode BPTree::search(btCursor* cursor, key_t lowerKey, key_t upperKey){
+    search(cursor, lowerKey);
+
+}
+
+
+// move the cursor to the first leaf node
+ReturnCode BPTree::first(btCursor* cursor){
+    cursor->address = metaData.first;
+    return 1;
+}
+
+// move the cursor to the next leaf node
+ReturnCode BPTree::next(btCursor* cursor){
+    leaf_node_t* leaf_node = (leaf_node_t*)getMemPage(cursor->address.pgno);
+    cursor->address = leaf_node->next;
+    return 1;
+}
+
+ReturnCode insert(btCursor* cursor, key_t key, void* data){
+    
+
 
 }

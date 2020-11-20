@@ -21,8 +21,12 @@ ReturnCode close();
 
 ReturnCode search(btCursor*, key_t key);
 ReturnCode search(btCursor*, key_t lowerKey, key_t upperKey);
-ReturnCode insert(btCursor*, key_t key);
+ReturnCode insert(btCursor*, key_t key, void* data);
 ReturnCode remove(btCursor*, key_t key);
+
+ReturnCode first(btCursor*);
+ReturnCode root(btCursor*);
+ReturnCode next(btCursor*);
 
 private:
 meta_t metaData;

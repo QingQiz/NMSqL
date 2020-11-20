@@ -44,6 +44,7 @@ bool operator<=(const key_t &l, const key_t &r){
 
 
 
+
 /* meta information of B+ tree */
 struct meta_t{
     int capacity; // capacity of the node
@@ -54,7 +55,7 @@ struct meta_t{
     int height;
     address_t slot; // where is the place to insert data
     address_t root; // where is the root of B+Tree
-    address_t first; // where is the first of leaf
+    address_t first; // where is the first of leaf node
 };
 
 struct index_t {
