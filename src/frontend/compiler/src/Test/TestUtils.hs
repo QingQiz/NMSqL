@@ -1,8 +1,11 @@
 module TestUtils where
 
+
+import Expr
 import Parser
 import Instruction
 import FFIStructure
+import CodeGenerator
 import CodeGeneratorUtils
 
 import Test.HUnit
@@ -23,6 +26,12 @@ testEnv = (
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
 runCodeGen x = evalState (runExceptT x) testEnv
+
+cExprStr :: String -> CodeGenEnv
+cExprStr s = cExpr $ runParser expr s
+
+cExprWrapperStr :: String -> CodeGenEnv
+cExprWrapperStr s = cExprWrapper $ runParser expr s
 
 runParser :: Parser a -> String -> a
 runParser p s = case parse p s of

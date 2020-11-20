@@ -4,6 +4,8 @@ module CodeGeneratorUtils where
 import Instruction
 import FFIStructure
 
+import Data.List
+import Data.Maybe
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -47,6 +49,12 @@ putLabel l = get >>= (\(a, b, (_, d, e)) -> put (a, b, (l, d, e))) >> getRes
 updateLabel :: CodeGenEnv
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
 
+-- make label
+mkLabel :: Int -> CodeGenEnv
+mkLabel label = appendInst opNoop 0 label ""
+
+mkCurrentLabel :: CodeGenEnv
+mkCurrentLabel = getLabel >>= mkLabel >> updateLabel
 
 -- functions to operate set
 getSet :: ExceptTEnv Int
@@ -90,3 +98,27 @@ getMetadata = fst . fst3 <$> lift get
 
 getFuncDef :: ExceptTEnv [FunctionDef]
 getFuncDef = snd . fst3 <$> lift get
+
+
+-- get column index from metadatas, return: (table-index, column-index)
+columnIdx :: String -> [TableMetadata] -> (Int, Int)
+columnIdx cn mds =
+    let valid     md = cn `elem` metadata_column md
+        getColIdx md = fromMaybe (-1) $ elemIndex cn $ metadata_column md
+     in case findIndices valid mds of
+            [i] -> (i, getColIdx $ mds !! i)
+            []  -> (-1, -1)  -- can not found
+            _   -> (-1,  0)  -- can find column but can not determine which table to use
+
+
+-- get table-column index from metadatas, return: (table-index, column-index)
+tableColumnIdx :: String -> String -> [TableMetadata] -> (Int, Int)
+tableColumnIdx tn cn mds = case findIndex ((==tn) . metadata_name) mds of
+    Nothing -> (-1, 0)     -- no such table
+    Just  i -> case elemIndex cn $ metadata_column $ mds !! i of
+        Nothing -> (-1, 0) -- no such table
+        Just  j -> (i, j)
+
+-- connect CodeGenEnv
+connectCodeGenEnv :: [CodeGenEnv] -> CodeGenEnv
+connectCodeGenEnv = foldl (>>) (return [])
