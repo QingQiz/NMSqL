@@ -13,7 +13,7 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- some data structure
 ----------------------------------------------------------
-type CodeGenCnt   = (Int, Int, Int) -- (label-cnt, set-cnt, cursor-cnt)
+type CodeGenCnt   = (Int, Int) -- (label-cnt, set-cnt)
 
 type FunctionDef  = (String, Int, Maybe OpCode)
 
@@ -41,10 +41,10 @@ clrRes = putRes []
 
 -- functions to operate label
 getLabel :: ExceptTEnv Int
-getLabel = fst3 . trd3 <$> lift get
+getLabel = fst . trd3 <$> lift get
 
 putLabel :: Int -> CodeGenEnv
-putLabel l = get >>= (\(a, b, (_, d, e)) -> put (a, b, (l, d, e))) >> getRes
+putLabel l = get >>= (\(a, b, (_, d)) -> put (a, b, (l, d))) >> getRes
 
 updateLabel :: CodeGenEnv
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
@@ -58,24 +58,13 @@ mkCurrentLabel = getLabel >>= mkLabel >> updateLabel
 
 -- functions to operate set
 getSet :: ExceptTEnv Int
-getSet = snd3 . trd3 <$> lift get
+getSet = snd . trd3 <$> lift get
 
 putSet :: Int -> CodeGenEnv
-putSet s = get >>= (\(a, b, (c, _, e)) -> put (a, b, (c, s, e))) >> getRes
+putSet s = get >>= (\(a, b, (c, _)) -> put (a, b, (c, s))) >> getRes
 
 updateSet :: CodeGenEnv
 updateSet = getSet >>= \x -> putSet $ x + 1
-
-
--- functions to operate cursor
-getCursor :: ExceptTEnv Int
-getCursor = trd3 . trd3 <$> lift get
-
-putCursor :: Int -> CodeGenEnv
-putCursor x = get >>= (\(a, b, (c, d, _)) -> put (a, b, (c, d, x))) >> getRes
-
-updateCursor :: CodeGenEnv
-updateCursor = getCursor >>= \x -> putCursor $ x + 1
 
 
 -- append an instruction to env
