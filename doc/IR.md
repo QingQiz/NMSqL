@@ -52,7 +52,7 @@ IR大致可以分为以下几类：
 |34|MemLoad|Y|N|N|将P1内存位置的元素压栈|
 |35|MemStore|Y|N|N|出栈一个元素 将其存至P1内存位置|
 |36|ListOpen|Y|N|N|新建一个顺序表来暂时存储数据 P1表示此表的标识符 若已存在 则将原P1表示的表关闭|
-|37|ListWrite|Y|N|N|将栈顶的元素写入P1所指向的表中|
+|37|ListWrite|Y|N|N|出栈一个元素 将其写入P1所指向的表中|
 |38|ListRewind|Y|N|N|将P1指向的临时存储中 已读部分重置为此存储开始|
 |39|ListRead|Y|Y|N|从临时存储P1中读取一个元素并压栈 若P1为空 则跳转到P2 此指令会将List当前读取位置++|
 |40|ListClose|Y|N|N|关闭并清空P1所指向的临时存储|
@@ -62,7 +62,7 @@ IR大致可以分为以下几类：
 |44|SortMakeKey|Y|N|Y|出栈(P3长度)个元素 按照一个P3字符 一个元素 一个\000 的顺序构造串(第一个元素是栈顶) 将构造的串压栈 P1在SortCallback中使用|
 |45|Sort|Y|N|N|对P1标识的Sorter排序|
 |46|SortNext|Y|Y|N|将Sorter中的第一个元素压栈 并移除此元素 若Sorter为空 则跳转到P2|
-|47|SortKey|Y|N|N|将Sorter中第一个元素的key压栈 不改变Sorter|
+|47|SortKey|Y|Y|N|将Sorter中第一个元素的key压栈 不改变Sorter 若Sorter为空 则跳转到P2|
 |48|SortCallback|Y|Y|N|栈顶需要是SortMakeKey的结果 并且P1相同(事实上不检测) 出栈此元素 作为xCallback的参数并执行xCallback|
 |49|SortClose|Y|N|N|关闭P1所指定的Sorter并清空|
 |50|FileOpen|N|N|Y|以只读形式打开P3指定的文件|
