@@ -21,7 +21,7 @@ testEnv = (
      ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 0]
     ,[("max", 2, Just opMax), ("min", 2, Just opMin), ("substr", 3, Just opSubstr)])
     , []
-    , (0, 0, 0))
+    , (0, 0))
 
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
