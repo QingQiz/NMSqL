@@ -8,6 +8,7 @@
 struct DBECursor{
 	void* key;
 	void* cursor;
+	void* rootPage;
 };
 
 #endif //DBENGINE_DBENGINE_H
