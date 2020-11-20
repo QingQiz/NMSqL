@@ -330,7 +330,7 @@ codeGeneratorTest =
                               ,Instruction opRewind   0 0 ""
                               ,Instruction opNoop     0 2 ""
                               ,Instruction opNext     0 1 ""]
-                     /: (putLabel 3 >> cExprStr "xxx.b > 10 and yyy.a > 9")
+                     /: (putLabel 3 >> cExprStr "yyy.a > 9 and xxx.b > 10")
                      >: Right [Instruction opNot      0 0 ""
                               ,Instruction opJIf      0 2 ""
                               ,Instruction opTempInst 0 0 ""

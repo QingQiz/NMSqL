@@ -41,20 +41,11 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                                   >> mvCursor
                                   >> wrapper' tbs idxes keys lab
 
-        wrapper' _ _ _ labEnd =
-            let rewind  = map (\tbName -> appendInst opRewind (getTbCursor tbName) 0      ""
-                                       >> appendInst opNext   (getTbCursor tbName) labEnd "") tbNotUseIdx
-             in case rewind of
+        wrapper' _ _ _ labEnd = case tbNotUseIdx of
                  [] -> connectCodeGenEnv (condExpr' labEnd)
                     >> appendInst opTempInst 0 0 ""
                     >> appendInst opGoto 0 labEnd ""
-                 _  -> getLabel >>= \lab
-                    -> updateLabel
-                    >> connectCodeGenEnv rewind
-                    >> mkLabel lab
-                    >> connectCodeGenEnv (condExpr' lab)
-                    >> appendInst opTempInst 0 0 ""
-                    >> appendInst opGoto 0 lab ""
+                 _  -> wrapperCond tbNotUseIdx labEnd
             where
                 condExpr' lab = case condExpr of
                     [] -> []
@@ -62,6 +53,14 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                           ,appendInst opNot 0 0 ""
                           ,appendInst opJIf 0 lab ""]
                 tbNotUseIdx  = filter (`notElem` tbNames) allTbNames
+
+                wrapperCond (tb:tbs) labE = appendInst opRewind (getTbCursor tb) 0    ""
+                    >> getLabel >>= \lab -> mkCurrentLabel
+                    >> appendInst opNext (getTbCursor tb) labE ""
+                    >> wrapperCond tbs lab
+                wrapperCond _ labE = connectCodeGenEnv (condExpr' labE)
+                    >> appendInst opTempInst 0 0    ""
+                    >> appendInst opGoto     0 labE ""
 
         -- some help functions
         idxNames = map snd3 inp
