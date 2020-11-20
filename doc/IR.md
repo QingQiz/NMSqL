@@ -60,7 +60,7 @@ IR大致可以分为以下几类：
 |42|SortPut|Y|N|N|将栈顶作为key 栈中第二个元素为value 将其放入sorter中 出栈此两个元素|
 |43|SortMakeRec|Y|N|N|将P1个元素出栈 构造成callback的参数并压栈 TODO:研究一下|
 |44|SortMakeKey|Y|N|Y|出栈(P3长度)个元素 按照一个P3字符 一个元素 一个\000 的顺序构造串(第一个元素是栈顶) 将构造的串压栈 P1在SortCallback中使用|
-|45|Sort|Y|N|N|对P1标识的Sorter排序|
+|45|Sort|Y|Y|N|对P1标识的Sorter排序|
 |46|SortNext|Y|Y|N|将Sorter中的第一个元素压栈 并移除此元素 若Sorter为空 则跳转到P2|
 |47|SortKey|Y|Y|N|将Sorter中第一个元素的key压栈 不改变Sorter 若Sorter为空 则跳转到P2|
 |48|SortCallback|Y|Y|N|栈顶需要是SortMakeKey的结果 并且P1相同(事实上不检测) 出栈此元素 作为xCallback的参数并执行xCallback|
@@ -130,6 +130,8 @@ IR大致可以分为以下几类：
 |112|SetGe|N|Y|N|两个元素出栈 若(后出栈的>=先出栈的) 则将P2压栈，否则将 `0` 压栈|
 |113|SetIsNull|N|Y|N|出栈一个元素 若为Null则将P2压栈，否则将 `0` 压栈|
 |114|SetNotNull|N|Y|N|出栈一个元素 若不为Null则将P2压栈，否则将 `0` 压栈|
+|115|SortSetDesc|Y|Y|N|第P1个sorter中第P2列设置为降序排序|
+
 ## others
 
 ### callback函数
