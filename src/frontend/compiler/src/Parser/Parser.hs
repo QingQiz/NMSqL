@@ -187,7 +187,11 @@ value = (ValStr <$> strValue)       <|>
 
 
 -- identification matches regex: `[_a-zA-Z]+[_a-zA-Z0-9]*`
-ident = (++)
+ident = anyIdent >>= \case
+    "null" -> alwaysFail >> return ""
+    oth    -> return oth
+
+anyIdent = (++)
     <$> (many space >> some (letter <|> char '_'))
     <*> many (letter <|> digit <|> char '_')
 
@@ -322,7 +326,7 @@ expr = pd1 where
     --       | column-name
     --       | value
     pd0 = surroundByBrackets pd1                                                                <|>
-          (TableColumn  <$> ident <*> (spcChar '.' >> ident))                                   <|>
+          (TableColumn  <$> ident <*> (spcChar '.' >> anyIdent))                                <|>
           (FunctionCall . map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))   <|>
           (Column       <$> ident)                                                              <|>
           (ConstValue   <$> value)                                                              <|>
