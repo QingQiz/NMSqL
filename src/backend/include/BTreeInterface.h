@@ -5,6 +5,7 @@ class BTreeIterator {
 private:
     void* currentPlace;
 public:
+	BTreeIterator(void* currentPlace);
     int find(const void* key);
 
     void* getKey();
