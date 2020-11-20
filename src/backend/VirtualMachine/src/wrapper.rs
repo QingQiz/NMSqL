@@ -74,6 +74,15 @@ pub mod wrapper {
     pub fn getTableColumns(tableName: &str) -> &[&str] {
       unimplemented!()
     }
+    pub fn transaction() -> i32 {
+      unimplemented!()
+    }
+    pub fn commit() -> i32 {
+      unimplemented!()
+    }
+    pub fn rollback() -> i32 {
+      unimplemented!()
+    }
   }
   pub mod cLayer {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
