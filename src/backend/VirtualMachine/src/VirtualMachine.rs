@@ -1,6 +1,7 @@
 pub mod VirtualMachine {
   use crate::wrapper::wrapper::rustLayer as DbWrapper;
   use crate::wrapper::wrapper::rustLayer::Cursor;
+  use std::cmp::Ordering;
   #[derive(Debug, Copy, Clone, FromPrimitive)]
   enum VmOpType {
     OP_Transaction,
@@ -117,6 +118,7 @@ pub mod VirtualMachine {
     OP_SetGe,
     OP_SetIsNull,
     OP_SetNotNull,
+    OP_SortSetDesc,
   }
 
   #[derive(Debug, Clone)]
@@ -198,11 +200,31 @@ pub mod VirtualMachine {
   }
 
   impl VmMemString {
+    const MEM_FLAG_INT: u8 = 1;
+    const MEM_FLAG_DOUBLE: u8 = 2;
+    const MEM_FLAG_STRING: u8 = 3;
+    const MEM_FLAG_NULL: u8 = 4;
     pub fn new(string: Vec<u8>) -> Self {
       VmMemString { string }
     }
     pub fn removeHead(self: Self) -> Vec<u8> {
-      self.string[4..].to_vec()
+      self[4..].to_vec()
+    }
+    pub fn iter(self: &Self) -> VmMemStringIterator {
+      VmMemStringIterator::new(self)
+    }
+    fn canGetData(self: &Self, lo: usize) -> bool {
+      lo + 3 < self.len()
+    }
+    pub fn getLen(self: &Self, lo: usize) -> Option<usize> {
+      if self.canGetData(lo) {
+        Some((self[lo] as usize) << 8 | (self[lo + 1] as usize))
+      } else {
+        None
+      }
+    }
+    pub fn getFlag(data: &[u8]) -> u8 {
+      data[2]
     }
   }
 
@@ -210,6 +232,35 @@ pub mod VirtualMachine {
     type Target = Vec<u8>;
     fn deref(&self) -> &Self::Target {
       &self.string
+    }
+  }
+
+  struct VmMemStringIterator<'a> {
+    data: &'a VmMemString,
+    lo: usize,
+  }
+
+  impl<'a> VmMemStringIterator<'a> {
+    fn new(data: &'a VmMemString) -> Self {
+      VmMemStringIterator { data, lo: 0 }
+    }
+  }
+
+  impl<'a> Iterator for VmMemStringIterator<'a> {
+    type Item = &'a [u8];
+    fn next(&mut self) -> Option<Self::Item> {
+      if_chain!(
+          if let Some(len) = self.data.getLen(self.lo);
+          if self.lo+3+len < self.data.len();
+          then {
+              let rawLo = self.lo;
+              self.lo+=4+len;
+              Some(&self.data[rawLo..self.lo])
+          }
+          else {
+              None
+          }
+      )
     }
   }
 
@@ -221,22 +272,18 @@ pub mod VirtualMachine {
     MEM_NULL,
   }
   impl VmMem {
-    const MEM_FLAG_INT: u8 = 1;
-    const MEM_FLAG_DOUBLE: u8 = 2;
-    const MEM_FLAG_STRING: u8 = 3;
-    const MEM_FLAG_NULL: u8 = 4;
     /// turn value into string and make it like C string
     pub fn stringify(self: Self) -> VmMemString {
       match self {
         VmMem::MEM_INT(x) => {
           let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
-          VmMem::genVmString(ret, VmMem::MEM_FLAG_INT)
+          VmMem::genVmString(ret, VmMemString::MEM_FLAG_INT)
         }
         VmMem::MEM_DOUBLE(x) => {
           let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
-          VmMem::genVmString(ret, VmMem::MEM_FLAG_DOUBLE)
+          VmMem::genVmString(ret, VmMemString::MEM_FLAG_DOUBLE)
         }
-        VmMem::MEM_NULL => VmMemString::new(vec![0, 0, VmMem::MEM_FLAG_NULL, 0]),
+        VmMem::MEM_NULL => VmMemString::new(vec![0, 0, VmMemString::MEM_FLAG_NULL, 0]),
         VmMem::MEM_STRING(x) => x,
       }
     }
@@ -347,19 +394,110 @@ pub mod VirtualMachine {
 
   #[derive(Default, Clone)]
   struct VmSorter {
-    datas: Vec<[Vec<u8>; 2]>,
+    datas: Vec<Vec<VmMemString>>,
     // true:desc false:asc
     orders: Vec<bool>,
   }
 
   impl VmSorter {
     pub fn sort(self: &mut Self) {
+      let orders = self.orders.clone();
       self.datas.sort_by(|a, b| {
-        let keyA = &a[0];
-        let keyB = &b[0];
-
-        unimplemented!()
+        let mut ita = a[0].iter();
+        let mut itb = b[0].iter();
+        let mut index = 0;
+        loop {
+          let akey = ita.next();
+          let bkey = itb.next();
+          if let (&None, &None) = (&akey, &bkey) {
+            break Ordering::Equal;
+          }
+          if let (Some(akey), Some(bkey)) = (akey, bkey) {
+            if akey == bkey {
+              index += 1;
+              continue;
+            }
+            let aflag = VmMemString::getFlag(akey);
+            let bflag = VmMemString::getFlag(bkey);
+            if aflag != bflag {
+              panic!("error in sort: aflag={:?} bflag={:?}", aflag, bflag);
+            }
+            let avalue = String::from_utf8_lossy(&akey[4..]);
+            let bvalue = String::from_utf8_lossy(&bkey[4..]);
+            match aflag {
+              VmMemString::MEM_FLAG_INT => {
+                let avalue: i128 = avalue
+                  .parse()
+                  .expect(format!("fail to parse: avalue={}", avalue).as_str());
+                let bvalue: i128 = bvalue
+                  .parse()
+                  .expect(format!("fail to parse: avalue={}", avalue).as_str());
+                if orders[index] {
+                  break bvalue.cmp(&avalue);
+                } else {
+                  break avalue.cmp(&bvalue);
+                }
+              }
+              VmMemString::MEM_FLAG_DOUBLE => {
+                let avalue: f64 = avalue
+                  .parse()
+                  .expect(format!("fail to parse: avalue={}", avalue).as_str());
+                let bvalue: f64 = bvalue
+                  .parse()
+                  .expect(format!("fail to parse: avalue={}", avalue).as_str());
+                if orders[index] {
+                  break bvalue.partial_cmp(&avalue).expect(
+                    format!("fail to compare: avalue={} bvalue={}", avalue, bvalue).as_str(),
+                  );
+                } else {
+                  break avalue.partial_cmp(&bvalue).expect(
+                    format!("fail to compare: avalue={} bvalue={}", avalue, bvalue).as_str(),
+                  );
+                }
+              }
+              VmMemString::MEM_FLAG_STRING => {
+                if orders[index] {
+                  break bvalue.cmp(&avalue);
+                } else {
+                  break avalue.cmp(&bvalue);
+                }
+              }
+              _ => {
+                index += 1;
+                continue;
+              }
+            }
+          } else {
+            panic!("error in sort: akey={:?} bkey={:?}", akey, bkey);
+          }
+        }
       });
+      self.datas.reverse();
+    }
+    pub fn push(self: &mut Self, key: VmMemString, value: VmMemString) {
+      self.datas.push(vec![key, value]);
+    }
+    pub fn setDesc(self: &mut Self, index: usize) {
+      if index >= self.orders.len() {
+        self.orders.resize(index + 1, false);
+      }
+      self.orders[index] = true;
+    }
+    pub fn clear(self: &mut Self) {
+      self.datas.clear();
+      self.orders.clear();
+    }
+    pub fn pop(self: &mut Self) -> Option<VmMemString> {
+      match self.datas.len() {
+        0 => None,
+        _ => Some(self.datas.pop().unwrap().pop().unwrap()),
+      }
+    }
+    pub fn topKey(self: &mut Self) -> Option<VmMemString> {
+      match self.datas.len() {
+        0 => None,
+        _ => Some(self.datas.last().unwrap()[0].clone()),
+      }
     }
   }
 
@@ -371,8 +509,10 @@ pub mod VirtualMachine {
     resultColumnNames: Vec<String>,
     fcnt: i32,
     lists: Vec<VmList>,
+    sorters: Vec<VmSorter>,
   }
 
+  /// method for stack
   impl VirtualMachine {
     pub fn new() -> Self {
       VirtualMachine::default()
@@ -402,6 +542,7 @@ pub mod VirtualMachine {
     }
   }
 
+  /// method for cursor
   impl VirtualMachine {
     pub fn setCursor(self: &mut Self, num: usize, cursor: VmCursor) {
       if (self.vmCursors.len() <= num) {
@@ -424,6 +565,7 @@ pub mod VirtualMachine {
     }
   }
 
+  /// method for list
   impl VirtualMachine {
     pub fn openList(self: &mut Self, num: usize) {
       if num <= self.lists.len() {
@@ -456,6 +598,50 @@ pub mod VirtualMachine {
     pub fn closeList(self: &mut Self, num: usize) -> Result<(), String> {
       self.getList(num)?.clear();
       Ok(())
+    }
+  }
+
+  /// method for sorter
+  impl VirtualMachine {
+    pub fn openSorter(self: &mut Self, num: usize) {
+      if num >= self.sorters.len() {
+        self.sorters.resize(num + 1, VmSorter::default());
+      }
+      self.sorters[num].clear();
+    }
+    pub fn getSorter(self: &mut Self, num: usize) -> Result<&mut VmSorter, String> {
+      if num < self.sorters.len() {
+        Ok(&mut self.sorters[num])
+      } else {
+        Err(format!(
+          "sorter out of bound num={} size={}",
+          num,
+          self.sorters.len()
+        ))
+      }
+    }
+    pub fn sorterPut(
+      self: &mut Self,
+      num: usize,
+      key: VmMemString,
+      value: VmMemString,
+    ) -> Result<(), String> {
+      Ok(self.getSorter(num)?.push(key, value))
+    }
+    pub fn sortSorter(self: &mut Self, num: usize) -> Result<(), String> {
+      Ok(self.getSorter(num)?.sort())
+    }
+    pub fn sorterGetValue(self: &mut Self, num: usize) -> Result<Option<VmMemString>, String> {
+      Ok(self.getSorter(num)?.pop())
+    }
+    pub fn sorterGetKey(self: &mut Self, num: usize) -> Result<Option<VmMemString>, String> {
+      Ok(self.getSorter(num)?.topKey())
+    }
+    pub fn sorterClose(self: &mut Self, num: usize) -> Result<(), String> {
+      Ok(self.getSorter(num)?.clear())
+    }
+    pub fn sorterSetDesc(self: &mut Self, num: usize, column: usize) -> Result<(), String> {
+      Ok(self.getSorter(num)?.setDesc(column))
     }
   }
 
@@ -661,15 +847,41 @@ pub mod VirtualMachine {
         VmOpType::OP_ListClose => {
           vm.closeList(nowOp.p1 as usize)?;
         }
-        VmOpType::OP_SortOpen => unimplemented!(),
-        VmOpType::OP_SortPut => unimplemented!(),
+        VmOpType::OP_SortOpen => {
+          vm.openSorter(nowOp.p1 as usize);
+        }
+        VmOpType::OP_SortPut => {
+          let key = popOneMem(&mut vm)?.stringify();
+          let value = popOneMem(&mut vm)?.stringify();
+          vm.sorterPut(nowOp.p1 as usize, key, value)?;
+        }
         VmOpType::OP_SortMakeRec => unimplemented!(),
         VmOpType::OP_SortMakeKey => unimplemented!(),
-        VmOpType::OP_Sort => unimplemented!(),
-        VmOpType::OP_SortNext => unimplemented!(),
-        VmOpType::OP_SortKey => unimplemented!(),
+        VmOpType::OP_Sort => {
+          vm.sortSorter(nowOp.p1 as usize)?;
+        }
+        VmOpType::OP_SortNext => {
+          let value = vm.sorterGetValue(nowOp.p1 as usize)?;
+          match value {
+            None => {
+              pc = nowOp.p2 as usize - 1;
+            }
+            Some(x) => vm.pushStack(VmMem::MEM_STRING(x)),
+          }
+        }
+        VmOpType::OP_SortKey => {
+          let key = vm.sorterGetKey(nowOp.p1 as usize)?;
+          match key {
+            None => {
+              pc = nowOp.p2 as usize - 1;
+            }
+            Some(x) => vm.pushStack(VmMem::MEM_STRING(x)),
+          }
+        }
         VmOpType::OP_SortCallback => unimplemented!(),
-        VmOpType::OP_SortClose => unimplemented!(),
+        VmOpType::OP_SortClose => {
+          vm.sorterClose(nowOp.p1 as usize)?;
+        }
         VmOpType::OP_FileOpen => unimplemented!(),
         VmOpType::OP_FileRead => unimplemented!(),
         VmOpType::OP_FileColumn => unimplemented!(),
@@ -720,17 +932,14 @@ pub mod VirtualMachine {
         }
         VmOpType::OP_JIf => {
           let a = popOneMem(&mut vm)?;
-          match a {
-            VmMem::MEM_INT(x) if x != 0 => {
-              pc = (nowOp.p2 - 1) as usize;
-            }
-            VmMem::MEM_STRING(x) if a.getStringRawLength() != 0 => {
-              pc = (nowOp.p2 - 1) as usize;
-            }
-            VmMem::MEM_DOUBLE(x) if x.ne(&0.0) => {
-              pc = (nowOp.p2 - 1) as usize;
-            }
-            _ => {}
+          let flag = match a {
+            VmMem::MEM_INT(x) if x != 0 => 1,
+            VmMem::MEM_STRING(x) if a.getStringRawLength() != 0 => 1,
+            VmMem::MEM_DOUBLE(x) if x.ne(&0.0) => 1,
+            _ => 0,
+          };
+          if nowOp.p1 != flag {
+            pc = nowOp.p2 as usize - 1;
           }
         }
         // stop the vm
@@ -753,7 +962,7 @@ pub mod VirtualMachine {
         // a string may be used multiple times, so clone is needed here
         VmOpType::OP_String => vm.pushStack(VmMem::MEM_STRING(VmMem::genVmString(
           nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
-          VmMem::MEM_FLAG_STRING,
+          VmMemString::MEM_FLAG_STRING,
         ))),
         // push null to the stack
         VmOpType::OP_Null => vm.pushStack(VmMem::MEM_NULL),
@@ -969,7 +1178,7 @@ pub mod VirtualMachine {
               .map(|x| x.removeHead())
               .collect::<Vec<Vec<u8>>>()
               .join(nowOp.p3.as_bytes()),
-            VmMem::MEM_FLAG_STRING,
+            VmMemString::MEM_FLAG_STRING,
           )));
         }
         VmOpType::OP_Noop => {}
@@ -986,6 +1195,9 @@ pub mod VirtualMachine {
         VmOpType::OP_SetGe => unimplemented!(),
         VmOpType::OP_SetIsNull => unimplemented!(),
         VmOpType::OP_SetNotNull => unimplemented!(),
+        VmOpType::OP_SortSetDesc => {
+          vm.sorterSetDesc(nowOp.p1 as usize, nowOp.p2 as usize)?;
+        }
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));
         }
