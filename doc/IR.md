@@ -125,6 +125,7 @@ IR大致可以分为以下几类：
 |113|SetIsNull|N|Y|N|出栈一个元素 若为Null则将P2压栈，否则将 `0` 压栈|
 |114|SetNotNull|N|Y|N|出栈一个元素 若不为Null则将P2压栈，否则将 `0` 压栈|
 |115|SortSetDesc|Y|Y|N|第P1个sorter中第P2列设置为降序排序|
+|116|SetOpen|Y|N|N|开启一个编号为P1的set|
 
 ### Removed IR
 
