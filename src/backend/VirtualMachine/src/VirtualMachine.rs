@@ -166,7 +166,7 @@ pub mod VirtualMachine {
   #[derive(Clone)]
   struct VmCursor {
     cursor: *mut Cursor,
-    key: Vec<u8>,
+    key: VmMemString,
     isIdx: bool,
     keyAsData: bool,
   }
@@ -174,8 +174,9 @@ pub mod VirtualMachine {
     fn default() -> Self {
       VmCursor {
         cursor: 0 as *mut Cursor,
+        key: VmMemString::default(),
         isIdx: false,
-        key: Vec::new(),
+        keyAsData: false,
       }
     }
   }
@@ -183,16 +184,40 @@ pub mod VirtualMachine {
     fn new(cursor: *mut Cursor) -> Self {
       VmCursor {
         cursor: cursor,
+        key: VmMemString::default(),
         isIdx: false,
-        key: Vec::new(),
+        keyAsData: false,
       }
     }
   }
+
+  /// string in format of [len(2),flag(1),null(1),string(len)]  
+  #[derive(Debug, Clone, PartialEq, PartialOrd, Default)]
+  struct VmMemString {
+    string: Vec<u8>,
+  }
+
+  impl VmMemString {
+    pub fn new(string: Vec<u8>) -> Self {
+      VmMemString { string }
+    }
+    pub fn removeHead(self: Self) -> Vec<u8> {
+      self.string[4..].to_vec()
+    }
+  }
+
+  impl std::ops::Deref for VmMemString {
+    type Target = Vec<u8>;
+    fn deref(&self) -> &Self::Target {
+      &self.string
+    }
+  }
+
   #[derive(Debug, Clone, PartialEq, PartialOrd)]
   enum VmMem {
     MEM_INT(i128),
     MEM_DOUBLE(f64),
-    MEM_STRING(Vec<u8>),
+    MEM_STRING(VmMemString),
     MEM_NULL,
   }
   impl VmMem {
@@ -201,7 +226,7 @@ pub mod VirtualMachine {
     const MEM_FLAG_STRING: u8 = 3;
     const MEM_FLAG_NULL: u8 = 4;
     /// turn value into string and make it like C string
-    pub fn stringify(self: Self) -> Vec<u8> {
+    pub fn stringify(self: Self) -> VmMemString {
       match self {
         VmMem::MEM_INT(x) => {
           let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
@@ -211,7 +236,7 @@ pub mod VirtualMachine {
           let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
           VmMem::genVmString(ret, VmMem::MEM_FLAG_DOUBLE)
         }
-        VmMem::MEM_NULL => vec![0, 0, VmMem::MEM_FLAG_NULL, 0],
+        VmMem::MEM_NULL => VmMemString::new(vec![0, 0, VmMem::MEM_FLAG_NULL, 0]),
         VmMem::MEM_STRING(x) => x,
       }
     }
@@ -247,19 +272,21 @@ pub mod VirtualMachine {
           ),
       }
     }
-    pub fn genVmString(string: Vec<u8>, flag: u8) -> Vec<u8> {
+    pub fn genVmString(string: Vec<u8>, flag: u8) -> VmMemString {
       let len = string.len();
-      [
-        vec![((len >> 8) & 0xff) as u8, ((len) & 0xff) as u8],
-        vec![flag, 0],
-        string,
-      ]
-      .concat()
+      VmMemString::new(
+        [
+          vec![((len >> 8) & 0xff) as u8, ((len) & 0xff) as u8],
+          vec![flag, 0],
+          string,
+        ]
+        .concat(),
+      )
     }
     pub fn getStringRawLength(self: &Self) -> usize {
       if let VmMem::MEM_STRING(s) = self {
         let mut len = 0;
-        for i in 0..4 {
+        for i in 0..2 {
           len = (len << 8) + (s[i] as usize);
         }
         len
@@ -278,18 +305,21 @@ pub mod VirtualMachine {
       lo + 3 < data.len()
     }
     pub fn getColumn(data: Vec<u8>, num: usize) -> Result<Vec<u8>, String> {
+      Ok(VmMem::getColumnSlice(&data, num)?.to_vec())
+    }
+    pub fn getColumnSlice(data: &Vec<u8>, num: usize) -> Result<&[u8], String> {
       let mut lo = 0;
       for i in 0..num {
         lo += VmMem::getLen(&data, lo)? + 4;
       }
       let len = VmMem::getLen(&data, lo)?;
-      Ok(data[lo..lo + 4 + len].to_vec())
+      Ok(&data[lo..lo + 4 + len])
     }
   }
 
   #[derive(Default, Clone)]
   struct VmList {
-    datas: Vec<Vec<u8>>,
+    datas: Vec<VmMemString>,
     nowRead: usize,
   }
 
@@ -298,13 +328,13 @@ pub mod VirtualMachine {
       self.datas.clear();
       self.nowRead = 0;
     }
-    pub fn push(self: &mut Self, data: Vec<u8>) {
+    pub fn push(self: &mut Self, data: VmMemString) {
       self.datas.push(data);
     }
     pub fn rewind(self: &mut Self) {
       self.nowRead = 0;
     }
-    pub fn read(self: &mut Self) -> Option<Vec<u8>> {
+    pub fn read(self: &mut Self) -> Option<VmMemString> {
       if self.nowRead == self.datas.len() {
         None
       } else {
@@ -316,7 +346,22 @@ pub mod VirtualMachine {
   }
 
   #[derive(Default, Clone)]
-  struct VmSorter {}
+  struct VmSorter {
+    datas: Vec<[Vec<u8>; 2]>,
+    // true:desc false:asc
+    orders: Vec<bool>,
+  }
+
+  impl VmSorter {
+    pub fn sort(self: &mut Self) {
+      self.datas.sort_by(|a, b| {
+        let keyA = &a[0];
+        let keyB = &b[0];
+
+        unimplemented!()
+      });
+    }
+  }
 
   #[derive(Default)]
   struct VirtualMachine {
@@ -397,7 +442,7 @@ pub mod VirtualMachine {
         Ok(&mut self.lists[num])
       }
     }
-    pub fn writeList(self: &mut Self, num: usize, data: Vec<u8>) -> Result<(), String> {
+    pub fn writeList(self: &mut Self, num: usize, data: VmMemString) -> Result<(), String> {
       self.getList(num)?.push(data);
       Ok(())
     }
@@ -405,7 +450,7 @@ pub mod VirtualMachine {
       self.getList(num)?.rewind();
       Ok(())
     }
-    pub fn readList(self: &mut Self, num: usize) -> Result<Option<Vec<u8>>, String> {
+    pub fn readList(self: &mut Self, num: usize) -> Result<Option<VmMemString>, String> {
       Ok(self.getList(num)?.read())
     }
     pub fn closeList(self: &mut Self, num: usize) -> Result<(), String> {
@@ -501,7 +546,7 @@ pub mod VirtualMachine {
             let cursor = vm.getCursor(nowOp.p1 as usize)?;
             DbWrapper::find(cursor.cursor, &key);
             let findKey = DbWrapper::getKey(cursor.cursor);
-            if findKey.len() != 0 && key == findKey {
+            if findKey.len() != 0 && key.string == findKey {
               found = true;
             }
             match nowOp.vmOpType {
@@ -533,10 +578,10 @@ pub mod VirtualMachine {
             true => DbWrapper::getKey(cursor.cursor),
             false => DbWrapper::getValue(cursor.cursor),
           };
-          vm.pushStack(VmMem::MEM_STRING(VmMem::getColumn(
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(VmMem::getColumn(
             data,
             nowOp.p2 as usize,
-          )?));
+          )?)));
         }
         VmOpType::OP_KeyAsData => {
           let mut cursor = vm.getCursor(nowOp.p1 as usize)?;
@@ -550,7 +595,7 @@ pub mod VirtualMachine {
         VmOpType::OP_FullKey => {
           let cursor = vm.getCursor(nowOp.p1 as usize)?;
           let key = DbWrapper::getKey(cursor.cursor);
-          vm.pushStack(VmMem::MEM_STRING(key));
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(key)));
         }
         VmOpType::OP_Rewind => {
           let cursor = vm.getCursor(nowOp.p1 as usize)?;
@@ -642,21 +687,14 @@ pub mod VirtualMachine {
         VmOpType::OP_MakeRecord => {
           // TODO: need change
           let poped = vm.popStack(nowOp.p1)?;
-          let mut result = poped
+          let result = poped
             .into_iter()
             .rev()
-            .filter(|x| match x {
-              VmMem::MEM_NULL => false,
-              _ => true,
-            })
             .map(VmMem::stringify)
+            .map(|x| x.string)
             .collect::<Vec<Vec<u8>>>()
             .concat();
-          let len = {
-            let len = result.len() as u16;
-            vec![(len >> 8) as u8, (len & 0xff) as u8]
-          };
-          vm.pushStack(VmMem::MEM_STRING([len, result].concat()));
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(result)));
         }
         VmOpType::OP_MakeKey => {
           // TODO: need change
@@ -666,37 +704,16 @@ pub mod VirtualMachine {
               vm.pushStack(x.clone())
             }
           }
-          vm.pushStack(VmMem::MEM_STRING(
-            poped
-              .into_iter()
-              .rev()
-              .map(VmMem::stringify)
-              .collect::<Vec<Vec<u8>>>()
-              .concat(),
-          ))
+          let result = poped
+            .into_iter()
+            .rev()
+            .map(VmMem::stringify)
+            .map(|x| x.string)
+            .collect::<Vec<Vec<u8>>>()
+            .concat();
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(result)));
         }
-        VmOpType::OP_MakeIdxKey => {
-          // TODO: need change
-          let poped = vm.popStack(nowOp.p1)?;
-          let key = popOneMem(&mut vm)?.integerify();
-          vm.pushStack(VmMem::MEM_STRING(
-            [
-              vec![
-                ((key >> 24) & 0xff) as u8,
-                ((key >> 16) & 0xff) as u8,
-                ((key >> 8) & 0xff) as u8,
-                ((key) & 0xff) as u8,
-              ],
-              poped
-                .into_iter()
-                .rev()
-                .map(VmMem::stringify)
-                .collect::<Vec<Vec<u8>>>()
-                .concat(),
-            ]
-            .concat(),
-          ))
-        }
+        VmOpType::OP_MakeIdxKey => unimplemented!(),
         // goto
         VmOpType::OP_Goto => {
           pc = nowOp.p2 as usize - 1;
@@ -949,6 +966,7 @@ pub mod VirtualMachine {
               .into_iter()
               .rev()
               .map(VmMem::stringify)
+              .map(|x| x.removeHead())
               .collect::<Vec<Vec<u8>>>()
               .join(nowOp.p3.as_bytes()),
             VmMem::MEM_FLAG_STRING,
