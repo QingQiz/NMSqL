@@ -114,7 +114,7 @@ codeGeneratorTest =
     , "binary expr" ~: "or"
                     ~: cExprStr "c or d"
                     ?: cExprStr "c"
-                    >: Right [Instruction opJIf 0 0 ""]
+                    >: Right [Instruction opJIf     0 0 ""]
                     /: cExprStr "d"
                     >: Right [Instruction opJIf     0 0 ""
                              ,Instruction opInteger 0 0 ""
@@ -215,10 +215,10 @@ codeGeneratorTest =
     , "between"     ~: ""
                     ~: cExprStr "x between c and d"
                     ?: cExprStr "x"
-                    >: Right [Instruction opDup 0 0 ""]
+                    >: Right [Instruction opDup     0 0 ""]
                     /: cExprStr "d"
-                    >: Right [Instruction opJGt 0 0 ""
-                             ,Instruction opDup 0 0 ""]
+                    >: Right [Instruction opJGt     0 0 ""
+                             ,Instruction opDup     0 0 ""]
                     /: cExprStr "c"
                     >: Right [Instruction opJLt     0 0 ""
                              ,Instruction opPop     1 0 ""
@@ -234,13 +234,13 @@ codeGeneratorTest =
                     ?: Right [Instruction opInteger 0 0 ""]
 
     , "in expr"     ~: ""
-                    ~: putRes [Instruction opNoop 0 (-1) ""]
+                    ~: putRes [Instruction opNoop     0 (-1) ""]
                     +: cExprStr "x in (1,2)"
-                    ?: Right [Instruction opInteger 1 0 ""
+                    ?: Right [Instruction opInteger   1 0 ""
                              ,Instruction opSetInsert 0 0 ""
-                             ,Instruction opInteger 2 0 ""
+                             ,Instruction opInteger   2 0 ""
                              ,Instruction opSetInsert 0 0 ""
-                             ,Instruction opNoop 0 (-1) ""]
+                             ,Instruction opNoop      0 (-1) ""]
                     /: cExprStr "x"
                     >: Right [Instruction opSetFound 0 0 ""]
                     /: toBool
@@ -280,7 +280,6 @@ codeGeneratorTest =
 ----------------------------------------------------------
 -- Test code generator: cExprWrapper
 ----------------------------------------------------------
--- NOTE the expr collected first is at the end of the list, so expr should be reversed
 -- XXX  expr order can be optimized
 {-
 
@@ -291,9 +290,7 @@ codeGeneratorTest =
     expr "yyy.a > 9 and xxx.b > 10"                   next   "yyy"
                                                       expr "yyy.a > 9"
 -}
-
-    , "test index"  ~: "" -- use index idx_yyy_d and idx_xxx_a_b, eq-pair xxx.a = 3 fall back to simple expr
-                          -- index: (xxx.a, xxx.b) = (3, 4)
+    , "test index"  ~: "" -- index: (xxx.a, xxx.b) = (3, 4)
                           -- index: yyy.d = 1 + 2
                           -- cond : yyy.a = 1 and yyy.b > 10
                     ~: cExprWrapperStr "d = 1 + 2 and 4 = xxx.b  and xxx.a = 3 and yyy.a = 1 and yyy.b > 10"
@@ -320,8 +317,7 @@ codeGeneratorTest =
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
                              ,Instruction opClose    1 0 ""]
-    , "test index"  ~: "" -- only use index idx_yyy_d
-                          -- index: yyy.d = 1
+    , "test index"  ~: "" -- index: yyy.d = 1
                           -- cond : xxx.b > 10 and yyy.a > 9
                     ~: cExprWrapperStr "xxx.b > 10 and d = 1 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
@@ -331,8 +327,7 @@ codeGeneratorTest =
                              ,Instruction opBeginIdx 1 0 ""
                              ,Instruction opNoop     0 1 ""
                              ,Instruction opRewind   0 0 ""
-                             ,Instruction opNoop     0 3 ""
-                    ]
+                             ,Instruction opNoop     0 3 ""]
                     /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
