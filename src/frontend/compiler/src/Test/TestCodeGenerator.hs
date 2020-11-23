@@ -101,10 +101,10 @@ codeGeneratorTest =
 
     , "binary expr" ~: "and"
                     ~: cExprStr "c and d"
-                    ?: cExprStr "d"
+                    ?: cExprStr "c"
                     >: Right [Instruction opNot 0 0 ""
                              ,Instruction opJIf 0 0 ""]
-                    /: cExprStr "c"
+                    /: cExprStr "d"
                     >: Right [Instruction opNot     0 0 ""
                              ,Instruction opJIf     0 0 ""
                              ,Instruction opInteger 1 0 ""
@@ -115,9 +115,9 @@ codeGeneratorTest =
 
     , "binary expr" ~: "or"
                     ~: cExprStr "c or d"
-                    ?: cExprStr "d"
+                    ?: cExprStr "c"
                     >: Right [Instruction opJIf 0 0 ""]
-                    /: cExprStr "c"
+                    /: cExprStr "d"
                     >: Right [Instruction opJIf     0 0 ""
                              ,Instruction opInteger 0 0 ""
                              ,Instruction opGoto    0 1 ""
@@ -299,73 +299,71 @@ codeGeneratorTest =
                           -- index: yyy.d = 1 + 2
                           -- cond : yyy.a = 1 and yyy.b > 10
                     ~: cExprWrapperStr "d = 1 + 2 and 4 = xxx.b  and xxx.a = 3 and yyy.a = 1 and yyy.b > 10"
-                    ?: Right [Instruction opOpen     0 0 "xxx"
-                             ,Instruction opOpen     1 0 "yyy"
-                             ,Instruction opOpen     2 0 "idx_xxx_a_b"
-                             ,Instruction opOpen     3 0 "idx_yyy_d"
+                    ?: Right [Instruction opOpen     0 0 "idx_xxx_a_b"
+                             ,Instruction opOpen     1 0 "idx_yyy_d"
                              ,Instruction opInteger  3 0 ""
                              ,Instruction opInteger  4 0 ""
                              ,Instruction opMakeKey  2 0 ""
-                             ,Instruction opBeginIdx 2 0 ""
-                             ,Instruction opNoop     0 1 ""
-                             ,Instruction opNextIdx  2 0 ""
-                             ,Instruction opMoveTo   0 0 ""]
+                             ,Instruction opBeginIdx 0 0 ""
+                             ,Instruction opNoop     0 1 ""]
                     /: cExprStr "1+2"
                     >: Right [Instruction opMakeKey  1 0 ""
-                             ,Instruction opBeginIdx 3 0 ""
-                             ,Instruction opNoop     0 2 ""
-                             ,Instruction opNextIdx  3 1 ""
-                             ,Instruction opMoveTo   1 0 ""]
-                    /: (putLabel 3 >> cExprStr "yyy.a = 1 and yyy.b>10")
-                    >: Right [Instruction opNot      0 0 ""
-                             ,Instruction opJIf      0 2 ""
+                             ,Instruction opBeginIdx 1 0 ""
+                             ,Instruction opNoop     0 3 ""]
+                    /: (putLabel 5 >> cExprStr "yyy.a = 1 and yyy.b>10")
+                    >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
-                             ,Instruction opGoto     0 2 ""
+                             ,Instruction opNoop     0 4 ""
+                             ,Instruction opNextIdx  1 2 ""
+                             ,Instruction opGoto     0 3 ""
+                             ,Instruction opNoop     0 2 ""
+                             ,Instruction opNextIdx  0 0 ""
+                             ,Instruction opGoto     0 1 ""
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
-                             ,Instruction opClose    1 0 ""
-                             ,Instruction opClose    2 0 ""
-                             ,Instruction opClose    3 0 ""]
+                             ,Instruction opClose    1 0 ""]
     , "test index"  ~: "" -- only use index idx_yyy_d
                           -- index: yyy.d = 1
                           -- cond : xxx.b > 10 and yyy.a > 9
                     ~: cExprWrapperStr "xxx.b > 10 and d = 1 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
-                             ,Instruction opOpen     1 0 "yyy"
-                             ,Instruction opOpen     2 0 "idx_yyy_d"
+                             ,Instruction opOpen     1 0 "idx_yyy_d"
                              ,Instruction opInteger  1 0 ""
                              ,Instruction opMakeKey  1 0 ""
-                             ,Instruction opBeginIdx 2 0 ""
+                             ,Instruction opBeginIdx 1 0 ""
                              ,Instruction opNoop     0 1 ""
-                             ,Instruction opNextIdx  2 0 ""
-                             ,Instruction opMoveTo   1 0 ""
                              ,Instruction opRewind   0 0 ""
-                             ,Instruction opNoop     0 2 ""
-                             ,Instruction opNext     0 1 ""]
-                    /: (putLabel 3 >> cExprStr "yyy.a > 9 and xxx.b > 10")
-                    >: Right [Instruction opNot      0 0 ""
-                             ,Instruction opJIf      0 2 ""
+                             ,Instruction opNoop     0 3 ""
+                    ]
+                    /: (putLabel 5 >> cExprStr "yyy.a > 9 and xxx.b > 10")
+                    >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
-                             ,Instruction opGoto     0 2 ""
+                             ,Instruction opNoop     0 4 ""
+                             ,Instruction opNext     0 2 ""
+                             ,Instruction opGoto     0 3 ""
+                             ,Instruction opNoop     0 2 ""
+                             ,Instruction opNextIdx  1 0 ""
+                             ,Instruction opGoto     0 1 ""
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
-                             ,Instruction opClose    1 0 ""
-                             ,Instruction opClose    2 0 ""]
+                             ,Instruction opClose    1 0 ""]
     , "test index"  ~: "no index"
                     ~: cExprWrapperStr "xxx.b > 10 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
                              ,Instruction opOpen     1 0 "yyy"
                              ,Instruction opRewind   0 0 ""
                              ,Instruction opNoop     0 1 ""
-                             ,Instruction opNext     0 0 ""
                              ,Instruction opRewind   1 0 ""
-                             ,Instruction opNoop     0 2 ""
-                             ,Instruction opNext     1 1 ""]
-                    /: (putLabel 3 >> cExprStr "yyy.a > 9 and xxx.b > 10")
-                    >: Right [Instruction opNot      0 0 ""
-                             ,Instruction opJIf      0 2 ""
+                             ,Instruction opNoop     0 3 ""]
+                    /: (putLabel 5 >> cExprStr "yyy.a > 9 and xxx.b > 10")
+                    >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
-                             ,Instruction opGoto     0 2 ""
+                             ,Instruction opNoop     0 4 ""
+                             ,Instruction opNext     1 2 ""
+                             ,Instruction opGoto     0 3 ""
+                             ,Instruction opNoop     0 2 ""
+                             ,Instruction opNext     0 0 ""
+                             ,Instruction opGoto     0 1 ""
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
                              ,Instruction opClose    1 0 ""]

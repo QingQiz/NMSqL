@@ -15,8 +15,8 @@ import Control.Monad.Except
 cExpr :: Expr -> CodeGenEnv
 cExpr = \case
     BinExpr op e1 e2
-        | op == And                                 -> exprAnd e2 e1
-        | op == Or                                  -> exprOr  e2 e1
+        | op == And                                 -> exprAnd e1 e2
+        | op == Or                                  -> exprOr  e1 e2
         | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
         | otherwise                                 -> exprCompr op e1 e2
     LikeExpr op e1 e2                               -> exprLike  op e1 e2
