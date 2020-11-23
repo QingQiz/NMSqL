@@ -9,6 +9,7 @@ import Instruction
 import FFIStructure
 import CodeGeneratorUtils
 
+import Data.List
 import Data.Maybe
 import qualified Data.Map as Map
 
@@ -17,61 +18,66 @@ cExprWrapper :: Expr -> CodeGenEnv
 cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr expr mds) where
     wrapperExpr :: [TableMetadata] ->  [(Int, String, [Expr])] -> [Expr] -> CodeGenEnv
     wrapperExpr mds inp condExpr = openTbAndIdx >> wrapper >> closeTbAndIdx where
-        wrapper = getLabel >>= \lab
-                -> updateLabel
-                >> wrapper' tbNames idxNames (map trd3 inp) lab
+        wrapper = getLabel >>= \lab -> updateLabel
+                >> wrapperIdx idxNames (map trd3 inp) lab
                 >> mkLabel lab
 
-        openTbAndIdx  = connectCodeGenEnv
-            $ zipWith (\a b -> appendInst opOpen a 0 b) [0..]
-            $ allTbNames ++ idxNames
-
-        closeTbAndIdx = connectCodeGenEnv
-            $ map (\i -> appendInst opClose i 0 "") [0..(length allTbNames + length inp - 1)]
-
-        wrapper' (tb:tbs) (idx:idxes) (key:keys) labEnd =
-            let mkKey = connectCodeGenEnv (map cExpr key)
-                    >> appendInst opMakeKey (length key) 0 ""
-                    >> appendInst opBeginIdx (getIdxCursor idx) 0 ""
-                mvCursor = appendInst opNextIdx (getIdxCursor idx) labEnd ""
-                    >> appendInst opMoveTo (getTbCursor tb) 0 ""
-             in getLabel >>= \lab -> updateLabel
-                                  >> mkKey
-                                  >> mkLabel lab
-                                  >> mvCursor
-                                  >> wrapper' tbs idxes keys lab
-
-        wrapper' _ _ _ labEnd = case tbNotUseIdx of
-                 [] -> connectCodeGenEnv (condExpr' labEnd)
-                    >> appendInst opTempInst 0 0 ""
-                    >> appendInst opGoto 0 labEnd ""
-                 _  -> wrapperCond tbNotUseIdx labEnd
+        openTbAndIdx =
+            let listToOpen = collectTbOrIdx allTbNames tbNames idxNames
+             in connectCodeGenEnv
+              $ zipWith (\name idx -> appendInst opOpen idx 0 name) listToOpen [0..]
             where
-                condExpr' lab = case condExpr of
-                    [] -> []
-                    _  -> [cExpr $ foldl1 (BinExpr And) condExpr
-                          ,appendInst opNot 0 0 ""
-                          ,appendInst opJIf 0 lab ""]
-                tbNotUseIdx  = filter (`notElem` tbNames) allTbNames
+                collectTbOrIdx (tn:tns) tbs idxes
+                    | tn `elem` tbs = head idxes : collectTbOrIdx tns (tail tbs) (tail idxes)
+                    | otherwise     = tn         : collectTbOrIdx tns tbs idxes
+                collectTbOrIdx _ _ _ = []
 
-                wrapperCond (tb:tbs) labE = appendInst opRewind (getTbCursor tb) 0    ""
-                    >> getLabel >>= \lab -> mkCurrentLabel
-                    >> appendInst opNext (getTbCursor tb) labE ""
-                    >> wrapperCond tbs lab
-                wrapperCond _ labE = connectCodeGenEnv (condExpr' labE)
-                    >> appendInst opTempInst 0 0    ""
-                    >> appendInst opGoto     0 labE ""
+        closeTbAndIdx = connectCodeGenEnv [appendInst opClose i 0 "" | i <- [0 .. (length allTbNames - 1)]]
+
+        wrapperIdx :: [String] -> [[Expr]] -> Int -> CodeGenEnv
+        wrapperIdx (idx:idxes) (key:keys) labEnd =
+            let idxCursor = fromMaybe (-1)
+                          $ findIndex (elem idx . map fst . metadata_index) mds
+                keyLength = length key
+                mkKey = connectCodeGenEnv (map cExpr key)
+                     >> appendInst opMakeKey  keyLength 0 ""
+                     >> appendInst opBeginIdx idxCursor 0 ""
+             in getLabel >>= \lab  -> updateLabel
+             >> getLabel >>= \lab' -> updateLabel
+             >> mkKey
+             >> mkLabel lab
+             >> wrapperIdx idxes keys lab'
+             >> mkLabel lab'
+             >> appendInst opNextIdx idxCursor labEnd ""
+             >> appendInst opGoto 0 lab ""
+
+        wrapperIdx _ _ labEnd = wrapperTb tbNotUseIdx labEnd where
+            tbNotUseIdx = filter (`notElem` tbNames) allTbNames
+
+            condExpr' lab = case condExpr of
+                [] -> []
+                _  -> [cExpr $ foldl1 (flip $ BinExpr And) condExpr
+                      ,appendInst opJIf 1 lab ""]
+
+            wrapperTb (tb:tbs) labE =
+                let tbCursor = fromMaybe (-1)
+                             $ findIndex (\md -> metadata_name md == tb) mds
+                 in getLabel >>= \lab  -> updateLabel
+                 >> getLabel >>= \lab' -> updateLabel
+                 >> appendInst opRewind tbCursor 0 ""
+                 >> mkLabel lab
+                 >> wrapperTb tbs lab'
+                 >> mkLabel lab'
+                 >> appendInst opNext tbCursor labE ""
+                 >> appendInst opGoto 0 lab ""
+
+            wrapperTb _ labE = connectCodeGenEnv (condExpr' labE)
+                >> appendInst opTempInst 0 0    ""
 
         -- some help functions
         idxNames = map snd3 inp
-        tbNames  = map (\i -> metadata_name $ mds !! fst3 i) inp
+        tbNames  = [metadata_name $ mds !! fst3 i | i <- inp]
         allTbNames  = map metadata_name mds
-
-        getTbCursor  tbName  = snd . head $ dropWhile ((/=tbName)  . fst) tbNameCursor where
-            tbNameCursor = zip allTbNames [0..]
-
-        getIdxCursor idxName = snd . head $ dropWhile ((/=idxName) . fst) idxCursor where
-            idxCursor    = zip idxNames [(length allTbNames) ..]
 
     splitExpr :: Expr -> [TableMetadata] -> ([(Int, String, [Expr])], [Expr])
     splitExpr e mds =
@@ -94,7 +100,7 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
         collectExpr' e a b = (a, e : b)
 
     groupEqPairByTable :: [(Expr, Expr)] -> [TableMetadata] -> Maybe [(Int, [(Expr, Expr)])]
-    groupEqPairByTable eqPair mds = groupEqPairByTable' eqPair $ Map.fromList [] where
+    groupEqPairByTable eqPair mds = groupEqPairByTable' eqPair Map.empty where
         groupEqPairByTable' [] m = Just $ Map.toList m
         groupEqPairByTable' (p:ps) m = case p of
             (TableColumn tn cn, _) -> case tableColumnIdx tn cn mds of

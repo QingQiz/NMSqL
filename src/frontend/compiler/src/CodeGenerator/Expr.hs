@@ -125,10 +125,11 @@ exprCompr op e1 e2 = cExpr e1 >> cExpr e2 >> cComprOp op
 
 -- code generator for and-expr
 exprAnd :: Expr -> Expr -> CodeGenEnv
-exprAnd e1 e2 = getLabel >>= \labelAva
-    -> updateLabel
-    >> cExpr e1 >> gotoWhenFalse labelAva
-    >> cExpr e2 >> gotoWhenFalse labelAva
+exprAnd e1 e2 = getLabel >>= \labelAva -> updateLabel
+    >> cExpr e1
+    >> appendInst opJIf 1 labelAva ""
+    >> cExpr e2
+    >> appendInst opJIf 1 labelAva ""
     >> putTrue  >> getLabel >>= goto
     >> mkLabel labelAva
     >> putFalse
@@ -137,10 +138,11 @@ exprAnd e1 e2 = getLabel >>= \labelAva
 
 -- code generator for or-expr
 exprOr :: Expr -> Expr -> CodeGenEnv
-exprOr e1 e2 = getLabel >>= \labelAva
-    -> updateLabel
-    >> cExpr e1 >> gotoWhenTrue labelAva
-    >> cExpr e2 >> gotoWhenTrue labelAva
+exprOr e1 e2 = getLabel >>= \labelAva -> updateLabel
+    >> cExpr e1
+    >> appendInst opJIf 0 labelAva ""
+    >> cExpr e2
+    >> appendInst opJIf 0 labelAva ""
     >> putFalse >> getLabel >>= goto
     >> mkLabel labelAva
     >> putTrue
@@ -180,12 +182,6 @@ cComprOp op =
 -- make goto instruction
 goto :: Int -> CodeGenEnv
 goto label = appendInst opGoto 0 label ""
-
-gotoWhenTrue :: Int -> CodeGenEnv
-gotoWhenTrue label = appendInst opJIf 0 label ""
-
-gotoWhenFalse :: Int -> CodeGenEnv
-gotoWhenFalse label = appendInst opNot  0 0 "" >> gotoWhenTrue label
 
 dup :: CodeGenEnv
 dup = appendInst opDup 0 0 ""

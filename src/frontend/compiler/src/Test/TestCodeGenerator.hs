@@ -308,7 +308,7 @@ codeGeneratorTest =
                     >: Right [Instruction opMakeKey  1 0 ""
                              ,Instruction opBeginIdx 1 0 ""
                              ,Instruction opNoop     0 3 ""]
-                    /: (putLabel 5 >> cExprStr "yyy.a = 1 and yyy.b>10")
+                    /: (putLabel 5 >> cExprStr "yyy.b>10 and yyy.a = 1")
                     >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
                              ,Instruction opNoop     0 4 ""
@@ -333,7 +333,7 @@ codeGeneratorTest =
                              ,Instruction opRewind   0 0 ""
                              ,Instruction opNoop     0 3 ""
                     ]
-                    /: (putLabel 5 >> cExprStr "yyy.a > 9 and xxx.b > 10")
+                    /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
                              ,Instruction opNoop     0 4 ""
@@ -353,7 +353,7 @@ codeGeneratorTest =
                              ,Instruction opNoop     0 1 ""
                              ,Instruction opRewind   1 0 ""
                              ,Instruction opNoop     0 3 ""]
-                    /: (putLabel 5 >> cExprStr "yyy.a > 9 and xxx.b > 10")
+                    /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
                              ,Instruction opNoop     0 4 ""
