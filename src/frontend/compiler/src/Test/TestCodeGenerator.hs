@@ -102,11 +102,9 @@ codeGeneratorTest =
     , "binary expr" ~: "and"
                     ~: cExprStr "c and d"
                     ?: cExprStr "c"
-                    >: Right [Instruction opNot 0 0 ""
-                             ,Instruction opJIf 0 0 ""]
+                    >: Right [Instruction opJIf     1 0 ""]
                     /: cExprStr "d"
-                    >: Right [Instruction opNot     0 0 ""
-                             ,Instruction opJIf     0 0 ""
+                    >: Right [Instruction opJIf     1 0 ""
                              ,Instruction opInteger 1 0 ""
                              ,Instruction opGoto    0 1 ""
                              ,Instruction opNoop    0 0 ""
