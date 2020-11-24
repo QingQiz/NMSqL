@@ -17,13 +17,7 @@ import Test.HUnit
 --                           idx_yyy_a_b: (a, b)
 
 codeGeneratorTest :: Test
-codeGeneratorTest =
-    let toBool = Right [Instruction opInteger 0 0 ""
-                       ,Instruction opGoto    0 1 ""
-                       ,Instruction opNoop    0 0 ""
-                       ,Instruction opInteger 1 0 ""
-                       ,Instruction opNoop    0 1 ""]
-     in test [
+codeGeneratorTest = test [
 ----------------------------------------------------------
 -- Test code generator: expr
 ----------------------------------------------------------
@@ -236,14 +230,19 @@ codeGeneratorTest =
     , "in expr"     ~: ""
                     ~: putRes [Instruction opNoop     0 (-1) ""]
                     +: cExprStr "x in (1,2)"
-                    ?: Right [Instruction opInteger   1 0 ""
+                    ?: Right [Instruction opSetOpen   0 0 ""
+                             ,Instruction opInteger   1 0 ""
                              ,Instruction opSetInsert 0 0 ""
                              ,Instruction opInteger   2 0 ""
                              ,Instruction opSetInsert 0 0 ""
                              ,Instruction opNoop      0 (-1) ""]
                     /: cExprStr "x"
-                    >: Right [Instruction opSetFound 0 0 ""]
-                    /: toBool
+                    >: Right [Instruction opSetFound  0 0 ""
+                             ,Instruction opInteger   0 0 ""
+                             ,Instruction opGoto      0 1 ""
+                             ,Instruction opNoop      0 0 ""
+                             ,Instruction opInteger   1 0 ""
+                             ,Instruction opNoop      0 1 ""]
 
     , "in expr"     ~: "right-hand side of IN is not a constant (column)"
                     ~: cExprStr "x in (x)"

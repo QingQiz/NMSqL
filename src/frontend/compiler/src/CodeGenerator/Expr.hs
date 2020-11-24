@@ -52,11 +52,11 @@ exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
     let genValueList = do
             oldRes <- getRes
-            insSet <- (>>) (putRes []) $ foldr ((>>) . \x
-                        -> throwErrorIfNotConst x
-                        >> cExpr x
-                        >> getSet >>= \sn
-                        -> appendInst opSetInsert sn 0 "") getRes vl
+            insSet <- getSet >>= \sn -> putRes []
+                   >> appendInst opSetOpen sn 0 ""
+                   >> connectCodeGenEnv (map (\e -> throwErrorIfNotConst e
+                                                 >> cExpr e
+                                                 >> appendInst opSetInsert sn 0 "") vl)
             putRes $ insSet ++ oldRes
         mkRes = do
             lab <- getLabel

@@ -116,6 +116,8 @@ opSetGt        = "opSetGt"         --111
 opSetGe        = "opSetGe"         --112
 opSetIsNull    = "opSetIsNull"     --113
 opSetNotNull   = "opSetNotNull"    --114
+opSortSetDesc  = "opSortSetDesc"   --115
+opSetOpen      = "opSetOpen"       --116
 
 type OpCode = String
 
