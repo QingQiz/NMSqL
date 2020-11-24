@@ -15,3 +15,8 @@ if_chain = "1.0.1"
 
 [build-dependencies]
 bindgen = "0.53.1"
+
+[lib]
+name = "VirtualMachine"
+crate-type = ["cdylib","staticlib"]
+
