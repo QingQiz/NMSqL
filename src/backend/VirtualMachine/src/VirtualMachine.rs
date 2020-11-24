@@ -2,6 +2,7 @@ pub mod VirtualMachine {
   use crate::wrapper::wrapper::rustLayer as DbWrapper;
   use crate::wrapper::wrapper::rustLayer::Cursor;
   use std::cmp::Ordering;
+  use std::collections::HashSet;
   #[derive(Debug, Copy, Clone, FromPrimitive)]
   enum VmOpType {
     OP_Transaction,
@@ -119,6 +120,7 @@ pub mod VirtualMachine {
     OP_SetIsNull,
     OP_SetNotNull,
     OP_SortSetDesc,
+    OP_SetOpen,
   }
 
   #[derive(Debug, Clone)]
@@ -194,7 +196,7 @@ pub mod VirtualMachine {
   }
 
   /// string in format of [len(2),flag(1),null(1),string(len)]  
-  #[derive(Debug, Clone, PartialEq, PartialOrd, Default)]
+  #[derive(Debug, Clone, PartialEq, PartialOrd, Default, Eq, Hash)]
   struct VmMemString {
     string: Vec<u8>,
   }
@@ -501,6 +503,26 @@ pub mod VirtualMachine {
     }
   }
 
+  #[derive(Debug, Clone, Default)]
+  struct VmSet {
+    set: HashSet<VmMemString>,
+  }
+
+  impl VmSet {
+    pub fn insert(self: &mut Self, data: VmMemString) {
+      self.set.insert(data);
+    }
+    pub fn found(self: &Self, data: VmMemString) -> bool {
+      match self.set.get(&data) {
+        None => false,
+        Some(x) => true,
+      }
+    }
+    pub fn clear(self: &mut Self) {
+      self.set.clear();
+    }
+  }
+
   #[derive(Default)]
   struct VirtualMachine {
     vmOps: Vec<VmOp>,
@@ -510,6 +532,7 @@ pub mod VirtualMachine {
     fcnt: i32,
     lists: Vec<VmList>,
     sorters: Vec<VmSorter>,
+    sets: Vec<VmSet>,
   }
 
   /// method for stack
@@ -642,6 +665,36 @@ pub mod VirtualMachine {
     }
     pub fn sorterSetDesc(self: &mut Self, num: usize, column: usize) -> Result<(), String> {
       Ok(self.getSorter(num)?.setDesc(column))
+    }
+  }
+
+  /// method for set
+  impl VirtualMachine {
+    pub fn openSet(self: &mut Self, num: usize) {
+      if num >= self.sets.len() {
+        self.sets.resize(num + 1, VmSet::default());
+      }
+      self.sets[num].clear();
+    }
+    pub fn getSet(self: &mut Self, num: usize) -> Result<&mut VmSet, String> {
+      if num >= self.sets.len() {
+        Err(format!(
+          "set out of bound num={} size={}",
+          num,
+          self.sets.len()
+        ))
+      } else {
+        Ok(&mut self.sets[num])
+      }
+    }
+    pub fn setInsert(self: &mut Self, num: usize, data: VmMemString) -> Result<(), String> {
+      Ok(self.getSet(num)?.insert(data))
+    }
+    pub fn setFound(self: &mut Self, num: usize, data: VmMemString) -> Result<bool, String> {
+      Ok(self.getSet(num)?.found(data))
+    }
+    pub fn setClear(self: &mut Self, num: usize) -> Result<(), String> {
+      Ok(self.getSet(num)?.clear())
     }
   }
 
@@ -892,10 +945,28 @@ pub mod VirtualMachine {
         VmOpType::OP_AggNext => unimplemented!(),
         VmOpType::OP_AggSet => unimplemented!(),
         VmOpType::OP_AggGet => unimplemented!(),
-        VmOpType::OP_SetInsert => unimplemented!(),
-        VmOpType::OP_SetFound => unimplemented!(),
-        VmOpType::OP_SetNotFound => unimplemented!(),
-        VmOpType::OP_SetClear => unimplemented!(),
+        VmOpType::OP_SetInsert => {
+          let string = if nowOp.p3.len() == 0 {
+            let poped = popOneMem(&mut vm)?;
+            poped.stringify()
+          } else {
+            VmMem::genVmString(nowOp.p3.as_bytes().to_vec(), VmMemString::MEM_FLAG_STRING)
+          };
+          vm.setInsert(nowOp.p1 as usize, string)?;
+        }
+        VmOpType::OP_SetFound => {
+          let poped = popOneMem(&mut vm)?.stringify();
+          if vm.setFound(nowOp.p1 as usize, poped)? {
+            pc = nowOp.p2 as usize - 1;
+          }
+        }
+        VmOpType::OP_SetNotFound => {
+          let poped = popOneMem(&mut vm)?.stringify();
+          if !vm.setFound(nowOp.p1 as usize, poped)? {
+            pc = nowOp.p2 as usize - 1;
+          }
+        }
+        VmOpType::OP_SetClear => vm.setClear(nowOp.p1 as usize)?,
         VmOpType::OP_MakeRecord => {
           // TODO: need change
           let poped = vm.popStack(nowOp.p1)?;
@@ -1197,6 +1268,9 @@ pub mod VirtualMachine {
         VmOpType::OP_SetNotNull => unimplemented!(),
         VmOpType::OP_SortSetDesc => {
           vm.sorterSetDesc(nowOp.p1 as usize, nowOp.p2 as usize)?;
+        }
+        VmOpType::OP_SetOpen => {
+          vm.openSet(nowOp.p1 as usize);
         }
         _ => {
           return Err(format!("unknown operation: {:?}", nowOp));
