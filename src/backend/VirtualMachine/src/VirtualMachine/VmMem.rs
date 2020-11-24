@@ -71,7 +71,7 @@ impl<'a> Iterator for VmMemStringIterator<'a> {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum VmMem {
-  MEM_INT(i128),
+  MEM_INT(i32),
   MEM_DOUBLE(f64),
   MEM_STRING(VmMemString),
   MEM_NULL,
@@ -92,10 +92,10 @@ impl VmMem {
       VmMem::MEM_STRING(x) => x,
     }
   }
-  pub fn integerify(self: Self) -> i128 {
+  pub fn integerify(self: Self) -> i32 {
     match self {
       VmMem::MEM_INT(x) => x,
-      VmMem::MEM_DOUBLE(x) => x as i128,
+      VmMem::MEM_DOUBLE(x) => x as i32,
       VmMem::MEM_NULL => 0,
       VmMem::MEM_STRING(x) => String::from_utf8_lossy(&(x.as_slice()[4..]))
         .parse()

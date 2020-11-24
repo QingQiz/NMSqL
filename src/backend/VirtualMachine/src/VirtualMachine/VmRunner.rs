@@ -14,14 +14,13 @@ fn popOneMem(vm: &mut VirtualMachine) -> Result<VmMem, String> {
   Ok(vm.popStack(1)?.into_iter().next().unwrap())
 }
 
-fn runOperation(operations: String) -> Result<String, String> {
+fn runOperation(operations: String) -> Result<(), String> {
   let ops = parseOperations(operations);
   let mut pc = 0;
-  let mut ret = String::new();
   let mut vm = VirtualMachine::new();
   loop {
     if pc == ops.len() {
-      return Ok(ret);
+      break Ok(());
     }
     let nowOp = &ops[pc];
     match nowOp.vmOpType {
@@ -36,7 +35,7 @@ fn runOperation(operations: String) -> Result<String, String> {
         DbWrapper::rollback();
       }
       VmOpType::OP_ReadCookie => {
-        vm.pushStack(VmMem::MEM_INT(DbWrapper::getCookies() as i128));
+        vm.pushStack(VmMem::MEM_INT(DbWrapper::getCookies() as i32));
       }
       VmOpType::OP_SetCookie => {
         DbWrapper::setCookies(nowOp.p1);
@@ -68,7 +67,7 @@ fn runOperation(operations: String) -> Result<String, String> {
         vm.fcnt += 1;
       }
       VmOpType::OP_Fcnt => {
-        vm.pushStack(VmMem::MEM_INT(vm.fcnt as i128));
+        vm.pushStack(VmMem::MEM_INT(vm.fcnt as i32));
       }
       VmOpType::OP_NewRecno => unimplemented!(),
       VmOpType::OP_Put => {
@@ -309,7 +308,7 @@ fn runOperation(operations: String) -> Result<String, String> {
       VmOpType::OP_Goto => {
         pc = nowOp.p2 as usize - 1;
       }
-      VmOpType::OP_JIf => {
+      VmOpType::OP_JIf | VmOpType::OP_SetIf => {
         let a = popOneMem(&mut vm)?;
         let flag = match a {
           VmMem::MEM_INT(x) if x != 0 => 1,
@@ -317,8 +316,16 @@ fn runOperation(operations: String) -> Result<String, String> {
           VmMem::MEM_DOUBLE(x) if x.ne(&0.0) => 1,
           _ => 0,
         };
-        if nowOp.p1 != flag {
-          pc = nowOp.p2 as usize - 1;
+        if let VmOpType::OP_JIf = nowOp.vmOpType {
+          if nowOp.p1 != flag {
+            pc = nowOp.p2 as usize - 1;
+          }
+        } else {
+          if nowOp.p1 != flag {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
       // stop the vm
@@ -336,7 +343,7 @@ fn runOperation(operations: String) -> Result<String, String> {
       // set the callback function
       VmOpType::OP_Callback => unimplemented!(),
       // push P1 to the stack
-      VmOpType::OP_Integer => vm.pushStack(VmMem::MEM_INT(nowOp.p1 as i128)),
+      VmOpType::OP_Integer => vm.pushStack(VmMem::MEM_INT(nowOp.p1 as i32)),
       // push string to the stack
       // a string may be used multiple times, so clone is needed here
       VmOpType::OP_String => vm.pushStack(VmMem::MEM_STRING(VmMem::genVmString(
@@ -395,7 +402,7 @@ fn runOperation(operations: String) -> Result<String, String> {
       VmOpType::OP_AddImm => {
         let top = popOneMem(&mut vm)?;
         vm.pushStack(match top {
-          VmMem::MEM_INT(x) => VmMem::MEM_INT(x + nowOp.p1 as i128),
+          VmMem::MEM_INT(x) => VmMem::MEM_INT(x + nowOp.p1 as i32),
           x @ _ => VmMem::MEM_DOUBLE(x.realify() + nowOp.p1 as f64),
         })
       }
@@ -421,7 +428,7 @@ fn runOperation(operations: String) -> Result<String, String> {
           vm.pushStack(VmMem::MEM_DOUBLE(a.max(b)));
         }
       }
-      VmOpType::OP_JLike | VmOpType::OP_JGlob => {
+      VmOpType::OP_JLike | VmOpType::OP_JGlob | VmOpType::OP_SetLike | VmOpType::OP_SetGlob => {
         let any = match nowOp.vmOpType {
           VmOpType::OP_JLike => "%",
           VmOpType::OP_JGlob => "*",
@@ -453,69 +460,152 @@ fn runOperation(operations: String) -> Result<String, String> {
         let regexPattern = pattern.replace(any, ".*").replace(one, ".");
         let re = regex::Regex::new(regexPattern.as_str())
           .expect(format!("unknown pattern {} ", pattern).as_str());
-        if re.is_match(string.as_str()) {
-          if nowOp.p1 == 0 {
+        match nowOp.vmOpType {
+          VmOpType::OP_JLike | VmOpType::OP_JGlob => {
+            if re.is_match(string.as_str()) {
+              if nowOp.p1 == 0 {
+                pc = (nowOp.p2 - 1) as usize;
+              }
+            } else {
+              if nowOp.p1 == 1 {
+                pc = (nowOp.p2 - 1) as usize;
+              }
+            }
+          }
+          VmOpType::OP_SetLike | VmOpType::OP_SetGlob => {
+            if re.is_match(string.as_str()) {
+              if nowOp.p1 == 0 {
+                vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+              } else {
+                vm.pushStack(VmMem::MEM_INT(0));
+              }
+            } else {
+              if nowOp.p1 == 1 {
+                vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+              } else {
+                vm.pushStack(VmMem::MEM_INT(0));
+              }
+            }
+          }
+          _ => unreachable!(),
+        }
+      }
+      VmOpType::OP_JEq | VmOpType::OP_SetEq => {
+        let a = popOneMem(&mut vm)?;
+        let b = popOneMem(&mut vm)?;
+        if let VmOpType::OP_JEq = nowOp.vmOpType {
+          if a == b {
             pc = (nowOp.p2 - 1) as usize;
           }
         } else {
-          if nowOp.p1 == 1 {
-            pc = (nowOp.p2 - 1) as usize;
+          if a == b {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
           }
         }
       }
-      VmOpType::OP_JEq => {
+      VmOpType::OP_JNe | VmOpType::OP_SetNe => {
         let a = popOneMem(&mut vm)?;
         let b = popOneMem(&mut vm)?;
-        if a == b {
-          pc = (nowOp.p2 - 1) as usize;
+        if let VmOpType::OP_JNe = nowOp.vmOpType {
+          if a != b {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if a != b {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_JNe => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
-        if a != b {
-          pc = (nowOp.p2 - 1) as usize;
-        }
-      }
-      VmOpType::OP_JLt => {
-        let b = popOneMem(&mut vm)?;
-        let a = popOneMem(&mut vm)?;
-        if PartialOrd::lt(&a, &b) {
-          pc = (nowOp.p2 - 1) as usize;
-        }
-      }
-      VmOpType::OP_JLe => {
+      VmOpType::OP_JLt | VmOpType::OP_SetLt => {
         let b = popOneMem(&mut vm)?;
         let a = popOneMem(&mut vm)?;
-        if PartialOrd::le(&a, &b) {
-          pc = (nowOp.p2 - 1) as usize;
+        if let VmOpType::OP_JLt = nowOp.vmOpType {
+          if PartialOrd::lt(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if PartialOrd::lt(&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_JGt => {
+      VmOpType::OP_JLe | VmOpType::OP_SetLe => {
         let b = popOneMem(&mut vm)?;
         let a = popOneMem(&mut vm)?;
-        if PartialOrd::gt(&a, &b) {
-          pc = (nowOp.p2 - 1) as usize;
+        if let VmOpType::OP_JLe = nowOp.vmOpType {
+          if PartialOrd::le(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if PartialOrd::le(&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_JGe => {
+      VmOpType::OP_JGt | VmOpType::OP_SetGt => {
         let b = popOneMem(&mut vm)?;
         let a = popOneMem(&mut vm)?;
-        if PartialOrd::ge(&a, &b) {
-          pc = (nowOp.p2 - 1) as usize;
+        if let VmOpType::OP_JGe = nowOp.vmOpType {
+          if PartialOrd::ge(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if PartialOrd::ge(&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_JIsNull => {
+      VmOpType::OP_JGe | VmOpType::OP_SetGe => {
+        let b = popOneMem(&mut vm)?;
         let a = popOneMem(&mut vm)?;
-        if let VmMem::MEM_NULL = a {
-          pc = (nowOp.p2 - 1) as usize;
+        if let VmOpType::OP_JGt = nowOp.vmOpType {
+          if PartialOrd::gt(&a, &b) {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if PartialOrd::gt(&a, &b) {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_JNotNull => {
+      VmOpType::OP_JIsNull | VmOpType::OP_SetIsNull => {
         let a = popOneMem(&mut vm)?;
-        match a {
-          VmMem::MEM_NULL => {}
-          _ => pc = (nowOp.p2 - 1) as usize,
+        if let VmOpType::OP_JIsNull = nowOp.vmOpType {
+          if let VmMem::MEM_NULL = a {
+            pc = (nowOp.p2 - 1) as usize;
+          }
+        } else {
+          if let VmMem::MEM_NULL = a {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          } else {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
+        }
+      }
+      VmOpType::OP_JNotNull | VmOpType::OP_SetNotNull => {
+        let a = popOneMem(&mut vm)?;
+        if let VmOpType::OP_JNotNull = nowOp.vmOpType {
+          match a {
+            VmMem::MEM_NULL => {}
+            _ => pc = (nowOp.p2 - 1) as usize,
+          }
+        } else {
+          match a {
+            VmMem::MEM_NULL => vm.pushStack(VmMem::MEM_INT(0)),
+            _ => vm.pushStack(VmMem::MEM_INT(nowOp.p2)),
+          }
         }
       }
       VmOpType::OP_Negative => {
@@ -561,19 +651,30 @@ fn runOperation(operations: String) -> Result<String, String> {
         )));
       }
       VmOpType::OP_Noop => {}
-      VmOpType::OP_Strlen => unimplemented!(),
-      VmOpType::OP_Substr => unimplemented!(),
-      VmOpType::OP_SetIf => unimplemented!(),
-      VmOpType::OP_SetLike => unimplemented!(),
-      VmOpType::OP_SetGlob => unimplemented!(),
-      VmOpType::OP_SetEq => unimplemented!(),
-      VmOpType::OP_SetNe => unimplemented!(),
-      VmOpType::OP_SetLt => unimplemented!(),
-      VmOpType::OP_SetLe => unimplemented!(),
-      VmOpType::OP_SetGt => unimplemented!(),
-      VmOpType::OP_SetGe => unimplemented!(),
-      VmOpType::OP_SetIsNull => unimplemented!(),
-      VmOpType::OP_SetNotNull => unimplemented!(),
+      VmOpType::OP_Strlen => {
+        let string = popOneMem(&mut vm)?.stringify();
+        vm.pushStack(VmMem::MEM_INT(string.getLen(0).unwrap() as i32));
+      }
+      VmOpType::OP_Substr => {
+        let len = if nowOp.p2 == 0 {
+          popOneMem(&mut vm)?.integerify()
+        } else {
+          nowOp.p2
+        } as usize;
+        let lo = if nowOp.p1 == 0 {
+          popOneMem(&mut vm)?.integerify()
+        } else {
+          nowOp.p1
+        } as usize;
+        let string = popOneMem(&mut vm)?.stringify().removeHead();
+        if (lo + len) as usize <= string.len() {
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(
+            string[lo..(lo + len)].to_vec(),
+          )));
+        } else {
+          return Err(format!("substr out of bound with lo={} len={}", lo, len));
+        }
+      }
       VmOpType::OP_SortSetDesc => {
         vm.sorterSetDesc(nowOp.p1 as usize, nowOp.p2 as usize)?;
       }

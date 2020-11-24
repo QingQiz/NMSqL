@@ -34,10 +34,10 @@ impl VmSorter {
           let bvalue = String::from_utf8_lossy(&bkey[4..]);
           match aflag {
             VmMemString::MEM_FLAG_INT => {
-              let avalue: i128 = avalue
+              let avalue: i32 = avalue
                 .parse()
                 .expect(format!("fail to parse: avalue={}", avalue).as_str());
-              let bvalue: i128 = bvalue
+              let bvalue: i32 = bvalue
                 .parse()
                 .expect(format!("fail to parse: avalue={}", avalue).as_str());
               if orders[index] {
