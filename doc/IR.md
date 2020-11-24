@@ -74,8 +74,8 @@ IR大致可以分为以下几类：
 |61|SetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则跳转到P2|
 |62|SetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则跳转到P2|
 |63|SetClear|Y|N|N|清空第P1个Set|
-|64|MakeRecord|Y|N|N|将栈中P1个元素出栈 构造字符串作为Record并压栈 字符串格式为 `[len,string]+` 其中 null string长度为0 len为四个0  元素顺序为 后出栈的元素在字符串前部|
-|65|MakeKey|Y|N|N|将栈中P1个元素构造字符串作为key并压栈 `[len,string]+` 其中 null string长度为0 len为四个0 元素顺序为 后出栈的元素在字符串前部|
+|64|MakeRecord|Y|N|N|将栈中P1个元素出栈 构造字符串作为Record并压栈 字符串格式为 `[len(2),flag(1),null(0),string]+` 其中 null string长度为0 元素顺序为 后出栈的元素在字符串前部|
+|65|MakeKey|Y|N|N|将栈中P1个元素构造字符串作为key并压栈 `[len(2),flag(1),null(0),string]+` 其中 null string长度为0 元素顺序为 后出栈的元素在字符串前部|
 |67|Goto|N|Y|N|向第P2条指令跳转|
 |68|JIf|Y|Y|N|一个元素出栈 若P1为0 则true则跳转到P2 否则 false 跳转到 P2 string长度0为false|
 |69|Halt|N|N|N|结束程序|
@@ -125,6 +125,7 @@ IR大致可以分为以下几类：
 |113|SetIsNull|N|Y|N|出栈一个元素 若为Null则将P2压栈，否则将 `0` 压栈|
 |114|SetNotNull|N|Y|N|出栈一个元素 若不为Null则将P2压栈，否则将 `0` 压栈|
 |115|SortSetDesc|Y|Y|N|第P1个sorter中第P2列设置为降序排序|
+|116|SetOpen|Y|N|N|开启一个编号为P1的set|
 
 ### Removed IR
 
