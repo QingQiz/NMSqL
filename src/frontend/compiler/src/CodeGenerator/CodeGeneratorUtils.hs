@@ -17,7 +17,7 @@ type CodeGenCnt   = (Int, Int) -- (label-cnt, set-cnt)
 
 type FunctionDef  = (String, Int, Maybe OpCode)
 
-type CodeGenState = (([TableMetadata], [FunctionDef]), [Instruction], CodeGenCnt)
+type CodeGenState = ([TableMetadata], [Instruction], CodeGenCnt)
 
 type ExceptTEnv a = ExceptT String (State CodeGenState) a
 
@@ -83,10 +83,7 @@ trd3 (_, _, a) = a
 
 -- get table metadata from env
 getMetadata :: ExceptTEnv [TableMetadata]
-getMetadata = fst . fst3 <$> lift get
-
-getFuncDef :: ExceptTEnv [FunctionDef]
-getFuncDef = snd . fst3 <$> lift get
+getMetadata = fst3 <$> lift get
 
 
 -- get column index from metadatas, return: (table-index, column-index)

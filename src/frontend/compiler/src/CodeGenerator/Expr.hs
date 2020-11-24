@@ -89,14 +89,15 @@ exprFuncCall :: String -> [Expr] -> CodeGenEnv
 exprFuncCall fn pl =
     let plLength   = length pl
         pl'        = map cExpr pl
-     in getFuncDef >>= \fnDef -> case dropWhile ((fn/=) . fst3) fnDef of
-             []  -> throwError $ "No such function: " ++ fn
-             (_, args, Just op):_
-                 | plLength < args -> throwError $ "Too few arguments to function: "  ++ fn
-                 | plLength > args -> throwError $ "Too many arguments to function: " ++ fn
-                 | otherwise -> foldr (>>) getRes pl'
-                             >> appendInst op 0 0 ""
-             (_, _, Nothing):_ -> throwError "Not implemented"
+        fnDef      = [("max", 2, Just opMax), ("min", 2, Just opMin), ("substr", 3, Just opSubstr)]
+     in case dropWhile ((fn/=) . fst3) fnDef of
+        []  -> throwError $ "No such function: " ++ fn
+        (_, args, Just op):_
+            | plLength < args -> throwError $ "Too few arguments to function: "  ++ fn
+            | plLength > args -> throwError $ "Too many arguments to function: " ++ fn
+            | otherwise -> foldr (>>) getRes pl'
+                        >> appendInst op 0 0 ""
+        (_, _, Nothing):_ -> throwError "Not implemented"
 
 
 -- code generator for const-expr
