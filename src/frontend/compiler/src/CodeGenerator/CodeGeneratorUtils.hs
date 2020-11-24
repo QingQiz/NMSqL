@@ -15,9 +15,9 @@ import Control.Monad.Except
 ----------------------------------------------------------
 type CodeGenCnt   = (Int, Int) -- (label-cnt, set-cnt)
 
-type FunctionDef  = (String, Int, Maybe OpCode)
+type FunctionDef  = (String, Int)
 
-type CodeGenState = ([TableMetadata], [Instruction], CodeGenCnt)
+type CodeGenState = (([TableMetadata], [FunctionDef]), [Instruction], CodeGenCnt)
 
 type ExceptTEnv a = ExceptT String (State CodeGenState) a
 
@@ -71,6 +71,14 @@ updateSet = getSet >>= \x -> putSet $ x + 1
 appendInst :: OpCode -> Int -> Int -> String -> CodeGenEnv
 appendInst opCode p1 p2 p3 = get >>= (\(a, b, c) -> put (a, b ++ [Instruction opCode p1 p2 p3], c)) >> getRes
 
+-- prepend the result of env to current env
+prependEnv :: CodeGenEnv -> CodeGenEnv
+prependEnv env = do
+    oldRes <- getRes
+    newRes <- putRes [] >> env
+    putRes $ newRes ++ oldRes
+
+
 -- fst, snd, trd for (,,)
 fst3 :: (a, b, c) -> a
 fst3 (a, _, _) = a
@@ -83,7 +91,12 @@ trd3 (_, _, a) = a
 
 -- get table metadata from env
 getMetadata :: ExceptTEnv [TableMetadata]
-getMetadata = fst3 <$> lift get
+getMetadata = fst . fst3 <$> lift get
+
+
+-- get function definations
+getFuncDef :: ExceptTEnv [FunctionDef]
+getFuncDef = snd . fst3 <$> lift get
 
 
 -- get column index from metadatas, return: (table-index, column-index)

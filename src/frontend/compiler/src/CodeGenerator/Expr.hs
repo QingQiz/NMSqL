@@ -6,6 +6,7 @@ import Ast
 import Instruction
 import CodeGeneratorUtils
 
+import Data.List
 import Control.Monad.Except
 
 
@@ -19,17 +20,17 @@ cExpr = \case
         | op == Or                                  -> exprOr  e1 e2
         | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
         | otherwise                                 -> exprCompr op e1 e2
-    LikeExpr op e1 e2                               -> exprLike  op e1 e2
-    ConstValue val                                  -> exprConst val
+    LikeExpr     op e1 e2                           -> exprLike  op e1 e2
+    ConstValue   val                                -> exprConst val
     FunctionCall fn pl                              -> exprFuncCall fn pl
-    IsNull e                                        -> cExpr e >> appendInst opSetIsNull 0 1 ""
-    Between e1 e2 e3                                -> exprBetween e1 e2 e3
-    InExpr a b                                      -> exprIn a b
-    NotExpr e                                       -> cExpr e >> appendInst opNot 0 0 ""
-    SelectExpr _                                    -> throwError "not implemented"
-    Column cn                                       -> exprColumn cn
-    TableColumn tn cn                               -> exprTableColumn tn cn
-    _                                               -> throwError "Semantic error"
+    IsNull       e                                  -> cExpr e >> appendInst opSetIsNull 0 1 ""
+    Between      e1 e2 e3                           -> exprBetween e1 e2 e3
+    InExpr       a b                                -> exprIn a b
+    NotExpr      e                                  -> cExpr e >> appendInst opNot 0 0 ""
+    SelectExpr   _                                  -> throwError "not implemented"
+    Column       cn                                 -> exprColumn cn
+    TableColumn  tn cn                              -> exprTableColumn tn cn
+    AnyColumn                                       -> throwError "`*' was not allowed here"
 
 
 -- code generator for between-expr
@@ -50,14 +51,12 @@ exprBetween a b c = getLabel >>= \labelAva
 -- code generator for in-expr
 exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
-    let genValueList = do
-            oldRes <- getRes
-            insSet <- getSet >>= \sn -> putRes []
-                   >> appendInst opSetOpen sn 0 ""
-                   >> connectCodeGenEnv (map (\e -> throwErrorIfNotConst e
-                                                 >> cExpr e
-                                                 >> appendInst opSetInsert sn 0 "") vl)
-            putRes $ insSet ++ oldRes
+    let genValueList = getSet >>= \sn -> prependEnv $
+            appendInst opSetOpen sn 0 "" >>
+            connectCodeGenEnv (map (\e   ->
+                throwErrorIfNotConst e   >>
+                cExpr e                  >>
+                appendInst opSetInsert sn 0 "") vl)
         mkRes = do
             lab <- getLabel
             set <- getSet
@@ -86,18 +85,24 @@ exprTableColumn tn cn = getMetadata >>= \mds -> case tableColumnIdx tn cn mds of
 
 -- code generator for function-call-expr
 exprFuncCall :: String -> [Expr] -> CodeGenEnv
-exprFuncCall fn pl =
-    let plLength   = length pl
-        pl'        = map cExpr pl
-        fnDef      = [("max", 2, Just opMax), ("min", 2, Just opMin), ("substr", 3, Just opSubstr)]
-     in case dropWhile ((fn/=) . fst3) fnDef of
-        []  -> throwError $ "No such function: " ++ fn
-        (_, args, Just op):_
-            | plLength < args -> throwError $ "Too few arguments to function: "  ++ fn
-            | plLength > args -> throwError $ "Too many arguments to function: " ++ fn
-            | otherwise -> foldr (>>) getRes pl'
-                        >> appendInst op 0 0 ""
-        (_, _, Nothing):_ -> throwError "Not implemented"
+exprFuncCall funcName paramList =
+    let
+     in getFuncDef >>= \fnDef -> cFunc fnDef funcName paramList
+    where
+        plLength = length paramList
+        cFunc fnDef fn pl
+            | (fn, plLength) `elem` fnDef = case (fn, plLength) of
+                ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
+                ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
+                ("substr", _) -> pl' >> appendInst opSubstr 0 0 ""
+                _ -> error "asd"
+            | otherwise = case findIndex ((==fn) . fst) fnDef of
+                Nothing -> throwError $ "No such function: " ++ fn
+                Just  i -> if   plLength   > snd (fnDef !! i)
+                           then throwError $ "Too many arguments to function: " ++ fn
+                           else throwError $ "Too few arguments to function: "  ++ fn
+            where
+                pl' = connectCodeGenEnv $ map cExpr pl
 
 
 -- code generator for const-expr

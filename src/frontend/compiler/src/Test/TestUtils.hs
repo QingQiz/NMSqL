@@ -17,8 +17,9 @@ type CGTestCase = (CodeGenEnv, CodeGenRes)
 
 testEnv :: CodeGenState
 testEnv = (
-    [TableMetadata "xxx" [("idx_xxx_a", ["a"]), ("idx_xxx_a_b", ["a", "b"])] ["a", "b", "c", "x"] 0
+    ([TableMetadata "xxx" [("idx_xxx_a", ["a"]), ("idx_xxx_a_b", ["a", "b"])] ["a", "b", "c", "x"] 0
      ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 0]
+    ,[("max", 2), ("min", 2), ("substr", 3)])
     , []
     , (0, 0))
 
