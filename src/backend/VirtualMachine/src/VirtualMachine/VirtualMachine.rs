@@ -51,24 +51,67 @@ impl VirtualMachine {
 
 /// method for cursor
 impl VirtualMachine {
-  pub fn setCursor(self: &mut Self, num: usize, cursor: VmCursor) {
+  pub fn setCursor(self: &mut Self, num: usize, cursorName: &String, flag: i32) {
     if (self.vmCursors.len() <= num) {
       self.vmCursors.resize(num + 1, VmCursor::default());
     }
     self.closeCursor(num);
-    self.vmCursors[num] = cursor;
+    self.vmCursors[num] = VmCursor::new(cursorName, flag);
   }
-  pub fn getCursor(self: &mut Self, num: usize) -> Result<&mut VmCursor, String> {
+  fn getCursor(self: &mut Self, num: usize) -> Result<&mut VmCursor, String> {
     if num < self.vmCursors.len() {
       Ok(&mut self.vmCursors[num])
     } else {
       Err(format!("no cursor numbered {}", num))
     }
   }
-  pub fn closeCursor(self: &Self, num: usize) {
-    if num < self.vmCursors.len() && self.vmCursors[num].cursor as usize != 0 {
-      DbWrapper::close(self.vmCursors[num].cursor);
-    }
+  pub fn closeCursor(self: &mut Self, num: usize) -> Result<(), String> {
+    Ok(self.getCursor(num)?.close()?)
+  }
+  pub fn cursorInsert(
+    self: &mut Self,
+    num: usize,
+    key: &VmMemString,
+    value: &VmMemString,
+  ) -> Result<(), String> {
+    self.getCursor(num)?.insert(key, value)?;
+    Ok(())
+  }
+  pub fn cursorGetKey(self: &mut Self, num: usize) -> Result<&VmMemString, String> {
+    Ok(self.getCursor(num)?.getKey())
+  }
+  pub fn cursorGetValue(self: &mut Self, num: usize) -> Result<&VmMemString, String> {
+    Ok(self.getCursor(num)?.getValue())
+  }
+  pub fn cursorFindKey(self: &mut Self, num: usize, key: &VmMemString) -> Result<(), String> {
+    self.getCursor(num)?.find(key)?;
+    Ok(())
+  }
+  pub fn cursorDelete(self: &mut Self, num: usize) -> Result<(), String> {
+    self.getCursor(num)?.erase()?;
+    Ok(())
+  }
+  pub fn cursorKeyAsData(self: &mut Self, num: usize) -> Result<bool, String> {
+    Ok(self.getCursor(num)?.getKeyAsData())
+  }
+  pub fn cursorSetKeyAsData(self: &mut Self, num: usize, flag: bool) -> Result<(), String> {
+    self.getCursor(num)?.setKeyAsData(flag);
+    Ok(())
+  }
+  pub fn cursorRewind(self: &mut Self, num: usize) -> Result<(), String> {
+    self.getCursor(num)?.rewind()?;
+    Ok(())
+  }
+  pub fn cursorNext(self: &mut Self, num: usize) -> Result<(), String> {
+    self.getCursor(num)?.next()?;
+    Ok(())
+  }
+  pub fn cursorIsEnd(self: &mut Self, num: usize) -> Result<bool, String> {
+    Ok(self.getCursor(num)?.isEnd())
+  }
+  pub fn cursorSetIdx(self: &mut Self, num: usize, key: &VmMemString) -> Result<(), String> {
+    self.getCursor(num)?.setIdx(key);
+    Ok(())
   }
 }
 
@@ -179,5 +222,27 @@ impl VirtualMachine {
   }
   pub fn setClear(self: &mut Self, num: usize) -> Result<(), String> {
     Ok(self.getSet(num)?.clear())
+  }
+}
+
+/// method for transaction
+impl VirtualMachine {
+  pub fn transaction(self: &Self) {
+    DbWrapper::transaction();
+  }
+  pub fn rollback(self: &Self) {
+    DbWrapper::rollback();
+  }
+  pub fn commit(self: &Self) {
+    DbWrapper::commit();
+  }
+  pub fn getCookies(self: &Self) -> i32 {
+    DbWrapper::getCookies()
+  }
+  pub fn setCookies(self: &Self, cookies: i32) {
+    DbWrapper::setCookies(cookies);
+  }
+  pub fn reorganize(self: &Self) {
+    DbWrapper::reorganize();
   }
 }

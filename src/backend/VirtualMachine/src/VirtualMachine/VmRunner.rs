@@ -26,49 +26,32 @@ fn runOperation(operations: String) -> Result<(), String> {
     match nowOp.vmOpType {
       // implement of every operations
       VmOpType::OP_Transaction => {
-        DbWrapper::transaction();
+        vm.transaction();
       }
       VmOpType::OP_Commit => {
-        DbWrapper::commit();
+        vm.commit();
       }
       VmOpType::OP_Rollback => {
-        DbWrapper::rollback();
+        vm.rollback();
       }
       VmOpType::OP_ReadCookie => {
-        vm.pushStack(VmMem::MEM_INT(DbWrapper::getCookies() as i32));
+        vm.pushStack(VmMem::MEM_INT(vm.getCookies()));
       }
       VmOpType::OP_SetCookie => {
-        DbWrapper::setCookies(nowOp.p1);
+        vm.setCookies(nowOp.p1);
       }
       VmOpType::OP_VerifyCookie => {
-        let cookies = DbWrapper::getCookies();
+        let cookies = vm.getCookies();
         if cookies != nowOp.p1 {
           return Err(String::from("cookies is not right"));
         }
       }
-      VmOpType::OP_Open => vm.setCursor(
-        nowOp.p1 as usize,
-        VmCursor::new(DbWrapper::open(
-          nowOp.p3.as_str(),
-          DbWrapper::CURSOR_READ_ONLY,
-        )),
-      ),
+      VmOpType::OP_Open => vm.setCursor(nowOp.p1 as usize, &nowOp.p3, DbWrapper::CURSOR_READ_ONLY),
       VmOpType::OP_OpenTemp => unimplemented!(),
-      VmOpType::OP_OpenWrite => vm.setCursor(
-        nowOp.p1 as usize,
-        VmCursor::new(DbWrapper::open(nowOp.p3.as_str(), DbWrapper::CURSOR_WRITE)),
-      ),
-      VmOpType::OP_Close => vm.closeCursor(nowOp.p1 as usize),
-      VmOpType::OP_MoveTo => {
-        let poped = popOneMem(&mut vm)?;
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        // TODO: need discuss
-        DbWrapper::find(cursor.cursor, &poped.stringify());
-        vm.fcnt += 1;
-      }
-      VmOpType::OP_Fcnt => {
-        vm.pushStack(VmMem::MEM_INT(vm.fcnt as i32));
-      }
+      VmOpType::OP_OpenWrite => vm.setCursor(nowOp.p1 as usize, &nowOp.p3, DbWrapper::CURSOR_WRITE),
+      VmOpType::OP_Close => vm.closeCursor(nowOp.p1 as usize)?,
+      VmOpType::OP_MoveTo => unimplemented!(),
+      VmOpType::OP_Fcnt => unimplemented!(),
       VmOpType::OP_NewRecno => unimplemented!(),
       VmOpType::OP_Put => {
         let value = match popOneMem(&mut vm)? {
@@ -79,8 +62,7 @@ fn runOperation(operations: String) -> Result<(), String> {
           VmMem::MEM_STRING(x) => x,
           _ => return Err(String::from("incorrect key format")),
         };
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        DbWrapper::insert(cursor.cursor, &key, &value);
+        vm.cursorInsert(nowOp.p1 as usize, &key, &value)?;
       }
       VmOpType::OP_Distinct | VmOpType::OP_Found | VmOpType::OP_NotFound => {
         let poped = popOneMem(&mut vm)?;
@@ -89,10 +71,9 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
         let mut found = false;
         if let VmMem::MEM_STRING(key) = poped {
-          let cursor = vm.getCursor(nowOp.p1 as usize)?;
-          DbWrapper::find(cursor.cursor, &key);
-          let findKey = DbWrapper::getKey(cursor.cursor);
-          if findKey.len() != 0 && *key == findKey {
+          vm.cursorFindKey(nowOp.p1 as usize, &key);
+          let findKey = vm.cursorGetKey(nowOp.p1 as usize)?;
+          if findKey.len() != 0 && &key == findKey {
             found = true;
           }
           match nowOp.vmOpType {
@@ -115,45 +96,39 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_Delete => {
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        DbWrapper::erase(cursor.cursor);
+        vm.cursorDelete(nowOp.p1 as usize)?;
       }
       VmOpType::OP_Column => {
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        let data = match cursor.keyAsData {
-          true => DbWrapper::getKey(cursor.cursor),
-          false => DbWrapper::getValue(cursor.cursor),
-        };
+        let data = (**match vm.cursorKeyAsData(nowOp.p1 as usize)? {
+          true => vm.cursorGetKey(nowOp.p1 as usize),
+          false => vm.cursorGetValue(nowOp.p1 as usize),
+        }?)
+        .clone();
         vm.pushStack(VmMem::MEM_STRING(VmMemString::new(VmMem::getColumn(
           data,
           nowOp.p2 as usize,
         )?)));
       }
       VmOpType::OP_KeyAsData => {
-        let mut cursor = vm.getCursor(nowOp.p1 as usize)?;
-        if nowOp.p2 == 0 {
-          cursor.keyAsData = false;
+        if nowOp.p2 == 1 {
+          vm.cursorSetKeyAsData(nowOp.p1 as usize, true);
         } else {
-          cursor.keyAsData = true;
+          vm.cursorSetKeyAsData(nowOp.p1 as usize, false);
         }
       }
       VmOpType::OP_Recno => unimplemented!(),
       VmOpType::OP_FullKey => {
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        let key = DbWrapper::getKey(cursor.cursor);
-        vm.pushStack(VmMem::MEM_STRING(VmMemString::new(key)));
+        let key = vm.cursorGetKey(nowOp.p1 as usize)?.clone();
+        vm.pushStack(VmMem::MEM_STRING(key));
       }
       VmOpType::OP_Rewind => {
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        DbWrapper::reset(cursor.cursor);
+        vm.cursorRewind(nowOp.p1 as usize)?;
       }
       VmOpType::OP_Next => {
-        let cursor = vm.getCursor(nowOp.p1 as usize)?;
-        let key = DbWrapper::getKey(cursor.cursor);
-        if key.len() == 0 {
+        if vm.cursorIsEnd(nowOp.p1 as usize)? {
           pc = nowOp.p2 as usize - 1;
         } else {
-          DbWrapper::next(cursor.cursor);
+          vm.cursorNext(nowOp.p1 as usize)?;
         }
       }
       VmOpType::OP_Destroy => unimplemented!(),
@@ -161,26 +136,24 @@ fn runOperation(operations: String) -> Result<(), String> {
       VmOpType::OP_CreateIndex => unimplemented!(),
       VmOpType::OP_CreateTable => unimplemented!(),
       VmOpType::OP_Reorganize => {
-        DbWrapper::reorganize();
+        vm.reorganize();
       }
       VmOpType::OP_BeginIdx => {
         let poped = popOneMem(&mut vm)?;
         if let VmMem::MEM_STRING(key) = poped {
-          let mut cursor = vm.getCursor(nowOp.p1 as usize)?;
-          DbWrapper::find(cursor.cursor, &key);
-          cursor.key = key;
+          vm.cursorFindKey(nowOp.p1 as usize, &key)?;
+          vm.cursorSetIdx(nowOp.p1 as usize, &key)?;
         } else {
           return Err(String::from("find should use a value made by IR MakeKey"));
         }
       }
       VmOpType::OP_NextIdx => {
-        // TODO: design needed
-        let mut cursor = vm.getCursor(nowOp.p1 as usize)?;
-        let nowKey = DbWrapper::getKey(cursor.cursor);
-        if nowKey.len() == 0 {
-          // end
+        if vm.cursorIsEnd(nowOp.p1 as usize)? {
           pc = nowOp.p2 as usize - 1;
         } else {
+          let value = vm.cursorGetValue(nowOp.p1 as usize)?.clone();
+          vm.pushStack(VmMem::MEM_STRING(value));
+          vm.cursorNext(nowOp.p1 as usize);
         }
       }
       VmOpType::OP_PutIdx => unimplemented!(),
