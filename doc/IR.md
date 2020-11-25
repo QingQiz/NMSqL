@@ -35,7 +35,7 @@ IR大致可以分为以下几类：
 |19|Column|Y|Y|N|读取P1指向的数据 按照MakeRecord指令输出的形式取出第P2列的值并压栈 若开启了key-as-data模式 则处理的是P1的key (再研究一下)|
 |20|KeyAsData|Y|Y|N|将P1游标的key-as-data模式开启(P2==1)或关闭(P2==0)|
 |22|FullKey|Y|N|N|将游标P1指向的key作为字符串压栈|
-|23|Rewind|Y|N|N|将游标P1重置(指向数据库第一个值)|
+|23|Rewind|Y|N|N|将游标P1重置(指向数据库第一个值) cursor状态重置(例如keyasdata等)|
 |24|Next|Y|Y|N|将游标P1移向下一个位置 若已经是最后一个值 则跳转到P2|
 |25|Destroy|Y|N|N|删除一个根page为P1的表或索引|
 |26|Clear|Y|N|N|清空一个根page为P1的表或索引|
