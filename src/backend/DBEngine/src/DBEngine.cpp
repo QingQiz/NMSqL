@@ -38,24 +38,68 @@ Cursor *open(const char *indexName, int flag) {
 }
 
 int close(Cursor *cursor) {
-    auto *btcursor=cursor->cursor;
-    free(btcursor);
-    return CLOSE_SUCCESS
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = cursor->cursor;
+        free(btcursor);
+        return CLOSE_SUCCESS;
+    } else {
+        return CLOSE_FAILED;
+    }
 }
 
 int create(const char *dbTable, const char *indexName, CursorType indexType,
            const int indexColumnCnt, const char **indexColumns) {}
 
-int find(Cursor *cursor, const void *key) {}
+int find(Cursor *cursor, const void *key) {
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = (btCursor *) cursor->cursor;
+        BPTree bpTree;
+        bpTree.search(btcursor, *((key_t *) key));
+        return FIND_SUCCESS;
+    } else {
+        return FIND_FAILED;
+    }
+    //    TODO: requires new API.
+}
 
-void *getKey(Cursor *cursor) {}
+void *getKey(Cursor *cursor) {
+    /*
+     * requires api from btree
+     */
+    if (cursor->cursorType == CURSOR_BTREE) {
+        return NULL;
+    } else {
+        return NULL;
+    }
+}
 
-void *getValue(Cursor *cursor) {}
+void *getValue(Cursor *cursor) {
+    /*
+     * requires api from pager
+     */
+}
 
-// void* getRecordNumber(Cursor* cursor){}
-int insert(Cursor *cursor, const void *key, const void *value) {}
+int insert(Cursor *cursor, const void *key, const void *value) {
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = cursor->cursor;
+        BPTree bpTree;
+        return INSERT_SUCCESS;
+    } else {
+        return INSERT_FAILED;
+    }
+    //    TODO:API requires re-define.
+}
 
-int erase(Cursor *cursor) {}
+int erase(Cursor *cursor) {
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = cursor->cursor;
+        BPTree bpTree;
+        return ERASE_SUCCESS;
+    } else {
+        return ERASE_FAILED;
+    }
+    //    TODO:API requires re-define.
+}
 
 int next(Cursor *cursor) {}
 
