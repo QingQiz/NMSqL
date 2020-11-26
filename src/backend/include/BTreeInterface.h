@@ -104,6 +104,8 @@ typedef int ReturnCode;
 
 class BPTree {
 public:
+BPTree();
+~BPTree();
 
 ReturnCode create(char* fileName);
 ReturnCode drop();

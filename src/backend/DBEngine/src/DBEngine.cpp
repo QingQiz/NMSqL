@@ -4,18 +4,36 @@
 #include "DBEngine.h"
 #include "BTreeInterface.h"
 #include "DbEngineInterface.h"
+#include <cstdlib>
+
+/*
+ * realization of DBEngine.h
+ */
+
+int findPageByName(const char *name) {
+    return 1;
+}
 
 /*
  * realization of DbEngineInterface.h
  */
 
 Cursor *open(const char *indexName, int flag) {
-	BPTree bpTree();
-	if (flag==CURSOR_BTREE){
-
-	} else {
-		return NULL;
-	}
+    if (flag == CURSOR_BTREE) {
+        auto *btcursor = (btCursor *) malloc(sizeof(btCursor));
+        auto rootPage = (pgno_t) findPageByName(indexName);
+        BPTree bpTree;
+        bpTree.open(btcursor, rootPage);
+        auto *cursor = (Cursor *) malloc(sizeof(Cursor));
+        cursor->cursor = (void *) btcursor;
+        cursor->cursorType = CURSOR_BTREE;
+        return cursor;
+    } else {
+        auto *cursor = (Cursor *) malloc(sizeof(Cursor));
+        cursor->cursor = NULL;
+        cursor->cursorType = CURSOR_LIST;
+        return cursor;
+    }
 }
 
 int close(Cursor *cursor) {}
