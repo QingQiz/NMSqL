@@ -1,3 +1,4 @@
+use super::VmUtil::{f64ToVecU8, i32ToVecU8, vecU8ToF64, vecU8ToI32};
 /// string in format of [len(2),flag(1),null(1),string(len)]  
 #[derive(Debug, Clone, PartialEq, PartialOrd, Default, Eq, Hash)]
 pub struct VmMemString {
@@ -80,14 +81,8 @@ impl VmMem {
   /// turn value into string and make it like C string
   pub fn stringify(self: Self) -> VmMemString {
     match self {
-      VmMem::MEM_INT(x) => {
-        let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
-        VmMem::genVmString(ret, VmMemString::MEM_FLAG_INT)
-      }
-      VmMem::MEM_DOUBLE(x) => {
-        let mut ret: Vec<u8> = x.to_string().as_bytes().iter().map(|&x| x).collect();
-        VmMem::genVmString(ret, VmMemString::MEM_FLAG_DOUBLE)
-      }
+      VmMem::MEM_INT(x) => VmMem::genVmString(i32ToVecU8(x), VmMemString::MEM_FLAG_INT),
+      VmMem::MEM_DOUBLE(x) => VmMem::genVmString(f64ToVecU8(x), VmMemString::MEM_FLAG_DOUBLE),
       VmMem::MEM_NULL => VmMemString::new(vec![0, 0, VmMemString::MEM_FLAG_NULL, 0]),
       VmMem::MEM_STRING(x) => x,
     }
@@ -97,15 +92,12 @@ impl VmMem {
       VmMem::MEM_INT(x) => x,
       VmMem::MEM_DOUBLE(x) => x as i32,
       VmMem::MEM_NULL => 0,
-      VmMem::MEM_STRING(x) => String::from_utf8_lossy(&(x.as_slice()[4..]))
-        .parse()
-        .expect(
-          format!(
-            "expect a integer got {}",
-            String::from_utf8_lossy(x.as_slice())
-          )
-          .as_str(),
-        ),
+      VmMem::MEM_STRING(x) => match VmMemString::getFlag(&*x) {
+        VmMemString::MEM_FLAG_NULL => 0,
+        VmMemString::MEM_FLAG_INT => vecU8ToI32(&*x),
+        VmMemString::MEM_FLAG_DOUBLE => vecU8ToF64(&*x) as i32,
+        _ => unreachable!(),
+      },
     }
   }
   pub fn realify(self: Self) -> f64 {
@@ -113,15 +105,12 @@ impl VmMem {
       VmMem::MEM_INT(x) => x as f64,
       VmMem::MEM_DOUBLE(x) => x,
       VmMem::MEM_NULL => 0.0,
-      VmMem::MEM_STRING(x) => String::from_utf8_lossy(&(x.as_slice()[4..]))
-        .parse()
-        .expect(
-          format!(
-            "expect a number got {}",
-            String::from_utf8_lossy(x.as_slice())
-          )
-          .as_str(),
-        ),
+      VmMem::MEM_STRING(x) => match VmMemString::getFlag(&*x) {
+        VmMemString::MEM_FLAG_NULL => 0 as f64,
+        VmMemString::MEM_FLAG_INT => vecU8ToI32(&*x) as f64,
+        VmMemString::MEM_FLAG_DOUBLE => vecU8ToF64(&*x),
+        _ => unreachable!(),
+      },
     }
   }
   pub fn genVmString(string: Vec<u8>, flag: u8) -> VmMemString {

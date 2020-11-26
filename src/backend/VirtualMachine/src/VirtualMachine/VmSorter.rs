@@ -1,4 +1,5 @@
 use super::VmMem::VmMemString;
+use super::VmUtil::{vecU8ToF64, vecU8ToI32};
 use std::cmp::Ordering;
 #[derive(Default, Clone)]
 pub struct VmSorter {
@@ -30,16 +31,10 @@ impl VmSorter {
           if aflag != bflag {
             panic!("error in sort: aflag={:?} bflag={:?}", aflag, bflag);
           }
-          let avalue = String::from_utf8_lossy(&akey[4..]);
-          let bvalue = String::from_utf8_lossy(&bkey[4..]);
           match aflag {
             VmMemString::MEM_FLAG_INT => {
-              let avalue: i32 = avalue
-                .parse()
-                .expect(format!("fail to parse: avalue={}", avalue).as_str());
-              let bvalue: i32 = bvalue
-                .parse()
-                .expect(format!("fail to parse: avalue={}", avalue).as_str());
+              let avalue: i32 = vecU8ToI32(&akey[4..]);
+              let bvalue: i32 = vecU8ToI32(&bkey[4..]);
               if orders[index] {
                 break bvalue.cmp(&avalue);
               } else {
@@ -47,12 +42,8 @@ impl VmSorter {
               }
             }
             VmMemString::MEM_FLAG_DOUBLE => {
-              let avalue: f64 = avalue
-                .parse()
-                .expect(format!("fail to parse: avalue={}", avalue).as_str());
-              let bvalue: f64 = bvalue
-                .parse()
-                .expect(format!("fail to parse: avalue={}", avalue).as_str());
+              let avalue: f64 = vecU8ToF64(&akey[4..]);
+              let bvalue: f64 = vecU8ToF64(&bkey[4..]);
               if orders[index] {
                 break bvalue.partial_cmp(&avalue).expect(
                   format!("fail to compare: avalue={} bvalue={}", avalue, bvalue).as_str(),
@@ -64,6 +55,8 @@ impl VmSorter {
               }
             }
             VmMemString::MEM_FLAG_STRING => {
+              let avalue = String::from_utf8_lossy(&akey[4..]);
+              let bvalue = String::from_utf8_lossy(&bkey[4..]);
               if orders[index] {
                 break bvalue.cmp(&avalue);
               } else {

@@ -6,3 +6,4 @@ pub mod VmOp;
 pub mod VmRunner;
 pub mod VmSet;
 pub mod VmSorter;
+pub mod VmUtil;
