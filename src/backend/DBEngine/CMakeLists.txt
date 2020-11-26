@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 # add the executable
 
-set(MAIN_FILE main.cpp src/test.cpp)
+set(MAIN_FILE main.cpp src/test.cpp include/DBEDefines.h)
 SET(LIB_DIRECTORY ../include/)
 SET(WORK_DIRECTORY ./)
 SET(HEAD_DIRECTORY ${WORK_DIRECTORY}include/)

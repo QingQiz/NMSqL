@@ -1,0 +1,11 @@
+//
+// Created by icpc on 2020/11/26.
+//
+
+#ifndef DBENGINE_DBEDEFINES_H
+#define DBENGINE_DBEDEFINES_H
+
+#define CLOSE_SUCCESS 1
+#define CLOSE_FAILED 2
+
+#endif //DBENGINE_DBEDEFINES_H

@@ -4,6 +4,7 @@
 #include "DBEngine.h"
 #include "BTreeInterface.h"
 #include "DbEngineInterface.h"
+#include "DBEDefines.h"
 #include <cstdlib>
 
 /*
@@ -36,7 +37,11 @@ Cursor *open(const char *indexName, int flag) {
     }
 }
 
-int close(Cursor *cursor) {}
+int close(Cursor *cursor) {
+    auto *btcursor=cursor->cursor;
+    free(btcursor);
+    return CLOSE_SUCCESS
+}
 
 int create(const char *dbTable, const char *indexName, CursorType indexType,
            const int indexColumnCnt, const char **indexColumns) {}
