@@ -13,9 +13,9 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- some data structure
 ----------------------------------------------------------
-type CodeGenCnt   = (Int, Int) -- (label-cnt, set-cnt)
+type CodeGenCnt   = (Int, Int, Int) -- (label-cnt, set-cnt, AggCnt)
 
-type FunctionDef  = (String, Int)
+type FunctionDef  = (String, Int) -- (func-name, func-param-cnt)
 
 type CodeGenState = (([TableMetadata], [FunctionDef]), [Instruction], CodeGenCnt)
 
@@ -41,10 +41,10 @@ clrRes = putRes []
 
 -- functions to operate label
 getLabel :: ExceptTEnv Int
-getLabel = fst . trd3 <$> lift get
+getLabel = fst3 . trd3 <$> lift get
 
 putLabel :: Int -> CodeGenEnv
-putLabel l = get >>= (\(a, b, (_, d)) -> put (a, b, (l, d))) >> getRes
+putLabel l = get >>= (\(a, b, (_, d, e)) -> put (a, b, (l, d, e))) >> getRes
 
 updateLabel :: CodeGenEnv
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
@@ -58,13 +58,23 @@ mkCurrentLabel = getLabel >>= mkLabel >> updateLabel
 
 -- functions to operate set
 getSet :: ExceptTEnv Int
-getSet = snd . trd3 <$> lift get
+getSet = snd3 . trd3 <$> lift get
 
 putSet :: Int -> CodeGenEnv
-putSet s = get >>= (\(a, b, (c, _)) -> put (a, b, (c, s))) >> getRes
+putSet s = get >>= (\(a, b, (c, _, d)) -> put (a, b, (c, s, d))) >> getRes
 
 updateSet :: CodeGenEnv
 updateSet = getSet >>= \x -> putSet $ x + 1
+
+-- functions to operate agg
+getAgg :: ExceptTEnv Int
+getAgg = trd3 . trd3 <$> lift get
+
+putAgg :: Int -> CodeGenEnv
+putAgg agg = get >>= (\(a, b, (c, d, _)) -> put (a, b, (c, d, agg))) >> getRes
+
+updateAgg :: CodeGenEnv
+updateAgg = getAgg >>= \x -> putAgg $ x + 1
 
 
 -- append an instruction to env
@@ -97,6 +107,9 @@ getMetadata = fst . fst3 <$> lift get
 -- get function definations
 getFuncDef :: ExceptTEnv [FunctionDef]
 getFuncDef = snd . fst3 <$> lift get
+
+putFuncDef :: [FunctionDef] -> CodeGenEnv
+putFuncDef funcDef = get >>= (\((a, _), c, d) -> put ((a, funcDef), c, d)) >> getRes
 
 
 -- get column index from metadatas, return: (table-index, column-index)

@@ -13,8 +13,9 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
+
 cExpr :: Expr -> CodeGenEnv
-cExpr = \case
+cExpr inp = putFuncDef simpleFuncDef >> case inp of
     BinExpr op e1 e2
         | op == And                                 -> exprAnd e1 e2
         | op == Or                                  -> exprOr  e1 e2
@@ -31,6 +32,7 @@ cExpr = \case
     Column       cn                                 -> exprColumn cn
     TableColumn  tn cn                              -> exprTableColumn tn cn
     AnyColumn                                       -> throwError "`*' was not allowed here"
+    where simpleFuncDef = [("max", 2), ("min", 2), ("substr", 3)]
 
 
 -- code generator for between-expr
@@ -94,8 +96,17 @@ exprFuncCall funcName paramList =
             | (fn, plLength) `elem` fnDef = case (fn, plLength) of
                 ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
                 ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
-                ("substr", _) -> pl' >> appendInst opSubstr 0 0 ""
-                _ -> error "asd"
+                ("substr", 3) -> pl' >> appendInst opSubstr 0 0 ""
+                ("count" , 1) -> getAgg >>= \agg -> appendInst opAggIncr agg 0 ""
+                ("max"   , 1) -> getAgg >>= \agg
+                              -> cExpr (head pl) >> appendInst opAggGet  agg 0 ""
+                                                 >> appendInst opMax     0   0 ""
+                                                 >> appendInst opAggSet  agg 0 ""
+                ("min"   , 1) -> getAgg >>= \agg
+                              -> cExpr (head pl) >> appendInst opAggGet  agg 0 ""
+                                                 >> appendInst opMin     0   0 ""
+                                                 >> appendInst opAggSet  agg 0 ""
+                _ -> error "never here"
             | otherwise = case findIndex ((==fn) . fst) fnDef of
                 Nothing -> throwError $ "No such function: " ++ fn
                 Just  i -> if   plLength   > snd (fnDef !! i)
