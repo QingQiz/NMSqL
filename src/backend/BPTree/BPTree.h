@@ -20,13 +20,12 @@ ReturnCode open(btCursor*, pgno_t root_page);
 ReturnCode close();
 
 ReturnCode search(btCursor*, key_t key);
-ReturnCode search(btCursor*, key_t lowerKey, key_t upperKey);
 ReturnCode insert(btCursor*, key_t key, void* data);
 ReturnCode remove(btCursor*, key_t key);
 
-ReturnCode first(btCursor*);
-ReturnCode root(btCursor*);
-ReturnCode next(btCursor*);
+ReturnCode first(btCursor*); // move cursor to the first row
+ReturnCode root(btCursor*); // move cursor to the root page
+ReturnCode next(btCursor*); // move cursor to the next row
 
 private:
 meta_t metaData;

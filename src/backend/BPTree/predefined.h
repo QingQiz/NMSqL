@@ -16,7 +16,12 @@ typedef struct address_t{
         this->pgno = no;
         this->offset = offset;
     }
+    bool operator==(const address_t b){
+        return this->pgno == b.pgno && this->offset == b.offset;
+    }
 };
+
+const address_t NULLAddress = address_t(0, 0); // 这是一个不该出现的地址
 
 struct key_t{
     char data[16];
@@ -34,6 +39,10 @@ bool operator<(const key_t &l, const key_t &r){
     return keycmp(l, r) < 0;
 }
 
+bool operator>(const key_t &l, const key_t &r){
+    return keycmp(l, r) > 0;
+}
+
 bool operator==(const key_t &l, const key_t &r){
     return keycmp(l, r) == 0;
 }
@@ -41,8 +50,6 @@ bool operator==(const key_t &l, const key_t &r){
 bool operator<=(const key_t &l, const key_t &r){
     return keycmp(l, r) <= 0;
 }
-
-
 
 
 /* meta information of B+ tree */
@@ -75,8 +82,9 @@ struct internal_node_t{
 
 struct record_t{
     key_t key;
-    address_t data; // offset of the data
+    address_t address; // offset of the cell pointer
     int size;
+
 };
 
 struct leaf_node_t {
@@ -91,6 +99,7 @@ struct leaf_node_t {
 struct btCursor{
     address_t address;
     pgno_t rootPage;
+    int id; //用于表示是cell pointer array中的第几个。从0开始。
 
 };
 
