@@ -32,7 +32,7 @@ impl VmSorter {
             panic!("error in sort: aflag={:?} bflag={:?}", aflag, bflag);
           }
           match aflag {
-            VmMemString::MEM_FLAG_INT => {
+            Some(VmMemString::MEM_FLAG_INT) => {
               let avalue: i32 = vecU8ToI32(&akey[4..]);
               let bvalue: i32 = vecU8ToI32(&bkey[4..]);
               if orders[index] {
@@ -41,7 +41,7 @@ impl VmSorter {
                 break avalue.cmp(&bvalue);
               }
             }
-            VmMemString::MEM_FLAG_DOUBLE => {
+            Some(VmMemString::MEM_FLAG_DOUBLE) => {
               let avalue: f64 = vecU8ToF64(&akey[4..]);
               let bvalue: f64 = vecU8ToF64(&bkey[4..]);
               if orders[index] {
@@ -54,7 +54,7 @@ impl VmSorter {
                 );
               }
             }
-            VmMemString::MEM_FLAG_STRING => {
+            Some(VmMemString::MEM_FLAG_STRING) => {
               let avalue = String::from_utf8_lossy(&akey[4..]);
               let bvalue = String::from_utf8_lossy(&bkey[4..]);
               if orders[index] {

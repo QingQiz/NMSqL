@@ -8,7 +8,8 @@ fn main() {
   // shared library.
   // FIXME: uncomment this
   // println!("cargo:rustc-link-lib=DbEngineInterface");
-  println!("cargo:rustc-link-search=../lib");
+  // FIXME: uncomment this
+  // println!("cargo:rustc-link-search=../lib");
 
   // Tell cargo to invalidate the built crate whenever the wrapper changes
   println!("cargo:rerun-if-changed=src/wrapper.h");

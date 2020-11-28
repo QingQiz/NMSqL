@@ -99,15 +99,19 @@ fn runOperation(operations: String) -> Result<(), String> {
         vm.cursorDelete(nowOp.p1 as usize)?;
       }
       VmOpType::OP_Column => {
-        let data = (**match vm.cursorKeyAsData(nowOp.p1 as usize)? {
+        let data = (match vm.cursorKeyAsData(nowOp.p1 as usize)? {
           true => vm.cursorGetKey(nowOp.p1 as usize),
           false => vm.cursorGetValue(nowOp.p1 as usize),
-        }?)
-        .clone();
-        vm.pushStack(VmMem::MEM_STRING(VmMemString::new(VmMem::getColumn(
-          data,
-          nowOp.p2 as usize,
-        )?)));
+        }?);
+        let toPush = VmMem::MEM_STRING(VmMemString::new(
+          match data.iter().skip(nowOp.p2 as usize).next() {
+            Some(x) => x.to_vec(),
+            None => {
+              return Err(String::from("column number is too big"));
+            }
+          },
+        ));
+        vm.pushStack(toPush);
       }
       VmOpType::OP_KeyAsData => {
         if nowOp.p2 == 1 {
@@ -285,7 +289,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         let a = popOneMem(&mut vm)?;
         let flag = match a {
           VmMem::MEM_INT(x) if x != 0 => 1,
-          VmMem::MEM_STRING(x) if a.getStringRawLength() != 0 => 1,
+          VmMem::MEM_STRING(x) if x.getLen(0).unwrap_or(0) != 0 => 1,
           VmMem::MEM_DOUBLE(x) if x.ne(&0.0) => 1,
           _ => 0,
         };

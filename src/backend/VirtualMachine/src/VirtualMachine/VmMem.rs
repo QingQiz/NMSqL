@@ -1,4 +1,5 @@
 use super::VmUtil::{f64ToVecU8, i32ToVecU8, vecU8ToF64, vecU8ToI32};
+
 /// string in format of [len(2),flag(1),null(1),string(len)]  
 #[derive(Debug, Clone, PartialEq, PartialOrd, Default, Eq, Hash)]
 pub struct VmMemString {
@@ -29,8 +30,12 @@ impl VmMemString {
       None
     }
   }
-  pub fn getFlag(data: &[u8]) -> u8 {
-    data[2]
+  pub fn getFlag(data: &[u8]) -> Option<u8> {
+    if data.len() >= 4 {
+      Some(data[2])
+    } else {
+      None
+    }
   }
 }
 
@@ -93,9 +98,9 @@ impl VmMem {
       VmMem::MEM_DOUBLE(x) => x as i32,
       VmMem::MEM_NULL => 0,
       VmMem::MEM_STRING(x) => match VmMemString::getFlag(&*x) {
-        VmMemString::MEM_FLAG_NULL => 0,
-        VmMemString::MEM_FLAG_INT => vecU8ToI32(&*x),
-        VmMemString::MEM_FLAG_DOUBLE => vecU8ToF64(&*x) as i32,
+        Some(VmMemString::MEM_FLAG_NULL) => 0,
+        Some(VmMemString::MEM_FLAG_INT) => vecU8ToI32(&x.removeHead()),
+        Some(VmMemString::MEM_FLAG_DOUBLE) => vecU8ToF64(&x.removeHead()) as i32,
         _ => unreachable!(),
       },
     }
@@ -106,9 +111,9 @@ impl VmMem {
       VmMem::MEM_DOUBLE(x) => x,
       VmMem::MEM_NULL => 0.0,
       VmMem::MEM_STRING(x) => match VmMemString::getFlag(&*x) {
-        VmMemString::MEM_FLAG_NULL => 0 as f64,
-        VmMemString::MEM_FLAG_INT => vecU8ToI32(&*x) as f64,
-        VmMemString::MEM_FLAG_DOUBLE => vecU8ToF64(&*x),
+        Some(VmMemString::MEM_FLAG_NULL) => 0 as f64,
+        Some(VmMemString::MEM_FLAG_INT) => vecU8ToI32(&x.removeHead()) as f64,
+        Some(VmMemString::MEM_FLAG_DOUBLE) => vecU8ToF64(&x.removeHead()),
         _ => unreachable!(),
       },
     }
@@ -124,36 +129,225 @@ impl VmMem {
       .concat(),
     )
   }
-  pub fn getStringRawLength(self: &Self) -> usize {
-    if let VmMem::MEM_STRING(s) = self {
-      let mut len = 0;
-      for i in 0..2 {
-        len = (len << 8) + (s[i] as usize);
-      }
-      len
-    } else {
+}
+
+#[cfg(test)]
+mod VmMemTest {
+  use super::super::VmUtil::VmTestUtils::*;
+  use super::super::VmUtil::*;
+  use super::VmMem;
+  use super::VmMemString;
+
+  fn getI32OneVmMemString() -> VmMemString {
+    getVmMemStringI32(1)
+  }
+
+  fn getF64OneVmMemString() -> VmMemString {
+    getVmMemStringF64(1.0)
+  }
+
+  fn getLongStringVmMemString() -> VmMemString {
+    getVmMemStringString(500)
+  }
+
+  #[test]
+  fn test_VmMem_genVmString_work() {
+    let i32Vec = vec![0u8, 0u8, 0u8, 1u8];
+    let i32Result = getI32OneVmMemString();
+    assert_eq!(
+      i32Result,
+      VmMem::genVmString(i32Vec, VmMemString::MEM_FLAG_INT)
+    );
+    let f64Vec = f64ToVecU8(1.0);
+    let f64Result = getF64OneVmMemString();
+    assert_eq!(
+      f64Result,
+      VmMem::genVmString(f64Vec, VmMemString::MEM_FLAG_DOUBLE)
+    );
+    let stringVec = vec!['a' as u8; 500];
+    let stringResult = getLongStringVmMemString();
+    assert_eq!(
+      stringResult,
+      VmMem::genVmString(stringVec, VmMemString::MEM_FLAG_STRING)
+    );
+  }
+  #[test]
+  fn test_VmMem_Stringify_work() {
+    assert_eq!(VmMem::MEM_INT(1).stringify(), getI32OneVmMemString());
+    assert_eq!(VmMem::MEM_DOUBLE(1.0).stringify(), getF64OneVmMemString());
+    assert_eq!(
+      getLongStringVmMemString(),
+      VmMem::MEM_STRING(getLongStringVmMemString()).stringify()
+    );
+    assert_eq!(
+      VmMem::MEM_NULL.stringify(),
+      VmMemString::new(vec![0u8, 0, VmMemString::MEM_FLAG_NULL, 0])
+    );
+  }
+  #[test]
+  fn test_VmMem_Integerify_work() {
+    assert_eq!(VmMem::MEM_INT(1).integerify(), 1);
+    assert_eq!(VmMem::MEM_DOUBLE(1.1).integerify(), 1);
+    assert_eq!(VmMem::MEM_NULL.integerify(), 0);
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_INT(1).stringify()).integerify(),
+      1
+    );
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_DOUBLE(1.1).stringify()).integerify(),
+      1
+    );
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_NULL.stringify()).integerify(),
       0
-    }
+    );
   }
-  fn getLen(data: &Vec<u8>, lo: usize) -> Result<usize, String> {
-    if VmMem::canGetData(data, lo) {
-      Ok(((data[lo] as usize) << 8) + (data[lo + 1] as usize))
-    } else {
-      Err(String::from("too many columns"))
-    }
+  #[test]
+  #[should_panic]
+  fn test_VmMem_Integerify_fail() {
+    VmMem::MEM_STRING(getLongStringVmMemString()).integerify();
   }
-  fn canGetData(data: &Vec<u8>, lo: usize) -> bool {
-    lo + 3 < data.len()
+  #[test]
+  fn test_VmMem_Realify_work() {
+    assert_eq!(VmMem::MEM_INT(1).realify(), 1.0);
+    assert_eq!(VmMem::MEM_DOUBLE(1.1).realify(), 1.1);
+    assert_eq!(VmMem::MEM_NULL.realify(), 0.0);
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_INT(1).stringify()).realify(),
+      1.0
+    );
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_DOUBLE(1.1).stringify()).realify(),
+      1.1
+    );
+    assert_eq!(
+      VmMem::MEM_STRING(VmMem::MEM_NULL.stringify()).realify(),
+      0.0
+    );
   }
-  pub fn getColumn(data: Vec<u8>, num: usize) -> Result<Vec<u8>, String> {
-    Ok(VmMem::getColumnSlice(&data, num)?.to_vec())
+  #[test]
+  #[should_panic]
+  fn test_VmMem_Realify_fail() {
+    VmMem::MEM_STRING(getLongStringVmMemString()).realify();
   }
-  pub fn getColumnSlice(data: &Vec<u8>, num: usize) -> Result<&[u8], String> {
-    let mut lo = 0;
-    for i in 0..num {
-      lo += VmMem::getLen(&data, lo)? + 4;
-    }
-    let len = VmMem::getLen(&data, lo)?;
-    Ok(&data[lo..lo + 4 + len])
+}
+
+#[cfg(test)]
+mod VmMemStringTest {
+  use super::super::VmUtil::*;
+  use super::VmMem;
+  use super::VmMemString;
+  use super::VmMemStringIterator;
+  #[test]
+  fn test_VmMemString_removeHead_work() {
+    let toTest = VmMemString::new(vec![0u8, 1u8, VmMemString::MEM_FLAG_STRING, 0, 'a' as u8]);
+    assert_eq!(toTest.removeHead(), vec!['a' as u8]);
+    let toTest = VmMemString::new(vec![0u8, 0u8, VmMemString::MEM_FLAG_STRING, 0]);
+    assert_eq!(toTest.removeHead(), vec![]);
+  }
+  #[test]
+  fn test_VmMemString_canGetData_work() {
+    let toTest = VmMemString::new(vec![0u8, 0u8, 0u8]);
+    assert!(!toTest.canGetData(0));
+    let toTest = VmMemString::new(vec![0u8, 0u8, 0u8, 0u8]);
+    assert!(toTest.canGetData(0));
+  }
+  #[test]
+  fn test_VmMemString_getLen_work() {
+    let toTest = VmMemString::new(vec![0u8, 0u8, 0u8]);
+    assert_eq!(toTest.getLen(0), None);
+    let toTest = VmMemString::new(
+      [
+        vec![2u8, 1u8, VmMemString::MEM_FLAG_STRING, 0u8],
+        vec!['a' as u8; 0x201],
+      ]
+      .concat(),
+    );
+    assert_eq!(toTest.getLen(0), Some(0x201));
+  }
+  #[test]
+  fn test_VmMemString_getFlag_work() {
+    let toTest = VmMemString::new(vec![0u8, 0, 0]);
+    assert_eq!(VmMemString::getFlag(&toTest), None);
+    let toTest = VmMemString::new(vec![0u8, 0, VmMemString::MEM_FLAG_STRING, 0]);
+    assert_eq!(
+      VmMemString::getFlag(&toTest),
+      Some(VmMemString::MEM_FLAG_STRING)
+    );
+    let toTest = VmMemString::new(vec![0u8, 4, VmMemString::MEM_FLAG_INT, 0, 0, 0, 0, 0]);
+    assert_eq!(
+      VmMemString::getFlag(&toTest),
+      Some(VmMemString::MEM_FLAG_INT)
+    );
+    let toTest = VmMemString::new(
+      [
+        vec![0u8, 8, VmMemString::MEM_FLAG_DOUBLE, 0],
+        f64ToVecU8(1.0),
+      ]
+      .concat(),
+    );
+    assert_eq!(
+      VmMemString::getFlag(&toTest),
+      Some(VmMemString::MEM_FLAG_DOUBLE)
+    );
+    let toTest = VmMemString::new(vec![0u8, 0u8, VmMemString::MEM_FLAG_NULL, 0]);
+    assert_eq!(
+      VmMemString::getFlag(&toTest),
+      Some(VmMemString::MEM_FLAG_NULL)
+    );
+  }
+  #[test]
+  fn test_VmMemStringIterator_wort() {
+    let toTest = VmMemString::new(
+      [
+        vec![0u8, 0u8, VmMemString::MEM_FLAG_NULL, 0],
+        vec![0u8, 4u8, VmMemString::MEM_FLAG_INT, 0],
+        i32ToVecU8(0x12345678),
+        vec![0u8, 8u8, VmMemString::MEM_FLAG_DOUBLE, 0],
+        f64ToVecU8(1.0),
+        vec![0u8, 255, VmMemString::MEM_FLAG_STRING, 0],
+        vec!['a' as u8; 255],
+      ]
+      .concat(),
+    );
+    let mut toTestIter = toTest.iter();
+    assert_eq!(
+      toTestIter.next(),
+      Some(vec![0u8, 0u8, VmMemString::MEM_FLAG_NULL, 0].as_slice()),
+    );
+    assert_eq!(
+      toTestIter.next(),
+      Some(
+        [
+          vec![0u8, 4u8, VmMemString::MEM_FLAG_INT, 0],
+          i32ToVecU8(0x12345678),
+        ]
+        .concat()
+        .as_slice()
+      ),
+    );
+    assert_eq!(
+      toTestIter.next(),
+      Some(
+        [
+          vec![0u8, 8u8, VmMemString::MEM_FLAG_DOUBLE, 0],
+          f64ToVecU8(1.0),
+        ]
+        .concat()
+        .as_slice()
+      ),
+    );
+    assert_eq!(
+      toTestIter.next(),
+      Some(
+        [
+          vec![0u8, 255, VmMemString::MEM_FLAG_STRING, 0],
+          vec!['a' as u8; 255],
+        ]
+        .concat()
+        .as_slice()
+      ),
+    );
+    assert_eq!(toTestIter.next(), None);
   }
 }
