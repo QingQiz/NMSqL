@@ -11,4 +11,6 @@ struct DBECursor{
 	void* rootPage;
 };
 
+int findPageByName(const char* name);
+
 #endif //DBENGINE_DBENGINE_H

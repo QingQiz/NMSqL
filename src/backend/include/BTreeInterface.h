@@ -110,6 +110,8 @@ typedef int ReturnCode;
 
 class BPTree {
 public:
+BPTree();
+~BPTree();
 
 BPTree();
 ~BPTree();
