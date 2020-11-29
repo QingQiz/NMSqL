@@ -113,9 +113,6 @@ public:
 BPTree();
 ~BPTree();
 
-BPTree();
-~BPTree();
-
 ReturnCode create(char* fileName);
 ReturnCode drop();
 ReturnCode clear();
