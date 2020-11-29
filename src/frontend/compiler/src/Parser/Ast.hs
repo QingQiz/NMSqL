@@ -1,4 +1,7 @@
+{-# LANGUAGE LambdaCase #-}
 module Ast where
+
+import Data.List
 
 
 ----------------------------------------------------------
@@ -9,7 +12,7 @@ data BinOp = Multiply | Divide   -- (*) (/)
            | Ls | LE  | Gt | GE  -- (<) (<=) (>) (>=)
            | Eq | NE             -- (= ==) (!= <>)
            | And| Or             -- (AND) (OR)
-           deriving (Show, Eq)
+           deriving Eq
 
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
@@ -71,7 +74,6 @@ data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | Column ColumnName                -- column
           | AnyColumn                        -- column *
           | TableColumn TableName ColumnName -- table.column
-          deriving (Show)
 
 
 ----------------------------------------------------------
@@ -129,3 +131,36 @@ data IndexAction = CreateIndex IndexName TableName [(ColumnName, SortOrder)]
                  | DropIndex IndexName
                  deriving (Show)
 
+
+----------------------------------------------------------
+-- Instance Show for Expr
+----------------------------------------------------------
+instance Show Expr where
+    show = \case
+        BinExpr      op e1 e2 -> brackets $ show e1 ++ show op ++ show e2
+        LikeExpr     op e1 e2 -> brackets $ show e1 ++ " "     ++ show op ++ " " ++ show e2
+        ConstValue   val      -> show val
+        FunctionCall fn es    -> fn                 ++ brackets (intercalate "," $ map show es)
+        IsNull       e        -> brackets $ show e  ++ " IsNull"
+        Between      e1 e2 e3 -> brackets $ show e1 ++ " Between " ++ show e2 ++ " And " ++ show e3
+        InExpr       e vl     -> brackets $ show e  ++ " In "      ++ show vl
+        NotExpr      e        -> brackets $ "Not "  ++ show e
+        SelectExpr   sel      -> brackets $ show sel
+        Column       cn       -> cn
+        TableColumn  tn cn    -> tn ++ "." ++ cn
+        AnyColumn             -> "*"
+        where brackets s = "(" ++ s ++ ")"
+
+instance Show BinOp where
+    show Multiply = "*"
+    show Divide   = "/"
+    show Plus     = "+"
+    show Minus    = "-"
+    show Gt       = ">"
+    show GE       = ">="
+    show Ls       = "<"
+    show LE       = "<="
+    show Eq       = "=="
+    show NE       = "!="
+    show And      = " And "
+    show Or       = " Or "

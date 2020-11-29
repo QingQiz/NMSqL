@@ -5,6 +5,7 @@ module CodeGenerator where
 
 import Ast
 import Expr
+import Select
 import Instruction
 import FFIStructure
 import CodeGeneratorUtils

@@ -330,7 +330,8 @@ expr = pd1 where
           (FunctionCall . map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))   <|>
           (Column       <$> ident)                                                              <|>
           (ConstValue   <$> value)                                                              <|>
-          (SelectExpr   <$> surroundByBrackets select)
+          (SelectExpr   <$> surroundByBrackets select)                                          <|>
+          matchAndRet "*" AnyColumn
 
 
 -- sql ::= INSERT INTO table-name [\( column-list \)] VALUES \( value-list \)
@@ -365,7 +366,7 @@ delete = matchTwoAndRet "delete" "from" Delete
 -- xxx-list ::= xxx[,xxx]*
 -- result   ::= * | column-result-list
 select = matchAndRet "select" Select
-    <*> (argsList resultCol <|> (spcChar '*' >> return [(AnyColumn, "")]))
+    <*> argsList resultCol
     <*> (spcStrIgnoreCase "from" >> argsList ident)
     <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
     <*> ((matchTwoAndRet "group" "by" id >> argsList expr) <|> return [])

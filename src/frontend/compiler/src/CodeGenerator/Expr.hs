@@ -15,7 +15,7 @@ import Control.Monad.Except
 ----------------------------------------------------------
 
 cExpr :: Expr -> CodeGenEnv
-cExpr inp = putFuncDef simpleFuncDef >> case inp of
+cExpr = \case
     BinExpr op e1 e2
         | op == And                                 -> exprAnd e1 e2
         | op == Or                                  -> exprOr  e1 e2
@@ -32,7 +32,12 @@ cExpr inp = putFuncDef simpleFuncDef >> case inp of
     Column       cn                                 -> exprColumn cn
     TableColumn  tn cn                              -> exprTableColumn tn cn
     AnyColumn                                       -> throwError "`*' was not allowed here"
-    where simpleFuncDef = [("max", 2), ("min", 2), ("substr", 3)]
+
+
+cNormalExpr :: Expr -> CodeGenEnv
+cNormalExpr expr = getFuncDef >>= \oldFD -> putFuncDef simpleFuncDef >> cExpr expr >> putFuncDef oldFD
+    where
+        simpleFuncDef  = [("max", 2), ("min", 2), ("substr", 3)]
 
 
 -- code generator for between-expr
@@ -97,15 +102,23 @@ exprFuncCall funcName paramList =
                 ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
                 ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
                 ("substr", 3) -> pl' >> appendInst opSubstr 0 0 ""
-                ("count" , 1) -> getAgg >>= \agg -> appendInst opAggIncr agg 0 ""
+                ("count" , 1) -> getAgg >>= \agg -> appendInst opAggIncr 1 agg ""
+                              >> updateAgg >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
                 ("max"   , 1) -> getAgg >>= \agg
-                              -> cExpr (head pl) >> appendInst opAggGet  agg 0 ""
-                                                 >> appendInst opMax     0   0 ""
-                                                 >> appendInst opAggSet  agg 0 ""
+                              -> cNormalExpr (head pl)
+                              >> appendInst opAggGet 0 agg ""
+                              >> appendInst opMax    0 0   ""
+                              >> appendInst opAggSet 0 agg ""
+                              >> updateAgg >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
                 ("min"   , 1) -> getAgg >>= \agg
-                              -> cExpr (head pl) >> appendInst opAggGet  agg 0 ""
-                                                 >> appendInst opMin     0   0 ""
-                                                 >> appendInst opAggSet  agg 0 ""
+                              -> cNormalExpr (head pl)
+                              >> appendInst opAggGet 0 agg ""
+                              >> appendInst opMin    0 0   ""
+                              >> appendInst opAggSet 0 agg ""
+                              >> updateAgg >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
                 _ -> error "never here"
             | otherwise = case findIndex ((==fn) . fst) fnDef of
                 Nothing -> throwError $ "No such function: " ++ fn

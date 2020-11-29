@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 module CodeGeneratorUtils where
 
 
@@ -17,7 +18,9 @@ type CodeGenCnt   = (Int, Int, Int) -- (label-cnt, set-cnt, AggCnt)
 
 type FunctionDef  = (String, Int) -- (func-name, func-param-cnt)
 
-type CodeGenState = (([TableMetadata], [FunctionDef]), [Instruction], CodeGenCnt)
+type CodeGenCache = ([Instruction], [Instruction], Int)
+
+type CodeGenState = (([TableMetadata], [FunctionDef]), CodeGenCache, CodeGenCnt)
 
 type ExceptTEnv a = ExceptT String (State CodeGenState) a
 
@@ -30,10 +33,10 @@ type CodeGenRes   = Either String [Instruction]
 -- some help functions
 ----------------------------------------------------------
 getRes :: CodeGenEnv
-getRes = snd3 <$> lift get
+getRes = fst3 . snd3 <$> lift get
 
 putRes :: [Instruction] -> CodeGenEnv
-putRes is = get >>= (\(a, _, c) -> put (a, is, c)) >> getRes
+putRes is = get >>= (\(a, (_, x1, x2), c) -> put (a, (is, x1, x2), c)) >> getRes
 
 clrRes :: CodeGenEnv
 clrRes = putRes []
@@ -76,10 +79,23 @@ putAgg agg = get >>= (\(a, b, (c, d, _)) -> put (a, b, (c, d, agg))) >> getRes
 updateAgg :: CodeGenEnv
 updateAgg = getAgg >>= \x -> putAgg $ x + 1
 
+-- toggle cache
+getCacheState :: ExceptTEnv Int
+getCacheState = trd3 . snd3 <$> lift get
+
+putCacheState :: Int -> CodeGenEnv
+putCacheState cache = get >>= (\(a, (b, x1, _), c) -> put (a, (b, x1, cache), c)) >> getRes
+
+applyCache :: CodeGenEnv
+applyCache = get >>= (\(a, (b, x1, x2), c) -> put (a, (b ++ x1, [], x2), c)) >> getRes
+
 
 -- append an instruction to env
 appendInst :: OpCode -> Int -> Int -> String -> CodeGenEnv
-appendInst opCode p1 p2 p3 = get >>= (\(a, b, c) -> put (a, b ++ [Instruction opCode p1 p2 p3], c)) >> getRes
+appendInst opCode p1 p2 p3 = get >>= (\(a, (b, x1, x2), c) -> getCacheState >>= \case
+    0 -> put (a, (b ++ [Instruction opCode p1 p2 p3], x1, x2), c) >> getRes
+    _ -> put (a, (b, x1 ++ [Instruction opCode p1 p2 p3], x2), c) >> getRes)
+
 
 -- prepend the result of env to current env
 prependEnv :: CodeGenEnv -> CodeGenEnv
@@ -87,6 +103,13 @@ prependEnv env = do
     oldRes <- getRes
     newRes <- putRes [] >> env
     putRes $ newRes ++ oldRes
+
+
+-- insert env before tempInstruction
+insertTemp :: CodeGenEnv -> CodeGenEnv
+insertTemp env = do
+    res <- getRes >>= \x -> return $ break (==Instruction opTempInst 0 0 "") x
+    putRes (fst res) >> env >> putRes (snd res)
 
 
 -- fst, snd, trd for (,,)
@@ -134,3 +157,7 @@ tableColumnIdx tn cn mds = case findIndex ((==tn) . metadata_name) mds of
 -- connect CodeGenEnv
 connectCodeGenEnv :: [CodeGenEnv] -> CodeGenEnv
 connectCodeGenEnv = foldl (>>) (return [])
+
+
+try :: CodeGenEnv -> CodeGenEnv -> CodeGenEnv
+try a b = get >>= \st -> catchError a $ \_ -> put st >> b
