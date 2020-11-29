@@ -90,7 +90,7 @@ pub mod VmTestUtils {
       .concat(),
     )
   }
-  pub fn getVmMemStringString(x: usize) -> VmMemString {
+  pub fn getVmMemStringStringA(x: usize) -> VmMemString {
     VmMemString::new(
       [
         vec![
@@ -104,7 +104,30 @@ pub mod VmTestUtils {
       .concat(),
     )
   }
+  pub fn getVmMemStringStringB(x: usize) -> VmMemString {
+    VmMemString::new(
+      [
+        vec![
+          ((x & 0xff00) >> 8) as u8,
+          ((x & 0xff) as u8),
+          VmMemString::MEM_FLAG_STRING,
+          0,
+        ],
+        vec!['b' as u8; x],
+      ]
+      .concat(),
+    )
+  }
   pub fn getVmMemStringNull() -> VmMemString {
     VmMemString::new(vec![0u8, 0, VmMemString::MEM_FLAG_NULL, 0])
+  }
+  pub fn getManyVmMemString(datas: Vec<VmMemString>) -> VmMemString {
+    VmMemString::new(
+      datas
+        .iter()
+        .map(|x| (**x).clone())
+        .collect::<Vec<Vec<u8>>>()
+        .concat(),
+    )
   }
 }

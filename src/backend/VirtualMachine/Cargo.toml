@@ -13,6 +13,7 @@ num-traits = "0.2"
 regex = "1"
 if_chain = "1.0.1"
 mockall = "0.8.3"
+rand = "0.7.3"
 
 [build-dependencies]
 bindgen = "0.53.1"

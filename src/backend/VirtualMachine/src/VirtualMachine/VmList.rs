@@ -41,7 +41,7 @@ mod VmListTest {
     getVmMemStringF64(1.0)
   }
   fn getVmMemStringC() -> VmMemString {
-    getVmMemStringString(16)
+    getVmMemStringStringA(16)
   }
   fn getVmList() -> VmList {
     let datas = vec![getVmMemStringA(), getVmMemStringB(), getVmMemStringC()];

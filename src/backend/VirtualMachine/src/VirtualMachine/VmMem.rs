@@ -147,7 +147,7 @@ mod VmMemTest {
   }
 
   fn getLongStringVmMemString() -> VmMemString {
-    getVmMemStringString(500)
+    getVmMemStringStringA(500)
   }
 
   #[test]

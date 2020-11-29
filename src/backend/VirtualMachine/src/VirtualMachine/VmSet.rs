@@ -33,8 +33,8 @@ mod VmSetTest {
     set.insert(getVmMemStringI32(3));
     set.insert(getVmMemStringF64(1.0));
     set.insert(getVmMemStringF64(2.0));
-    set.insert(getVmMemStringString(100));
-    set.insert(getVmMemStringString(200));
+    set.insert(getVmMemStringStringA(100));
+    set.insert(getVmMemStringStringA(200));
     set.insert(getVmMemStringNull());
     assert_eq!(set.len(), 8);
     VmSet { set }
@@ -60,12 +60,12 @@ mod VmSetTest {
     assert_eq!(set.set.len(), 10);
     set.insert(getVmMemStringNull());
     assert_eq!(set.set.len(), 10);
-    set.insert(getVmMemStringString(200));
+    set.insert(getVmMemStringStringA(200));
     assert_eq!(set.set.len(), 10);
-    set.insert(getVmMemStringString(300));
+    set.insert(getVmMemStringStringA(300));
     assert_eq!(
-      set.set.get(&getVmMemStringString(300)),
-      Some(&getVmMemStringString(300))
+      set.set.get(&getVmMemStringStringA(300)),
+      Some(&getVmMemStringStringA(300))
     );
     assert_eq!(set.set.len(), 11);
   }
@@ -83,7 +83,7 @@ mod VmSetTest {
     assert!(!set.found(getVmMemStringI32(10)));
     assert!(set.found(getVmMemStringF64(1.0)));
     assert!(!set.found(getVmMemStringF64(10.0)));
-    assert!(set.found(getVmMemStringString(100)));
-    assert!(!set.found(getVmMemStringString(300)));
+    assert!(set.found(getVmMemStringStringA(100)));
+    assert!(!set.found(getVmMemStringStringA(300)));
   }
 }
