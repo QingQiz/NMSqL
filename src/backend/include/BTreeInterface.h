@@ -12,15 +12,18 @@ typedef struct address_t{
         this->pgno = no;
         this->offset = offset;
     }
+    bool operator==(const address_t b){
+        return this->pgno == b.pgno && this->offset == b.offset;
+    }
 };
+
+const address_t NULLAddress = address_t(0, 0); // 这是一个不该出现的地址
 
 struct key_t{
     char data[16];
     key_t(const char *str = ""){
-        bzero(data, sizeof(data));
         strcpy(data, str);
     }
-
 };
 
 inline int keycmp(const key_t &a, const key_t &b) {
@@ -32,6 +35,10 @@ bool operator<(const key_t &l, const key_t &r){
     return keycmp(l, r) < 0;
 }
 
+bool operator>(const key_t &l, const key_t &r){
+    return keycmp(l, r) > 0;
+}
+
 bool operator==(const key_t &l, const key_t &r){
     return keycmp(l, r) == 0;
 }
@@ -39,7 +46,6 @@ bool operator==(const key_t &l, const key_t &r){
 bool operator<=(const key_t &l, const key_t &r){
     return keycmp(l, r) <= 0;
 }
-
 
 
 /* meta information of B+ tree */
@@ -105,6 +111,9 @@ typedef int ReturnCode;
 class BPTree {
 public:
 
+BPTree();
+~BPTree();
+
 ReturnCode create(char* fileName);
 ReturnCode drop();
 ReturnCode clear();
@@ -113,12 +122,12 @@ ReturnCode open(btCursor*, pgno_t root_page);
 ReturnCode close();
 
 ReturnCode search(btCursor*, key_t key);
-ReturnCode search(btCursor*, key_t lowerKey, key_t upperKey);
-ReturnCode insert(btCursor*, key_t key);
-ReturnCode remove(btCursor*, key_t key);
+ReturnCode insert(btCursor*, key_t key, void* data);
+ReturnCode remove(btCursor*); // erase one row the cursor pointing to
 
-private:
-meta_t metaData;
+ReturnCode first(btCursor*); // move cursor to the first row
+ReturnCode root(btCursor*); // move cursor to the root page
+ReturnCode next(btCursor*); // move cursor to the next row
 
 
 };
