@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone, FromPrimitive)]
+#[derive(Debug, Copy, Clone, FromPrimitive, Eq, PartialEq)]
 pub enum VmOpType {
   OP_Unreachable = 0,
   OP_Transaction,
@@ -163,8 +163,70 @@ impl VmOp {
         .expect(format!("p1 expects a integer reads {}", vmOpParts[2]).as_str()),
       p2: vmOpParts[3]
         .parse()
-        .expect(format!("p1 expects a integer reads {}", vmOpParts[3]).as_str()),
+        .expect(format!("p2 expects a integer reads {}", vmOpParts[3]).as_str()),
       p3: String::from(vmOpParts[4]),
     }
+  }
+}
+
+#[cfg(test)]
+mod VmOpTest {
+  use super::VmOp;
+  use super::VmOpType;
+  #[test]
+  fn test_VmOp_new_work() {
+    let s = "0|1|1|1|";
+    let op = VmOp::new(s);
+    assert_eq!(op.lineNo, 0);
+    assert_eq!(op.vmOpType, VmOpType::OP_Transaction);
+    assert_eq!(op.p1, 1);
+    assert_eq!(op.p2, 1);
+    assert_eq!(op.p3, "");
+  }
+  #[test]
+  fn test_VmOp_new_work_manySplit() {
+    let s = "0|1|1|1|a|b|c";
+    let op = VmOp::new(s);
+    assert_eq!(op.lineNo, 0);
+    assert_eq!(op.vmOpType, VmOpType::OP_Transaction);
+    assert_eq!(op.p1, 1);
+    assert_eq!(op.p2, 1);
+    assert_eq!(op.p3, "a|b|c");
+  }
+  #[test]
+  #[should_panic(expected = "less than 4")]
+  fn test_VmOp_new_lessSplit() {
+    let s = "123";
+    VmOp::new(s);
+  }
+  #[test]
+  #[should_panic(expected = "line number should be a interger, but found")]
+  fn test_VmOp_new_illegalLineNo() {
+    let s = "0a|1|1|1|";
+    let op = VmOp::new(s);
+  }
+  #[test]
+  #[should_panic(expected = "VmOpType expects a integer reads")]
+  fn test_VmOp_new_illegalVmOpType() {
+    let s = "0|1a|1|1|";
+    let op = VmOp::new(s);
+  }
+  #[test]
+  #[should_panic(expected = "unknown operation:")]
+  fn test_VmOp_new_illegalVmOpType1() {
+    let s = "0|1000|1|1|";
+    let op = VmOp::new(s);
+  }
+  #[test]
+  #[should_panic(expected = "p1 expects a integer reads")]
+  fn test_VmOp_new_illegalP1() {
+    let s = "0|1|1a|1|";
+    let op = VmOp::new(s);
+  }
+  #[test]
+  #[should_panic(expected = "p2 expects a integer reads")]
+  fn test_VmOp_new_illegalP2() {
+    let s = "0|1|1|1a|";
+    let op = VmOp::new(s);
   }
 }
