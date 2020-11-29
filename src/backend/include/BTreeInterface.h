@@ -123,7 +123,7 @@ ReturnCode close();
 
 ReturnCode search(btCursor*, key_t key);
 ReturnCode insert(btCursor*, key_t key, void* data);
-ReturnCode remove(btCursor*, key_t key);
+ReturnCode remove(btCursor*); // erase one row the cursor pointing to
 
 ReturnCode first(btCursor*); // move cursor to the first row
 ReturnCode root(btCursor*); // move cursor to the root page
