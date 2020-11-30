@@ -1,88 +1,201 @@
 pub mod rustLayer {
+  cfg_if::cfg_if! {
+    if #[cfg(test)] {
+      use super::cLayer::mock as cLayer;
+    } else {
+      use super::cLayer;
+    }
+  }
+  pub use super::cLayer::Cursor;
+  pub use super::cLayer::CursorType;
+  use std::ffi;
   pub const CURSOR_READ_ONLY: i32 = 1;
   pub const CURSOR_WRITE: i32 = 2;
-  #[derive(Debug, Copy, Clone)]
-  pub enum CursorType {
-    CURSOR_BTREE,
-    CURSOR_LIST,
+  unsafe fn getLen(ptr: *const u8) -> usize {
+    let mut len = 0;
+    len += *ptr.offset(0) as usize;
+    len <<= 8;
+    len += *ptr.offset(1) as usize;
+    len
   }
-  #[derive(Debug, Copy, Clone)]
-  pub struct Cursor {
-    pub cursorType: CursorType,
+  unsafe fn getVecFromPtr(ptr: *const ffi::c_void) -> Vec<u8> {
+    let mut ret = Vec::new();
+    let ptr = ptr as *const u8;
+    for i in 0..getLen(ptr) {
+      ret.push(*ptr.offset(i as isize + 4));
+    }
+    ret
   }
   // open the index
-  pub fn open(indexName: &str, flag: i32) -> *mut Cursor {
-    unimplemented!()
+  pub fn open(indexName: &Vec<u8>, flag: i32) -> *mut Cursor {
+    unsafe { cLayer::open(indexName.as_ptr() as *const i8, flag) }
   }
   // close the cursor
   pub fn close(cursor: *mut Cursor) -> i32 {
-    unimplemented!()
+    unsafe { cLayer::close(cursor) }
   }
   // create dbTable with indexName indexType indexColumnCnt and indexColumns
   pub fn create(
-    dbTable: &str,
-    indexName: &str,
+    dbTable: &Vec<u8>,
+    indexName: &Vec<u8>,
     indexType: CursorType,
     indexColumnCnt: i32,
-    indexColumns: &[&str],
+    indexColumns: &[&Vec<u8>],
   ) -> i32 {
-    unimplemented!();
+    unsafe {
+      cLayer::create(
+        dbTable.as_ptr() as *const i8,
+        indexName.as_ptr() as *const i8,
+        indexType,
+        indexColumnCnt,
+        indexColumns
+          .iter()
+          .map(|x| x.as_ptr() as *const i8)
+          .collect::<Vec<*const i8>>()
+          .as_mut_ptr(),
+      )
+    }
   }
   pub fn find(cursor: *mut Cursor, key: &Vec<u8>) -> i32 {
-    unimplemented!()
+    unsafe { cLayer::find(cursor, key.as_ptr() as *const ffi::c_void) }
   }
   // get the key of the data that current cursor points to
   pub fn getKey(cursor: *mut Cursor) -> Vec<u8> {
-    unimplemented!()
+    unsafe { getVecFromPtr(cLayer::getKey(cursor)) }
   }
   // get the value of the data that current cursor points to
   pub fn getValue(cursor: *mut Cursor) -> Vec<u8> {
-    unimplemented!()
+    unsafe { getVecFromPtr(cLayer::getValue(cursor)) }
   }
   // insert into Cursor with key and value
   pub fn insert(cursor: *mut Cursor, key: &Vec<u8>, value: &Vec<u8>) -> i32 {
-    unimplemented!()
+    unsafe {
+      cLayer::insert(
+        cursor,
+        key.as_ptr() as *const ffi::c_void,
+        value.as_ptr() as *const ffi::c_void,
+      )
+    }
   }
   // erase the element that cursor points to
   pub fn erase(cursor: *mut Cursor) -> i32 {
-    unimplemented!()
+    unsafe { cLayer::erase(cursor) }
   }
   // move the cursor to the next
   pub fn next(cursor: *mut Cursor) -> i32 {
-    unimplemented!()
+    unsafe { cLayer::next(cursor) }
   }
   // reset the cursor to the first
   pub fn reset(cursor: *mut Cursor) -> i32 {
-    unimplemented!()
+    unsafe { cLayer::reset(cursor) }
   }
-  pub fn createTable(sql: &str) -> i32 {
-    unimplemented!()
+  pub fn createTable(sql: &Vec<u8>) -> i32 {
+    unsafe { cLayer::createTable(sql.as_ptr() as *const i8) }
   }
   pub fn reorganize() -> i32 {
-    unimplemented!()
-  }
-  pub fn getMetaData(tableName: &str) {
-    unimplemented!()
+    unsafe { cLayer::reorganize() }
   }
   pub fn getCookies() -> i32 {
-    unimplemented!()
+    unsafe { cLayer::getCookies() }
   }
   pub fn setCookies(cookies: i32) {
-    unimplemented!()
-  }
-  pub fn getTableColumns(tableName: &str) -> &[&str] {
-    unimplemented!()
+    unsafe {
+      cLayer::setCookies(cookies);
+    }
   }
   pub fn transaction() -> i32 {
-    unimplemented!()
+    unsafe { cLayer::transaction() }
   }
   pub fn commit() -> i32 {
-    unimplemented!()
+    unsafe { cLayer::commit() }
   }
   pub fn rollback() -> i32 {
-    unimplemented!()
+    unsafe { cLayer::rollback() }
+  }
+  pub type nmsql_callback = ::std::option::Option<
+    unsafe extern "C" fn(
+      arg1: *mut ::std::os::raw::c_void,
+      arg2: ::std::os::raw::c_int,
+      arg3: *mut *mut ::std::os::raw::c_char,
+      arg4: *mut *mut ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int,
+  >;
+  #[no_mangle]
+  extern "C" fn exec(
+    ir: *mut ::std::os::raw::c_char,
+    callback: nmsql_callback,
+    args: *mut ::std::os::raw::c_void,
+  ) -> ::std::os::raw::c_int {
+    println!("in exec");
+    1
   }
 }
 pub mod cLayer {
-  include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+  pub type CursorType = u32;
+  #[repr(C)]
+  #[derive(Debug, Copy, Clone)]
+  pub struct Cursor {
+    pub cursorType: CursorType,
+    pub cursor: *mut ::std::os::raw::c_void,
+  }
+
+  use mockall::automock;
+
+  #[automock(mod mock;)]
+  extern "C" {
+    pub fn open(
+      indexName: *const ::std::os::raw::c_char,
+      flag: ::std::os::raw::c_int,
+    ) -> *mut Cursor;
+    pub fn close(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn create(
+      dbTable: *const ::std::os::raw::c_char,
+      indexName: *const ::std::os::raw::c_char,
+      indexType: CursorType,
+      indexColumnCnt: ::std::os::raw::c_int,
+      indexColumns: *mut *const ::std::os::raw::c_char,
+    ) -> ::std::os::raw::c_int;
+    pub fn find(cursor: *mut Cursor, key: *const ::std::os::raw::c_void) -> ::std::os::raw::c_int;
+    pub fn getKey(cursor: *mut Cursor) -> *mut ::std::os::raw::c_void;
+    pub fn getValue(cursor: *mut Cursor) -> *mut ::std::os::raw::c_void;
+    pub fn insert(
+      cursor: *mut Cursor,
+      key: *const ::std::os::raw::c_void,
+      value: *const ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+    pub fn erase(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn next(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn reset(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn createTable(sql: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn reorganize() -> ::std::os::raw::c_int;
+    pub fn getMetaData(tableName: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_void;
+    pub fn getCookies() -> ::std::os::raw::c_int;
+    pub fn setCookies(cookies: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+    pub fn getTableColumns(
+      tableName: *const ::std::os::raw::c_char,
+    ) -> *mut *mut ::std::os::raw::c_char;
+    pub fn transaction() -> ::std::os::raw::c_int;
+    pub fn commit() -> ::std::os::raw::c_int;
+    pub fn rollback() -> ::std::os::raw::c_int;
+  }
+}
+#[cfg(test)]
+mod CLayerTest {
+
+  use super::super::VirtualMachine::VmMem::VmMem;
+  use super::super::VirtualMachine::VmMem::VmMemString;
+  use super::cLayer;
+  #[test]
+  fn ffi_work() {
+    unsafe {
+      cLayer::open(
+        VmMem::genVmString(
+          vec!['a' as u8, 'b' as u8, 'c' as u8],
+          VmMemString::MEM_FLAG_INT,
+        )
+        .as_ptr() as *const i8,
+        1,
+      );
+    }
+  }
 }

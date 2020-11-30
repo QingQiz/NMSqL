@@ -26,7 +26,7 @@ impl Default for VmCursor {
 impl VmCursor {
   pub fn new(cursorName: &String, flag: i32) -> Self {
     VmCursor {
-      cursor: DbWrapper::open(cursorName.as_str(), flag),
+      cursor: DbWrapper::open(&cursorName.as_bytes().to_vec(), flag),
       key: VmMemString::default(),
       isIdx: false,
       keyAsData: false,

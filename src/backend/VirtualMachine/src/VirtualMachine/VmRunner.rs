@@ -5,6 +5,7 @@ use super::VmMem::VmMemString;
 use super::VmOp::VmOp;
 use super::VmOp::VmOpType;
 use crate::wrapper::rustLayer as DbWrapper;
+use std::ffi;
 
 fn parseOperations(operations: String) -> Vec<VmOp> {
   operations.split("\n").into_iter().map(VmOp::new).collect()
@@ -14,10 +15,14 @@ fn popOneMem(vm: &mut VirtualMachine) -> Result<VmMem, String> {
   Ok(vm.popStack(1)?.into_iter().next().unwrap())
 }
 
-fn runOperation(operations: String) -> Result<(), String> {
+fn runOperation(
+  operations: String,
+  vm: &mut VirtualMachine,
+  callback: DbWrapper::nmsql_callback,
+  args: *mut std::ffi::c_void,
+) -> Result<(), String> {
   let ops = parseOperations(operations);
   let mut pc = 0;
-  let mut vm = VirtualMachine::new();
   loop {
     if pc == ops.len() {
       break Ok(());
@@ -54,18 +59,18 @@ fn runOperation(operations: String) -> Result<(), String> {
       VmOpType::OP_Fcnt => unimplemented!(),
       VmOpType::OP_NewRecno => unimplemented!(),
       VmOpType::OP_Put => {
-        let value = match popOneMem(&mut vm)? {
+        let value = match popOneMem(vm)? {
           VmMem::MEM_STRING(x) => x,
           _ => return Err(String::from("incorrect value format")),
         };
-        let key = match popOneMem(&mut vm)? {
+        let key = match popOneMem(vm)? {
           VmMem::MEM_STRING(x) => x,
           _ => return Err(String::from("incorrect key format")),
         };
         vm.cursorInsert(nowOp.p1 as usize, &key, &value)?;
       }
       VmOpType::OP_Distinct | VmOpType::OP_Found | VmOpType::OP_NotFound => {
-        let poped = popOneMem(&mut vm)?;
+        let poped = popOneMem(vm)?;
         if let VmOpType::OP_Distinct = nowOp.vmOpType {
           vm.pushStack(poped.clone());
         }
@@ -143,7 +148,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         vm.reorganize();
       }
       VmOpType::OP_BeginIdx => {
-        let poped = popOneMem(&mut vm)?;
+        let poped = popOneMem(vm)?;
         if let VmMem::MEM_STRING(key) = poped {
           vm.cursorFindKey(nowOp.p1 as usize, &key)?;
           vm.cursorSetIdx(nowOp.p1 as usize, &key)?;
@@ -168,7 +173,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         vm.openList(nowOp.p1 as usize);
       }
       VmOpType::OP_ListWrite => {
-        let poped = popOneMem(&mut vm)?;
+        let poped = popOneMem(vm)?;
         vm.writeList(nowOp.p1 as usize, poped.stringify());
       }
       VmOpType::OP_ListRewind => {
@@ -188,8 +193,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         vm.openSorter(nowOp.p1 as usize);
       }
       VmOpType::OP_SortPut => {
-        let key = popOneMem(&mut vm)?.stringify();
-        let value = popOneMem(&mut vm)?.stringify();
+        let key = popOneMem(vm)?.stringify();
+        let value = popOneMem(vm)?.stringify();
         vm.sorterPut(nowOp.p1 as usize, key, value)?;
       }
       VmOpType::OP_SortMakeRec => unimplemented!(),
@@ -231,7 +236,7 @@ fn runOperation(operations: String) -> Result<(), String> {
       VmOpType::OP_AggGet => unimplemented!(),
       VmOpType::OP_SetInsert => {
         let string = if nowOp.p3.len() == 0 {
-          let poped = popOneMem(&mut vm)?;
+          let poped = popOneMem(vm)?;
           poped.stringify()
         } else {
           VmMem::genVmString(nowOp.p3.as_bytes().to_vec(), VmMemString::MEM_FLAG_STRING)
@@ -239,13 +244,13 @@ fn runOperation(operations: String) -> Result<(), String> {
         vm.setInsert(nowOp.p1 as usize, string)?;
       }
       VmOpType::OP_SetFound => {
-        let poped = popOneMem(&mut vm)?.stringify();
+        let poped = popOneMem(vm)?.stringify();
         if vm.setFound(nowOp.p1 as usize, poped)? {
           pc = nowOp.p2 as usize - 1;
         }
       }
       VmOpType::OP_SetNotFound => {
-        let poped = popOneMem(&mut vm)?.stringify();
+        let poped = popOneMem(vm)?.stringify();
         if !vm.setFound(nowOp.p1 as usize, poped)? {
           pc = nowOp.p2 as usize - 1;
         }
@@ -286,7 +291,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         pc = nowOp.p2 as usize - 1;
       }
       VmOpType::OP_JIf | VmOpType::OP_SetIf => {
-        let a = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
         let flag = match a {
           VmMem::MEM_INT(x) if x != 0 => 1,
           VmMem::MEM_STRING(x) if x.getLen(0).unwrap_or(0) != 0 => 1,
@@ -351,8 +356,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_Add | VmOpType::OP_Multiply | VmOpType::OP_Subtract | VmOpType::OP_Divide => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
+        let b = popOneMem(vm)?;
         if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
           vm.pushStack(match nowOp.vmOpType {
             VmOpType::OP_Add => VmMem::MEM_INT(a + b),
@@ -377,15 +382,15 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_AddImm => {
-        let top = popOneMem(&mut vm)?;
+        let top = popOneMem(vm)?;
         vm.pushStack(match top {
           VmMem::MEM_INT(x) => VmMem::MEM_INT(x + nowOp.p1 as i32),
           x @ _ => VmMem::MEM_DOUBLE(x.realify() + nowOp.p1 as f64),
         })
       }
       VmOpType::OP_Min => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
+        let b = popOneMem(vm)?;
         if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
           vm.pushStack(VmMem::MEM_INT(std::cmp::min(a, b)));
         } else {
@@ -395,8 +400,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_Max => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
+        let b = popOneMem(vm)?;
         if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
           vm.pushStack(VmMem::MEM_INT(std::cmp::max(a, b)));
         } else {
@@ -468,8 +473,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JEq | VmOpType::OP_SetEq => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
+        let b = popOneMem(vm)?;
         if let VmOpType::OP_JEq = nowOp.vmOpType {
           if a == b {
             pc = (nowOp.p2 - 1) as usize;
@@ -483,8 +488,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JNe | VmOpType::OP_SetNe => {
-        let a = popOneMem(&mut vm)?;
-        let b = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
+        let b = popOneMem(vm)?;
         if let VmOpType::OP_JNe = nowOp.vmOpType {
           if a != b {
             pc = (nowOp.p2 - 1) as usize;
@@ -498,8 +503,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JLt | VmOpType::OP_SetLt => {
-        let b = popOneMem(&mut vm)?;
-        let a = popOneMem(&mut vm)?;
+        let b = popOneMem(vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JLt = nowOp.vmOpType {
           if PartialOrd::lt(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
@@ -513,8 +518,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JLe | VmOpType::OP_SetLe => {
-        let b = popOneMem(&mut vm)?;
-        let a = popOneMem(&mut vm)?;
+        let b = popOneMem(vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JLe = nowOp.vmOpType {
           if PartialOrd::le(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
@@ -528,8 +533,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JGt | VmOpType::OP_SetGt => {
-        let b = popOneMem(&mut vm)?;
-        let a = popOneMem(&mut vm)?;
+        let b = popOneMem(vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JGe = nowOp.vmOpType {
           if PartialOrd::ge(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
@@ -543,8 +548,8 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JGe | VmOpType::OP_SetGe => {
-        let b = popOneMem(&mut vm)?;
-        let a = popOneMem(&mut vm)?;
+        let b = popOneMem(vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JGt = nowOp.vmOpType {
           if PartialOrd::gt(&a, &b) {
             pc = (nowOp.p2 - 1) as usize;
@@ -558,7 +563,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JIsNull | VmOpType::OP_SetIsNull => {
-        let a = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JIsNull = nowOp.vmOpType {
           if let VmMem::MEM_NULL = a {
             pc = (nowOp.p2 - 1) as usize;
@@ -572,7 +577,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_JNotNull | VmOpType::OP_SetNotNull => {
-        let a = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
         if let VmOpType::OP_JNotNull = nowOp.vmOpType {
           match a {
             VmMem::MEM_NULL => {}
@@ -586,7 +591,7 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_Negative => {
-        let a = popOneMem(&mut vm)?;
+        let a = popOneMem(vm)?;
         if let &VmMem::MEM_INT(a) = &a {
           vm.pushStack(VmMem::MEM_INT(-a));
         } else {
@@ -594,17 +599,17 @@ fn runOperation(operations: String) -> Result<(), String> {
         }
       }
       VmOpType::OP_And => {
-        let a = popOneMem(&mut vm)?.integerify();
-        let b = popOneMem(&mut vm)?.integerify();
+        let a = popOneMem(vm)?.integerify();
+        let b = popOneMem(vm)?.integerify();
         vm.pushStack(VmMem::MEM_INT(a & b));
       }
       VmOpType::OP_Or => {
-        let a = popOneMem(&mut vm)?.integerify();
-        let b = popOneMem(&mut vm)?.integerify();
+        let a = popOneMem(vm)?.integerify();
+        let b = popOneMem(vm)?.integerify();
         vm.pushStack(VmMem::MEM_INT(a | b));
       }
       VmOpType::OP_Not => {
-        let a = popOneMem(&mut vm)?.integerify();
+        let a = popOneMem(vm)?.integerify();
         vm.pushStack(VmMem::MEM_INT(!a));
       }
       // concat the p1 elements from (p1-1)-th to 0-th use p3 as separator
@@ -629,21 +634,21 @@ fn runOperation(operations: String) -> Result<(), String> {
       }
       VmOpType::OP_Noop => {}
       VmOpType::OP_Strlen => {
-        let string = popOneMem(&mut vm)?.stringify();
+        let string = popOneMem(vm)?.stringify();
         vm.pushStack(VmMem::MEM_INT(string.getLen(0).unwrap() as i32));
       }
       VmOpType::OP_Substr => {
         let len = if nowOp.p2 == 0 {
-          popOneMem(&mut vm)?.integerify()
+          popOneMem(vm)?.integerify()
         } else {
           nowOp.p2
         } as usize;
         let lo = if nowOp.p1 == 0 {
-          popOneMem(&mut vm)?.integerify()
+          popOneMem(vm)?.integerify()
         } else {
           nowOp.p1
         } as usize;
-        let string = popOneMem(&mut vm)?.stringify().removeHead();
+        let string = popOneMem(vm)?.stringify().removeHead();
         if (lo + len) as usize <= string.len() {
           vm.pushStack(VmMem::MEM_STRING(VmMemString::new(
             string[lo..(lo + len)].to_vec(),
