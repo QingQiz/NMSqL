@@ -3,7 +3,7 @@ module Select where
 
 
 import Ast
-import Expr
+import Expr ( cExpr )
 import Instruction
 import FFIStructure
 import CodeGeneratorUtils
@@ -17,7 +17,7 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
-data SelectResultType = ToSet | ToList | ToAgg | ToSorter | Normal
+data SelectResultType = ToSet Int | ToSorter | Normal
 
 cSelect :: Select -> SelectResultType -> CodeGenEnv
 cSelect select selType =
@@ -34,30 +34,36 @@ cSelRes [(AnyColumn, _)] t =
     let getColumns = concatMap (\md -> map (TableColumn $ metadata_name md) (metadata_column md))
      in getMetadata >>= \mds -> cSelRes (map (\x -> (x, show x)) $ getColumns mds) t
 
-cSelRes selRes ToList | length selRes > 1 =
+cSelRes selRes (ToSet _) | length selRes > 1 =
     throwError "Only a single result allowed for a SELECT that is part of an expression"
 
-cSelRes selRes _ =
+cSelRes selRes selType =
     let
-     in cSelRes' >> prependEnv (configAgg >> configOutput)
+     in cSelRes' >> putSelRes >> prependEnv (configAgg >> configOutput)
     where
-        colCount = length selRes
+        colNr = length selRes
 
         configOutput =
             let colNames = zipWith (\(a, b) idx -> appendInst opColumnName idx 0
                          $ if b == "" then show a else b) selRes [0..]
-             in appendInst opColumnCount colCount 0 "" >> connectCodeGenEnv colNames
+             in appendInst opColumnCount colNr 0 "" >> connectCodeGenEnv colNames
 
         configAgg = getAgg >>= \case
-            0 -> getRes
+            0 -> doNothing
             a -> appendInst opAggReset 0 a ""
 
-        funcDef1 = [("max", 2), ("min", 2), ("substr", 3)]
-        funcDef2 = [("max", 2), ("min", 2), ("substr", 3), ("count", 1), ("max", 1), ("min", 1)]
+        putSelRes = case selType of
+            ToSet set -> prependEnv (appendInst opSetOpen   set   0 "")
+                      >> insertTemp (appendInst opSetInsert set   0 "")
+            Normal    -> insertTemp (appendInst opCallback  colNr 0 "")
+            ToSorter  -> throwError "Not implemented"
 
         cSelRes' = try (putFuncDef funcDef1 >> connectCodeGenEnv (map (cExpr . fst) selRes))
                        (connectCodeGenEnv (map (cExpr' . fst) selRes) >> applyCache)
             where
+                funcDef1 = [("max", 2), ("min", 2), ("substr", 3)]
+                funcDef2 = [("max", 2), ("min", 2), ("substr", 3), ("count", 1), ("max", 1), ("min", 1)]
+
                 toAgg = getAgg >>= \agg
                      -> appendInst opAggSet 0 agg ""
                      >> putCacheState 1
@@ -66,9 +72,6 @@ cSelRes selRes _ =
 
                 cExpr' e = try (putFuncDef funcDef1 >> cExpr e >> toAgg)
                                (putFuncDef funcDef2 >> cExpr e)
-
-
-        putNmlRes env = insertTemp (env >> appendInst opCallback colCount 0 "")
 
 
 ----------------------------------------------------------

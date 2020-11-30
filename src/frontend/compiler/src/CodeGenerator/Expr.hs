@@ -6,8 +6,8 @@ import Ast
 import Instruction
 import CodeGeneratorUtils
 
-import Data.List
-import Control.Monad.Except
+import Data.List (findIndex)
+import Control.Monad.Except (MonadError(throwError))
 
 
 ----------------------------------------------------------

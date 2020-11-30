@@ -41,6 +41,9 @@ putRes is = get >>= (\(a, (_, x1, x2), c) -> put (a, (is, x1, x2), c)) >> getRes
 clrRes :: CodeGenEnv
 clrRes = putRes []
 
+doNothing :: CodeGenEnv
+doNothing = return []
+
 
 -- functions to operate label
 getLabel :: ExceptTEnv Int
