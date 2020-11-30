@@ -1,0 +1,20 @@
+//
+// Created by icpc on 2020/11/26.
+//
+
+#ifndef DBENGINE_DBEDEFINES_H
+#define DBENGINE_DBEDEFINES_H
+
+#define CLOSE_SUCCESS 1
+#define CLOSE_FAILED 0
+
+#define FIND_SUCCESS 1
+#define FIND_FAILED 0
+
+#define ERASE_SUCCESS 1
+#define ERASE_FAILED 0
+
+#define INSERT_SUCCESS 1
+#define INSERT_FAILED 0
+
+#endif //DBENGINE_DBEDEFINES_H

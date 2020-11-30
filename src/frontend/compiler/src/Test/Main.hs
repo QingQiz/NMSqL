@@ -4,7 +4,8 @@ module Main where
 import TestCodeGenerator
 
 import Test.HUnit
+import Control.Monad
 
 
 main :: IO ()
-main = runTestTT codeGeneratorTest >> return ()
+main = void (runTestTT codeGeneratorTest)
