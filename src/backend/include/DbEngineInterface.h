@@ -42,6 +42,7 @@ int createTable(const char* sql);
 int reorganize();
 void* getMetaData(const char* tableName);
 int getCookies();
+int setCookies(int cookies);
 char** getTableColumns(const char* tableName);
 
 /*
