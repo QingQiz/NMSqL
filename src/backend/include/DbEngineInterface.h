@@ -7,6 +7,7 @@
  * for vm
  ***********************************/
 
+extern "C" {
 enum CursorType { CURSOR_BTREE, CURSOR_LIST };
 
 typedef enum CursorType CursorType;
@@ -41,6 +42,7 @@ int createTable(const char* sql);
 int reorganize();
 void* getMetaData(const char* tableName);
 int getCookies();
+int setCookies(int cookies);
 char** getTableColumns(const char* tableName);
 
 /*
@@ -69,4 +71,5 @@ struct TableMetadata {
 };
 
 struct TableMetadata* getTableMetadata(char* tableName);
+}
 #endif

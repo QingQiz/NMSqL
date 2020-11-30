@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Instruction where
 
-
+opTempInst     = "opTempInst"      --0
 opTransaction  = "opTransaction"   --1
 opCommit       = "opCommit"        --2
 opRollback     = "opRollback"      --3

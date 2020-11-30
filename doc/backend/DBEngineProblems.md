@@ -1,0 +1,2 @@
+-[ ] insert 时要插入 key-value 对，但是 Btree 的接口里没给 value
+-[ ] erase 时要只要删除一个节点就可以了，不需要key
