@@ -95,6 +95,8 @@ void *getValue(Cursor *cursor) {
 }
 
 int insert(Cursor *cursor, const void *key, const void *value) {
+    key_t k(extractString((const char *) key).c_str());
+    string data = extractString((const char *) value);
     if (cursor->cursorType == CURSOR_BTREE) {
         auto *btcursor = cursor->cursor;
         BPTree bpTree;
@@ -102,18 +104,18 @@ int insert(Cursor *cursor, const void *key, const void *value) {
     } else {
         return INSERT_FAILED;
     }
-    //    TODO:API requires re-define.
 }
 
 int erase(Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = cursor->cursor;
+        auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
+        bpTree.remove(btcursor);
+        bpTree.close();
         return ERASE_SUCCESS;
     } else {
         return ERASE_FAILED;
     }
-    //    TODO:API requires re-define.
 }
 
 int next(Cursor *cursor) {}
