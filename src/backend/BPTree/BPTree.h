@@ -19,25 +19,25 @@ ReturnCode create(char* fileName);
 ReturnCode drop();
 ReturnCode clear();
 
-ReturnCode open(btCursor*, pgno_t metaPage);
+ReturnCode open(BtCursor*, Pgno_t metaPage);
 ReturnCode close();
 
-ReturnCode search(btCursor*, key_t key);
-ReturnCode insert(btCursor* cursor, key_t key, void* pData, size_t nData);
-ReturnCode remove(btCursor*);
+ReturnCode search(BtCursor*, Key_t key);
+ReturnCode insert(BtCursor* cursor, Key_t key, void* pData, Size_t nData);
+ReturnCode remove(BtCursor*);
 
-ReturnCode first(btCursor*); // move cursor to the first row
-ReturnCode root(btCursor*); // move cursor to the root page
-ReturnCode next(btCursor*); // move cursor to the next row
+ReturnCode first(BtCursor*); // move cursor to the first row
+ReturnCode root(BtCursor*); // move cursor to the root page
+ReturnCode next(BtCursor*); // move cursor to the next row
 
 private:
 BPTreeMeta_t metaData; // metaData of the BPTree
-ReturnCode BPTreeSearch(btCursor* cursor, key_t key);
+ReturnCode BPTreeSearch(BtCursor* cursor, Key_t key);
 
 
-ReturnCode insertInNode(pgno_t pgno, key_t key, void* pData, size_t nData);
-ReturnCode splitNode(pgno_t pgno, pgno_t &newPageNo1, pgno_t &newPageNo2);
-ReturnCode deleteInNode(pgno_t pgno, key_t key); // delete the key in the node
+ReturnCode insertInNode(Pgno_t pgno, Key_t key, void* pData, Size_t nData);
+ReturnCode splitNode(Pgno_t pgno, Pgno_t &newPageNo1, Pgno_t &newPageNo2);
+ReturnCode deleteInNode(Pgno_t pgno, Key_t key); // delete the key in the node
 
 };
 
