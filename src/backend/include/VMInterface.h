@@ -2,8 +2,8 @@
 #define _VMINTERFACE_H
 
 extern "C"{
-typedef int (*nmsql_callback)(void*,int,char**, char**);
-int exec(char* ir, nmsql_callback callback, void* args);
+typedef int (*nmsql_callback)(void*, const int, const char* const*, const char* const*);
+int exec(const char* ir, nmsql_callback callback, void* args);
 }
 
 #endif
