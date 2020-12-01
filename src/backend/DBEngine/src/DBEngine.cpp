@@ -92,6 +92,11 @@ void *getValue(Cursor *cursor) {
     /*
      * requires api from pager
      */
+    if (cursor->cursorType == CURSOR_BTREE) {
+        return NULL;
+    } else {
+        return NULL;
+    }
 }
 
 int insert(Cursor *cursor, const void *key, const void *value) {
@@ -118,9 +123,29 @@ int erase(Cursor *cursor) {
     }
 }
 
-int next(Cursor *cursor) {}
+int next(Cursor *cursor) {
+    if (cursor->cursorType==CURSOR_BTREE){
+        auto *btcursor=(btCursor *) cursor->cursor;
+        BPTree bpTree;
+        bpTree.next(btcursor);
+        bpTree.close();
+        return NEXT_SUCCESS;
+    } else {
+        return NEXT_FAILED;
+    }
+}
 
-int reset(Cursor *cursor) {}
+int reset(Cursor *cursor) {
+    if (cursor->cursorType==CURSOR_BTREE){
+        auto *btcursor=(btCursor *) cursor->cursor;
+        BPTree bpTree;
+        bpTree.first(btcursor);
+        bpTree.close();
+        return RESET_SUCCESS;
+    } else {
+        return RESET_FAILED;
+    }
+}
 
 
 int createTable(const char *sql) {}
@@ -130,6 +155,8 @@ int reorganize() {}
 void *getMetaData(const char *tableName) {}
 
 int getCookies() {}
+
+int setCookies(int cookies){}
 
 char **getTableColumns(const char *tableName) {}
 
