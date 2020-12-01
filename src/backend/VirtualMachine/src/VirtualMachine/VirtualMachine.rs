@@ -12,7 +12,9 @@ pub struct VirtualMachine {
   pub vmOps: Vec<VmOp>,
   pub vmCursors: Vec<VmCursor>,
   pub stack: Vec<VmMem>,
-  pub resultColumnNames: Vec<String>,
+  pub resultColumnNames: Vec<Vec<u8>>,
+  pub resultColumnNamePtrs: Option<Vec<*const u8>>,
+  // pub resultColumnNamesPtr: Option<*const *const u8>,
   pub fcnt: i32,
   pub lists: Vec<VmList>,
   pub sorters: Vec<VmSorter>,
@@ -244,5 +246,35 @@ impl VirtualMachine {
   }
   pub fn reorganize(self: &Self) {
     DbWrapper::reorganize();
+  }
+}
+#[cfg(test)]
+mod VirtualMachineTest {
+  use super::super::VmMem::VmMem;
+  use super::VirtualMachine;
+  #[test]
+  fn test_VirtualMachine_pushStack_work() {
+    let mut vm = VirtualMachine::new();
+    vm.pushStack(VmMem::MEM_INT(1));
+    vm.pushStack(VmMem::MEM_INT(2));
+    assert_eq!(vm.stack, vec![VmMem::MEM_INT(1), VmMem::MEM_INT(2)]);
+  }
+  #[test]
+  fn test_VirtualMachine_popStack_work() {
+    let mut vm = VirtualMachine::new();
+    vm.pushStack(VmMem::MEM_INT(1));
+    vm.pushStack(VmMem::MEM_INT(2));
+    assert_eq!(vm.popStack(1), Ok(vec![VmMem::MEM_INT(2)]));
+    assert_eq!(vm.popStack(1), Ok(vec![VmMem::MEM_INT(1)]));
+    assert_eq!(
+      vm.popStack(1),
+      Err(format!("stack size: {}, pop {} element(s)", 0, 1))
+    );
+    vm.pushStack(VmMem::MEM_INT(1));
+    vm.pushStack(VmMem::MEM_INT(2));
+    assert_eq!(
+      vm.popStack(2),
+      Ok(vec![VmMem::MEM_INT(2), VmMem::MEM_INT(1)])
+    );
   }
 }

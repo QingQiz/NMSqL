@@ -37,6 +37,9 @@ impl VmMemString {
       None
     }
   }
+  pub fn unwrap(self: Self) -> Vec<u8> {
+    self.string
+  }
 }
 
 impl std::ops::Deref for VmMemString {

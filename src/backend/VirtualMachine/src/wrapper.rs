@@ -116,8 +116,8 @@ pub mod rustLayer {
     unsafe extern "C" fn(
       arg1: *mut ::std::os::raw::c_void,
       arg2: ::std::os::raw::c_int,
-      arg3: *mut *mut ::std::os::raw::c_char,
-      arg4: *mut *mut ::std::os::raw::c_char,
+      arg3: *const *const ::std::os::raw::c_char,
+      arg4: *const *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int,
   >;
   #[no_mangle]

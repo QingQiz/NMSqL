@@ -315,15 +315,41 @@ fn runOperation(
         pc = ops.len() - 1;
       }
       // push the result column number
-      VmOpType::OP_ColumnCount => vm
-        .resultColumnNames
-        .resize(nowOp.p1 as usize, String::new()),
+      VmOpType::OP_ColumnCount => vm.resultColumnNames.resize(nowOp.p1 as usize, Vec::new()),
       // set the p1-th column's name
       VmOpType::OP_ColumnName => {
-        vm.resultColumnNames[nowOp.p1 as usize] = String::from(nowOp.p3.clone());
+        vm.resultColumnNames[nowOp.p1 as usize] =
+          String::from(nowOp.p3.clone()).as_bytes().to_vec();
       }
       // set the callback function
-      VmOpType::OP_Callback => unimplemented!(),
+      VmOpType::OP_Callback => {
+        if let None = vm.resultColumnNamePtrs {
+          vm.resultColumnNamePtrs = Some(vm.resultColumnNames.iter().map(|x| x.as_ptr()).collect());
+        };
+        let names = vm.resultColumnNamePtrs.as_ref().map(|x| x.as_ptr());
+        let values = vm
+          .popStack(nowOp.p1)?
+          .into_iter()
+          .map(|x| x.stringify())
+          .map(|x| x.unwrap())
+          .collect::<Vec<Vec<u8>>>();
+        let valuePtrs = values
+          .iter()
+          .map(|x| x.as_ptr() as *const i8)
+          .collect::<Vec<*const i8>>();
+        // prepare data
+        match callback {
+          None => {}
+          Some(callback) => unsafe {
+            callback(
+              args,
+              nowOp.p1,
+              valuePtrs.as_ptr(),
+              names.unwrap() as *const *const i8,
+            );
+          },
+        }
+      }
       // push P1 to the stack
       VmOpType::OP_Integer => vm.pushStack(VmMem::MEM_INT(nowOp.p1 as i32)),
       // push string to the stack
