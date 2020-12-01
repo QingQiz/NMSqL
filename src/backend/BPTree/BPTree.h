@@ -12,24 +12,32 @@ typedef int ReturnCode;
 class BPTree {
 public:
 
+BPTree();
+~BPTree();
+
 ReturnCode create(char* fileName);
 ReturnCode drop();
 ReturnCode clear();
 
-ReturnCode open(btCursor*, pgno_t root_page);
+ReturnCode open(btCursor*, pgno_t metaPage);
 ReturnCode close();
 
 ReturnCode search(btCursor*, key_t key);
-ReturnCode insert(btCursor*, key_t key, void* data);
-ReturnCode remove(btCursor*, key_t key);
+ReturnCode insert(btCursor* cursor, key_t key, void* pData, size_t nData);
+ReturnCode remove(btCursor*);
 
 ReturnCode first(btCursor*); // move cursor to the first row
 ReturnCode root(btCursor*); // move cursor to the root page
 ReturnCode next(btCursor*); // move cursor to the next row
 
 private:
-meta_t metaData;
+BPTreeMeta_t metaData; // metaData of the BPTree
+ReturnCode BPTreeSearch(btCursor* cursor, key_t key);
 
+
+ReturnCode insertInNode(pgno_t pgno, key_t key, void* pData, size_t nData);
+ReturnCode splitNode(pgno_t pgno, pgno_t &newPageNo1, pgno_t &newPageNo2);
+ReturnCode deleteInNode(pgno_t pgno, key_t key); // delete the key in the node
 
 };
 

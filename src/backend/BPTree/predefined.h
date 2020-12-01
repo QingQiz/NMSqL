@@ -9,6 +9,7 @@
 
 typedef int pgno_t;
 typedef int offset_t;
+//typedef unsigned int size_t;
 typedef struct address_t{
     pgno_t pgno;
     offset_t offset;
@@ -53,7 +54,7 @@ bool operator<=(const key_t &l, const key_t &r){
 
 
 /* meta information of B+ tree */
-struct meta_t{
+struct BPTreeMeta_t{
     int capacity; // capacity of the node
     int value_size; // size of the value
     int key_size; // size of the key
@@ -67,8 +68,12 @@ struct meta_t{
 
 struct index_t {
     key_t key;
-    address_t child; // offset of child's node
-    int size;
+    address_t child; // offset of the cell pointer
+    // NOTE:如果是index的话应该不用考虑下面三个字段。
+    int offset; // offset of the data
+    size_t nData; // size of the data
+    void* pData; // data in the memory
+
 };
 
 struct internal_node_t{
@@ -83,8 +88,9 @@ struct internal_node_t{
 struct record_t{
     key_t key;
     address_t address; // offset of the cell pointer
-    int size;
-
+    int offset; // offset of the data (NOTE: BPTree的阶段并不进行offset的维护，写回的时候，由pager来维护)
+    size_t nData; // size of the data
+    void* pData; // data in the memory
 };
 
 struct leaf_node_t {
@@ -93,7 +99,7 @@ struct leaf_node_t {
     address_t next;
     address_t prev;
     size_t record_num;
-    record_t *records; // records array, dynamic memory allocation
+    record_t *records; // records array, dynamic memory allocation (NOTE：内存分配的时候应该比record_num多分配一个)
 };
 
 struct btCursor{
