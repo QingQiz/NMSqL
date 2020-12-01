@@ -7,6 +7,17 @@
 #include "DBEDefines.h"
 #include <cstdlib>
 
+using std::string;
+
+string extractString(const char *st) {
+    string s;
+    int len = st[1] + st[0] * 256;
+    for (int i = 0; i < len; i++) {
+        s += st[4 + i];
+    }
+    return s;
+}
+
 /*
  * realization of DBEngine.h
  */
@@ -20,14 +31,16 @@ int findPageByName(const char *name) {
  */
 
 Cursor *open(const char *indexName, int flag) {
+    string idxName = extractString(indexName);
     if (flag == CURSOR_BTREE) {
         auto *btcursor = (btCursor *) malloc(sizeof(btCursor));
-        auto rootPage = (pgno_t) findPageByName(indexName);
+        auto rootPage = (pgno_t) findPageByName(idxName.c_str());
         BPTree bpTree;
         bpTree.open(btcursor, rootPage);
         auto *cursor = (Cursor *) malloc(sizeof(Cursor));
         cursor->cursor = (void *) btcursor;
         cursor->cursorType = CURSOR_BTREE;
+        bpTree.close();
         return cursor;
     } else {
         auto *cursor = (Cursor *) malloc(sizeof(Cursor));
@@ -51,10 +64,12 @@ int create(const char *dbTable, const char *indexName, CursorType indexType,
            const int indexColumnCnt, const char **indexColumns) {}
 
 int find(Cursor *cursor, const void *key) {
+    key_t k(extractString((const char *) key).c_str());
     if (cursor->cursorType == CURSOR_BTREE) {
         auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
-        bpTree.search(btcursor, *((key_t *) key));
+        bpTree.search(btcursor, k);
+        bpTree.close();
         return FIND_SUCCESS;
     } else {
         return FIND_FAILED;
