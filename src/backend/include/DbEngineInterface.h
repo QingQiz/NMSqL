@@ -24,18 +24,18 @@ typedef struct Cursor Cursor;
  */
 #define CURSOR_READ_ONLY 1
 #define CURSOR_WRITE 2
-Cursor* open(const char* indexName, int flag);
-int close(Cursor* cursor);
+Cursor* open(int transactionId, const char* indexName, int flag);
+int close(int transactionId, Cursor* cursor);
 int create(const char* dbTable, const char* indexName, CursorType indexType,
            const int indexColumnCnt, const char** indexColumns);
-int find(Cursor* cursor, const void* key);
-void* getKey(Cursor* cursor);
-void* getValue(Cursor* cursor);
+int find(int transactionId, Cursor* cursor, const void* key);
+void* getKey(int transactionId, Cursor* cursor);
+void* getValue(int transactionId, Cursor* cursor);
 // void* getRecordNumber(Cursor* cursor);
-int insert(Cursor* cursor, const void* key, const void* value);
-int erase(Cursor* cursor);
-int next(Cursor* cursor);
-int reset(Cursor* cursor);
+int insert(int transactionId, Cursor* cursor, const void* key, const void* value);
+int erase(int transactionId, Cursor* cursor);
+int next(int transactionId, Cursor* cursor);
+int reset(int transactionId, Cursor* cursor);
 
 
 int createTable(const char* sql);
@@ -49,9 +49,9 @@ char** getTableColumns(const char* tableName);
  * 事务相关
  */
 
-int transaction();
-int commit();
-int rollback();
+int transaction(int* transactionId);
+int commit(int transactionId);
+int rollback(int transactionId);
 
 /***********************************
  * for compiler
