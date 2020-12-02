@@ -237,12 +237,7 @@ codeGeneratorTest = test [
                              ,Instruction opSetInsert 0 0 ""
                              ,Instruction opNoop      0 (-1) ""]
                     /: cExprStr "x"
-                    >: Right [Instruction opSetFound  0 0 ""
-                             ,Instruction opInteger   0 0 ""
-                             ,Instruction opGoto      0 1 ""
-                             ,Instruction opNoop      0 0 ""
-                             ,Instruction opInteger   1 0 ""
-                             ,Instruction opNoop      0 1 ""]
+                    >: Right [Instruction opSetSetFound 0 1 ""]
 
     , "in expr"     ~: "right-hand side of IN is not a constant (column)"
                     ~: cExprStr "x in (x)"
@@ -359,5 +354,7 @@ codeGeneratorTest = test [
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
                              ,Instruction opClose    1 0 ""]
-
+----------------------------------------------------------
+-- Test code generator: cSelect
+----------------------------------------------------------
     ]
