@@ -228,12 +228,31 @@ fn runOperation(
       VmOpType::OP_FileRead => unimplemented!(),
       VmOpType::OP_FileColumn => unimplemented!(),
       VmOpType::OP_FileClose => unimplemented!(),
-      VmOpType::OP_AggReset => unimplemented!(),
-      VmOpType::OP_AggFocus => unimplemented!(),
-      VmOpType::OP_AggIncr => unimplemented!(),
-      VmOpType::OP_AggNext => unimplemented!(),
-      VmOpType::OP_AggSet => unimplemented!(),
-      VmOpType::OP_AggGet => unimplemented!(),
+      VmOpType::OP_AggReset => {
+        vm.resizeAgg(nowOp.p2 as usize);
+      }
+      VmOpType::OP_AggFocus => {
+        let poped = popOneMem(vm)?;
+        unsafe {
+          if vm.focusAgg(poped) {
+            pc = nowOp.p2 as usize - 1;
+          }
+        }
+      }
+      VmOpType::OP_AggIncr => vm.incrAgg(nowOp.p2 as usize, nowOp.p1)?,
+      VmOpType::OP_AggNext => {
+        if !vm.nextAgg() {
+          pc = nowOp.p2 as usize - 1;
+        }
+      }
+      VmOpType::OP_AggSet => {
+        let poped = popOneMem(vm)?;
+        vm.setAgg(nowOp.p2 as usize, poped)?;
+      }
+      VmOpType::OP_AggGet => {
+        let value = vm.getAgg(nowOp.p2 as usize)?;
+        vm.pushStack(value);
+      }
       VmOpType::OP_SetInsert => {
         let string = if nowOp.p3.len() == 0 {
           let poped = popOneMem(vm)?;
@@ -330,6 +349,7 @@ fn runOperation(
         let values = vm
           .popStack(nowOp.p1)?
           .into_iter()
+          .rev()
           .map(|x| x.stringify())
           .map(|x| x.unwrap())
           .collect::<Vec<Vec<u8>>>();

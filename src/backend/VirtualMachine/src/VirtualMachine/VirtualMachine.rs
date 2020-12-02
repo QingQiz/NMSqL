@@ -1,3 +1,4 @@
+use super::VmAgg::VmAgg;
 use super::VmCursor::VmCursor;
 use super::VmList::VmList;
 use super::VmMem::VmMem;
@@ -19,6 +20,7 @@ pub struct VirtualMachine {
   pub lists: Vec<VmList>,
   pub sorters: Vec<VmSorter>,
   pub sets: Vec<VmSet>,
+  pub agg: VmAgg,
 }
 
 /// method for stack
@@ -227,6 +229,29 @@ impl VirtualMachine {
   }
 }
 
+/// method for add
+
+impl VirtualMachine {
+  pub fn resizeAgg(self: &mut Self, size: usize) -> Result<(), String> {
+    self.agg.resizeCurrent(size)
+  }
+  pub fn focusAgg(self: &mut Self, key: VmMem) -> bool {
+    self.agg.focus(key)
+  }
+  pub fn incrAgg(self: &mut Self, index: usize, num: i32) -> Result<(), String> {
+    self.agg.incr(index, num)
+  }
+  pub fn nextAgg(self: &mut Self) -> bool {
+    self.agg.next()
+  }
+  pub fn getAgg(self: &mut Self, index: usize) -> Result<VmMem, String> {
+    self.agg.get(index)
+  }
+  pub fn setAgg(self: &mut Self, index: usize, value: VmMem) -> Result<(), String> {
+    self.agg.set(index, value)
+  }
+}
+
 /// method for transaction
 impl VirtualMachine {
   pub fn transaction(self: &Self) {
@@ -248,6 +273,7 @@ impl VirtualMachine {
     DbWrapper::reorganize();
   }
 }
+
 #[cfg(test)]
 mod VirtualMachineTest {
   use super::super::VmMem::VmMem;

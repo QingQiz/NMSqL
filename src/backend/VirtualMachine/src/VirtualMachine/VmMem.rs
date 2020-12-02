@@ -1,4 +1,6 @@
 use super::VmUtil::{f64ToVecU8, i32ToVecU8, vecU8ToF64, vecU8ToI32};
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
 
 /// string in format of [len(2),flag(1),null(1),string(len)]  
 #[derive(Debug, Clone, PartialEq, PartialOrd, Default, Eq, Hash)]
@@ -78,7 +80,7 @@ impl<'a> Iterator for VmMemStringIterator<'a> {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum VmMem {
   MEM_INT(i32),
   MEM_DOUBLE(f64),
@@ -131,6 +133,23 @@ impl VmMem {
       ]
       .concat(),
     )
+  }
+}
+
+impl Default for VmMem {
+  fn default() -> Self {
+    VmMem::MEM_NULL
+  }
+}
+
+impl Eq for VmMem {}
+
+impl Ord for VmMem {
+  fn cmp(&self, other: &Self) -> Ordering {
+    match self.partial_cmp(other) {
+      None => Ordering::Less,
+      Some(x) => x,
+    }
   }
 }
 
