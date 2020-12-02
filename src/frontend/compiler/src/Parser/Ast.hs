@@ -17,12 +17,11 @@ data BinOp = Multiply | Divide   -- (*) (/)
 
 data LikeOp = Like | NotLike     -- (LIKE) (NOT LIKE)
             | Glob | NotGlob     -- (GLOB) (NOT GLOB)
-            deriving (Show, Eq)
+            deriving Eq
 
 
 data CompoundOp = Union     | UnionAll
                 | Intersect | Except
-                deriving (Show)
 
 
 data Type = TInt | TString Int | TDouble deriving (Show)
@@ -38,11 +37,10 @@ data Value = ValStr String
            | ValInt Int
            | ValDouble Double
            | Null
-           deriving (Show)
+
 
 data ValueList = ValueList [Expr]
                | SelectResult Select
-               deriving (Show)
 
 
 data ColumnConstraint = ColNotNull
@@ -74,6 +72,7 @@ data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
           | Column ColumnName                -- column
           | AnyColumn                        -- column *
           | TableColumn TableName ColumnName -- table.column
+          | EmptyExpr                        -- place holder
 
 
 ----------------------------------------------------------
@@ -141,14 +140,15 @@ instance Show Expr where
         LikeExpr     op e1 e2 -> brackets $ show e1 ++ " "     ++ show op ++ " " ++ show e2
         ConstValue   val      -> show val
         FunctionCall fn es    -> fn                 ++ brackets (intercalate "," $ map show es)
-        IsNull       e        -> brackets $ show e  ++ " IsNull"
-        Between      e1 e2 e3 -> brackets $ show e1 ++ " Between " ++ show e2 ++ " And " ++ show e3
-        InExpr       e vl     -> brackets $ show e  ++ " In "      ++ show vl
-        NotExpr      e        -> brackets $ "Not "  ++ show e
+        IsNull       e        -> brackets $ show e  ++ " IS NUll"
+        Between      e1 e2 e3 -> brackets $ show e1 ++ " BETWEEN " ++ show e2 ++ " AND " ++ show e3
+        InExpr       e vl     -> brackets $ show e  ++ " IN "      ++ show vl
+        NotExpr      e        -> brackets $ "NOT "  ++ show e
         SelectExpr   sel      -> brackets $ show sel
         Column       cn       -> cn
         TableColumn  tn cn    -> tn ++ "." ++ cn
         AnyColumn             -> "*"
+        EmptyExpr             -> "EmptyExpr"
         where brackets s = "(" ++ s ++ ")"
 
 instance Show BinOp where
@@ -164,3 +164,25 @@ instance Show BinOp where
     show NE       = "!="
     show And      = " And "
     show Or       = " Or "
+
+instance Show LikeOp where
+    show Like    = "LIKE"
+    show NotLike = "NOT LIKE"
+    show Glob    = "GLOB"
+    show NotGlob = "NOT GLOB"
+
+instance Show CompoundOp where
+    show Union     = "UNION"
+    show UnionAll  = "UNION ALL"
+    show Intersect = "INTERSECT"
+    show Except    = "EXCEPT"
+
+instance Show Value where
+    show Null       = "NULL"
+    show (ValInt i) = show i
+    show (ValStr s) = show s
+    show (ValDouble d) = show d
+
+instance Show ValueList where
+    show (ValueList vl)     = "(" ++ intercalate "," (map show vl) ++ ")"
+    show (SelectResult sel) = "(" ++ show sel ++ ")"

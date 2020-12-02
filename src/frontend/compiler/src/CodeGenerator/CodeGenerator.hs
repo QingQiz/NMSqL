@@ -160,3 +160,6 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                 where
                     inIndex (TableColumn _ cn, _) = cn `elem` cns
                     inIndex _ = False
+
+cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
+cSelectWrapper = cSelect

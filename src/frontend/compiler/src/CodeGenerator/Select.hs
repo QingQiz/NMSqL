@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Select where
+module Select (cSelect) where
 
 
 import Ast
@@ -17,12 +17,15 @@ import Control.Monad.Except
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
-data SelectResultType = ToSet Int | ToSorter | Normal
-
 cSelect :: Select -> SelectResultType -> CodeGenEnv
 cSelect select selType =
-    let selRes = cSelRes $ selectResult select
-     in undefined
+    let selRes       = selectResult select
+        selWhere     = fromMaybe EmptyExpr (selectWhere select)
+        tableName    = selectTableName select
+        newMd        = getMetadata >>= \mds ->
+                       putMetadata $ filter (\md -> metadata_name md `elem` tableName) mds
+        verifyCookie = getMetadata >>= \mds -> appendInst opVerifyCookie (metadata_cookie (head mds)) 0 ""
+     in newMd >> verifyCookie >> cExprWrapper selWhere >> getRes >> cSelRes selRes selType
 
 
 cSelRes :: [(Expr, String)] -> SelectResultType -> CodeGenEnv
@@ -36,6 +39,9 @@ cSelRes [(AnyColumn, _)] t =
 
 cSelRes selRes (ToSet _) | length selRes > 1 =
     throwError "Only a single result allowed for a SELECT that is part of an expression"
+
+cSelRes selRes (UnionSel op n) | length selRes /= n =
+    throwError $ "SELECTs to the left and right of " ++ show op ++ " do not have the same number of result columns"
 
 cSelRes selRes selType =
     let
@@ -56,9 +62,10 @@ cSelRes selRes selType =
             ToSet set -> prependEnv (appendInst opSetOpen   set   0 "")
                       >> insertTemp (appendInst opSetInsert set   0 "")
             Normal    -> insertTemp (appendInst opCallback  colNr 0 "")
-            ToSorter  -> throwError "Not implemented"
+            ToSorter  -> throwError "TODO Not implemented"
+            UnionSel _ _  -> throwError "TODO Not implemented"
 
-        cSelRes' = try (putFuncDef funcDef1 >> connectCodeGenEnv (map (cExpr . fst) selRes))
+        cSelRes' = try (putFuncDef funcDef1 >> insertTemp (connectCodeGenEnv (map (cExpr . fst) selRes)))
                        (connectCodeGenEnv (map (cExpr' . fst) selRes) >> applyCache)
             where
                 funcDef1 = [("max", 2), ("min", 2), ("substr", 3)]

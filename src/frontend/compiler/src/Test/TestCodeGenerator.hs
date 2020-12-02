@@ -1,8 +1,11 @@
 module TestCodeGenerator where
 
 
+import Ast ( Expr(EmptyExpr), CompoundOp(Union) )
+import Expr (cExpr)
 import TestUtils
 import Instruction
+import CodeGenerator
 import CodeGeneratorUtils
 
 import Test.HUnit
@@ -15,6 +18,7 @@ import Test.HUnit
 --  table yyy has 4 columns: a, b, d, y
 --            has 2 indexes: idx_yyy_d  : d,
 --                           idx_yyy_a_b: (a, b)
+-- assume that: database cookie is 234
 
 codeGeneratorTest :: Test
 codeGeneratorTest = test [
@@ -72,6 +76,14 @@ codeGeneratorTest = test [
     , "const value" ~: "null"
                     ~: cExprStr "null"
                     ?: Right [Instruction opNull 0 0 ""]
+----------------------------------------------------------
+    , "any-column"  ~: "*"
+                    ~: cExprStr "max(*,2)"
+                    ?: Left "`*' was not allowed here"
+----------------------------------------------------------
+    , "empty-expr"  ~: ""
+                    ~: cExpr EmptyExpr
+                    ?: Right [Instruction opInteger 1 0 ""]
 ----------------------------------------------------------
     , "binary expr" ~: "plus (+)"
                     ~: cExprStr "c+d"
@@ -357,4 +369,66 @@ codeGeneratorTest = test [
 ----------------------------------------------------------
 -- Test code generator: cSelect
 ----------------------------------------------------------
+-- NOTE we should test help functions first
+    , "insert-temp" ~: ""
+                    ~: putRes [Instruction opNoop     0 0 ""
+                              ,Instruction opTempInst 0 0 ""
+                              ,Instruction opNoop     0 1 ""]
+                    +: insertTemp (appendInst opNoop  0 2 "")
+                    ?: Right  [Instruction opNoop     0 0 ""
+                              ,Instruction opNoop     0 2 ""
+                              ,Instruction opTempInst 0 0 ""
+                              ,Instruction opNoop     0 1 ""]
+    , "prependEnv"  ~: ""
+                    ~: putRes [Instruction opNoop    0 0 ""]
+                    +: prependEnv (appendInst opNoop 0 1 "")
+                    ?: Right  [Instruction opNoop    0 1 ""
+                              ,Instruction opNoop    0 0 ""]
+----------------------------------------------------------
+    , "sel-res"     ~: "select *,a from xxx"
+                    ~: cSelectStr "select *,a from xxx" Normal
+                    ?: Left "Semantic error on `*'"
+    , "sel-res"     ~: "select * form xxx -- (to set)"
+                    ~: cSelectStr "select * from xxx" (ToSet 0)
+                    ?: Left "Only a single result allowed for a SELECT that is part of an expression"
+    , "sel-res"     ~: "union select a from xxx -- (need 2 result)"
+                    ~: cSelectStr "select a from xxx" (UnionSel Union 2)
+                    ?: Left "SELECTs to the left and right of UNION do not have the same number of result columns"
+----------------------------------------------------------
+    , "select"      ~: "select * from xxx"
+                    ~: cSelectStr "select * from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn       0   0 ""
+                        ,Instruction opColumn       0   1 ""
+                        ,Instruction opColumn       0   2 ""
+                        ,Instruction opColumn       0   3 ""
+                        ,Instruction opCallback     4   0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  4   0 ""
+                        ,Instruction opColumnName   0   0 "xxx.a"
+                        ,Instruction opColumnName   1   0 "xxx.b"
+                        ,Instruction opColumnName   2   0 "xxx.c"
+                        ,Instruction opColumnName   3   0 "xxx.x"
+                        ,Instruction opVerifyCookie 234 0 ""])
+                    >: Right []
+    , "select"      ~: "select count(*) from xxx"
+                    ~: cSelectStr "select count(*) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn       0   0 ""
+                        ,Instruction opColumn       0   1 ""
+                        ,Instruction opColumn       0   2 ""
+                        ,Instruction opColumn       0   3 ""
+                        ,Instruction opCallback     4   0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  4   0 ""
+                        ,Instruction opColumnName   0   0 "xxx.a"
+                        ,Instruction opColumnName   1   0 "xxx.b"
+                        ,Instruction opColumnName   2   0 "xxx.c"
+                        ,Instruction opColumnName   3   0 "xxx.x"
+                        ,Instruction opVerifyCookie 234 0 ""])
+                    >: Right []
     ]

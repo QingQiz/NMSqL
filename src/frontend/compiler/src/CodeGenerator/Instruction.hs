@@ -129,4 +129,10 @@ data Instruction = Instruction {
     iP1     :: Int,
     iP2     :: Int,
     iP3     :: String
-} deriving (Show, Eq)
+} deriving Eq
+
+
+instance Show Instruction where
+    show (Instruction op p1 p2 p3) =
+        let op' = if length op < 8 then op ++ "\t" else op
+         in "\n\t" ++ op' ++ "\t" ++ show p1 ++ "\t" ++ show p2 ++ "\t" ++ show p3

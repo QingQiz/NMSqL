@@ -33,7 +33,7 @@ cExpr = \case
     Column       cn                                 -> exprColumn cn
     TableColumn  tn cn                              -> exprTableColumn tn cn
     AnyColumn                                       -> throwError "`*' was not allowed here"
-    EmptyExpr                                       -> getRes
+    EmptyExpr                                       -> putTrue
 
 
 cNormalExpr :: Expr -> CodeGenEnv

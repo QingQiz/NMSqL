@@ -2,6 +2,7 @@
 module CodeGeneratorUtils where
 
 
+import Ast
 import Instruction
 import FFIStructure
 
@@ -28,6 +29,7 @@ type CodeGenEnv   = ExceptTEnv [Instruction]
 
 type CodeGenRes   = Either String [Instruction]
 
+data SelectResultType = ToSet Int | ToSorter | Normal | UnionSel CompoundOp Int
 
 ----------------------------------------------------------
 -- some help functions
@@ -93,11 +95,16 @@ applyCache :: CodeGenEnv
 applyCache = get >>= (\(a, (b, x1, x2), c) -> put (a, (b ++ x1, [], x2), c)) >> getRes
 
 
+-- append instructions to env
+appendInstructions :: [Instruction] -> CodeGenEnv
+appendInstructions insts = get >>= (\(a, (b, x1, x2), c) -> getCacheState >>= \case
+    0 -> put (a, (b ++ insts, x1, x2), c) >> getRes
+    _ -> put (a, (b, x1 ++ insts, x2), c) >> getRes)
+
+
 -- append an instruction to env
 appendInst :: OpCode -> Int -> Int -> String -> CodeGenEnv
-appendInst opCode p1 p2 p3 = get >>= (\(a, (b, x1, x2), c) -> getCacheState >>= \case
-    0 -> put (a, (b ++ [Instruction opCode p1 p2 p3], x1, x2), c) >> getRes
-    _ -> put (a, (b, x1 ++ [Instruction opCode p1 p2 p3], x2), c) >> getRes)
+appendInst opCode p1 p2 p3 = appendInstructions [Instruction opCode p1 p2 p3]
 
 
 -- prepend the result of env to current env
@@ -112,7 +119,7 @@ prependEnv env = do
 insertTemp :: CodeGenEnv -> CodeGenEnv
 insertTemp env = do
     res <- getRes >>= \x -> return $ break (==Instruction opTempInst 0 0 "") x
-    putRes (fst res) >> env >> putRes (snd res)
+    putRes (fst res) >> env >> appendInstructions (snd res)
 
 
 -- fst, snd, trd for (,,)
@@ -129,6 +136,9 @@ trd3 (_, _, a) = a
 getMetadata :: ExceptTEnv [TableMetadata]
 getMetadata = fst . fst3 <$> lift get
 
+-- put table metadata to env
+putMetadata :: [TableMetadata] -> CodeGenEnv
+putMetadata mds = get >>= (\((_, b), c, d) -> put ((mds, b), c, d)) >> doNothing
 
 -- get function definations
 getFuncDef :: ExceptTEnv [FunctionDef]
