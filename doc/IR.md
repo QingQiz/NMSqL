@@ -70,8 +70,8 @@ IR大致可以分为以下几类：
 |58|AggSet|N|Y|N|将当前栈顶元素放入当前aggregate的P2位|
 |59|AggGet|N|Y|N|将当前aggregate的P2位入栈|
 |60|SetInsert|Y|N|Y|向第P1个Set插入P3 若P3位Null 则出栈一个元素插入Set|
-|61|SetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则跳转到P2|
-|62|SetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则跳转到P2|
+|61|JSetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则跳转到P2|
+|62|JSetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则跳转到P2|
 |63|SetClear|Y|N|N|清空第P1个Set|
 |64|MakeRecord|Y|N|N|将栈中P1个元素出栈 构造字符串作为Record并压栈 字符串格式为 `[len(2),flag(1),null(0),string]+` 其中 null string长度为0 元素顺序为 后出栈的元素在字符串前部|
 |65|MakeKey|Y|N|N|将栈中P1个元素构造字符串作为key并压栈 `[len(2),flag(1),null(0),string]+` 其中 null string长度为0 元素顺序为 后出栈的元素在字符串前部|
@@ -125,6 +125,8 @@ IR大致可以分为以下几类：
 |114|SetNotNull|N|Y|N|出栈一个元素 若不为Null则将P2压栈，否则将 `0` 压栈|
 |115|SortSetDesc|Y|Y|N|第P1个sorter中第P2列设置为降序排序|
 |116|SetOpen|Y|N|N|开启一个编号为P1的set|
+|117|SetSetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则将P2压栈，否则将 `0` 压栈|
+|118|SetSetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则将P2压栈，否则将 `0` 压栈|
 
 ### Removed IR
 
