@@ -62,8 +62,8 @@ opAggNext      = "opAggNext"       --57
 opAggSet       = "opAggSet"        --58
 opAggGet       = "opAggGet"        --59
 opSetInsert    = "opSetInsert"     --60
-opSetFound     = "opSetFound"      --61
-opSetNotFound  = "opSetNotFound"   --62
+opJSetFound    = "opJSetFound"      --61
+opJSetNotFound = "opJSetNotFound"   --62
 opSetClear     = "opSetClear"      --63
 opMakeRecord   = "opMakeRecord"    --64
 opMakeKey      = "opMakeKey"       --65
@@ -118,6 +118,9 @@ opSetIsNull    = "opSetIsNull"     --113
 opSetNotNull   = "opSetNotNull"    --114
 opSortSetDesc  = "opSortSetDesc"   --115
 opSetOpen      = "opSetOpen"       --116
+opSetSetFound  = "opSetSetFound"   --117
+opSetSetNotFound = "opSetSetNotFound"--118
+opSetSetEmpty  = "opSetSetEmpty"  --119
 
 type OpCode = String
 

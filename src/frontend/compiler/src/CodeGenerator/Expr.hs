@@ -5,6 +5,7 @@ module Expr (cExpr, isConstExpr) where
 import Ast
 import Instruction
 import CodeGeneratorUtils
+import {-# SOURCE #-} CodeGenerator
 
 import Data.List (findIndex)
 import Control.Monad.Except (MonadError(throwError))
@@ -28,16 +29,25 @@ cExpr = \case
     Between      e1 e2 e3                           -> exprBetween e1 e2 e3
     InExpr       a b                                -> exprIn a b
     NotExpr      e                                  -> cExpr e >> appendInst opNot 0 0 ""
-    SelectExpr   _                                  -> throwError "not implemented"
+    SelectExpr   s                                  -> cSelectExpr s
     Column       cn                                 -> exprColumn cn
     TableColumn  tn cn                              -> exprTableColumn tn cn
     AnyColumn                                       -> throwError "`*' was not allowed here"
+    EmptyExpr                                       -> getRes
 
 
 cNormalExpr :: Expr -> CodeGenEnv
 cNormalExpr expr = getFuncDef >>= \oldFD -> putFuncDef simpleFuncDef >> cExpr expr >> putFuncDef oldFD
     where
         simpleFuncDef  = [("max", 2), ("min", 2), ("substr", 3)]
+
+
+-- code generator for select-expr
+cSelectExpr :: Select -> CodeGenEnv
+cSelectExpr sel = getSet >>= \set -> updateSet
+    >> prependEnv (cSelectWrapper sel $ ToSet set)
+    >> appendInst opSetSetEmpty set 1 ""
+    >> appendInst opNot         0   0 ""
 
 
 -- code generator for between-expr
@@ -58,21 +68,20 @@ exprBetween a b c = getLabel >>= \labelAva
 -- code generator for in-expr
 exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
-    let genValueList = getSet >>= \sn -> prependEnv $
+    let genValueList sn = prependEnv $
             appendInst opSetOpen sn 0 "" >>
             connectCodeGenEnv (map (\e   ->
                 throwErrorIfNotConst e   >>
                 cExpr e                  >>
                 appendInst opSetInsert sn 0 "") vl)
-        mkRes = do
-            lab <- getLabel
-            set <- getSet
-            mkBoolVal opSetFound set lab ""
      in case vl of
             [] -> putFalse
-            _  -> genValueList >> cExpr a >> mkRes >> updateSet
+            _  -> getSet >>= \set -> updateSet
+               >> genValueList set >> cExpr a >> appendInst opSetSetFound set 1 ""
 
-exprIn _ (SelectResult _) = throwError "not implemented"
+exprIn a (SelectResult sel) = getSet >>= \set -> updateSet
+    >> prependEnv (cSelectWrapper sel $ ToSet set)
+    >> cExpr a >> appendInst opSetSetFound set 1 ""
 
 
 -- code generator for column
@@ -225,14 +234,6 @@ putTrue = appendInst opInteger 1 0 ""
 
 putFalse :: CodeGenEnv
 putFalse = appendInst opInteger 0 0 ""
-
-mkBoolVal :: OpCode -> Int -> Int -> String -> CodeGenEnv
-mkBoolVal opCode p1 p2 p3 = appendInst opCode p1 p2 p3
-    >> putFalse
-    >> goto (p2 + 1)
-    >> mkCurrentLabel
-    >> putTrue
-    >> mkCurrentLabel
 
 -- const expr checker
 isConstExpr :: Expr -> Bool
