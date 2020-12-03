@@ -15,7 +15,7 @@ fn popOneMem(vm: &mut VirtualMachine) -> Result<VmMem, String> {
   Ok(vm.popStack(1)?.into_iter().next().unwrap())
 }
 
-fn runOperation(
+pub fn runOperation(
   operations: String,
   vm: &mut VirtualMachine,
   callback: DbWrapper::nmsql_callback,

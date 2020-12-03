@@ -128,6 +128,26 @@ pub mod rustLayer {
     args: *mut ::std::os::raw::c_void,
   ) -> ::std::os::raw::c_int {
     println!("in exec");
+    let mut vm = crate::VirtualMachine::VirtualMachine::VirtualMachine::new();
+    crate::VirtualMachine::VmRunner::runOperation(
+      String::from_utf8_lossy(&{
+        let mut ret = Vec::new();
+        unsafe {
+          for i in 0.. {
+            let x = *ir.offset(i);
+            if x == 0 {
+              break;
+            }
+            ret.push(x as u8);
+          }
+        }
+        ret
+      })
+      .to_string(),
+      &mut vm,
+      callback,
+      args,
+    );
     1
   }
 }
