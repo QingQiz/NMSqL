@@ -148,7 +148,7 @@ IR大致可以分为以下几类：
 这玩意在`sqlite_exec`函数中传入(事实上在许多执行相关的函数都有传入)，对query结果的每一行进行使用，其类型是以下形式：
 
 ```cpp
-typedef int (*sqlite_callback)(void*,int,char**, char**);
+typedef int (*nmsql_callback)(void*, const int, const char* const*, const char* const*);
 ```
 
 第一个参数是`sqlite_exec`的第四个参数，第二个参数是query结果中的列数，第三个参数是每一列的值，第四个参数是每一列的名字。
