@@ -228,6 +228,9 @@ impl VirtualMachine {
   pub fn setClear(self: &mut Self, num: usize) -> Result<(), String> {
     Ok(self.getSet(num)?.clear())
   }
+  pub fn setEmpty(self: &mut Self, num: usize) -> Result<bool, String> {
+    Ok(self.getSet(num)?.empty())
+  }
 }
 
 /// method for add

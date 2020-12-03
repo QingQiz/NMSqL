@@ -61,8 +61,8 @@ pub enum VmOpType {
   OP_AggSet,
   OP_AggGet,
   OP_SetInsert,
-  OP_SetFound,
-  OP_SetNotFound,
+  OP_JSetFound,
+  OP_JSetNotFound,
   OP_SetClear,
   OP_MakeRecord,
   OP_MakeKey,
@@ -117,6 +117,9 @@ pub enum VmOpType {
   OP_SetNotNull,
   OP_SortSetDesc,
   OP_SetOpen,
+  OP_SetSetFound,
+  OP_SetSetNotFound,
+  OP_SetSetEmpty,
 }
 
 impl Default for VmOpType {

@@ -212,6 +212,7 @@ mod CLayerTest {
   fn ffi_work() {
     unsafe {
       cLayer::open(
+        1,
         VmMem::genVmString(
           vec!['a' as u8, 'b' as u8, 'c' as u8],
           VmMemString::MEM_FLAG_INT,

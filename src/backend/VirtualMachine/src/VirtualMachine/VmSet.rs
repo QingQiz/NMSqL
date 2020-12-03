@@ -19,6 +19,9 @@ impl VmSet {
   pub fn clear(self: &mut Self) {
     self.set.clear();
   }
+  pub fn empty(self: &Self) -> bool {
+    self.set.is_empty()
+  }
 }
 
 #[cfg(test)]
@@ -85,5 +88,12 @@ mod VmSetTest {
     assert!(!set.found(getVmMemStringF64(10.0)));
     assert!(set.found(getVmMemStringStringA(100)));
     assert!(!set.found(getVmMemStringStringA(300)));
+  }
+  #[test]
+  fn test_VmSet_empty() {
+    let mut set = getVmSet();
+    assert!(!set.empty());
+    set.clear();
+    assert!(set.empty());
   }
 }

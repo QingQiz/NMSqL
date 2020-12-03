@@ -262,16 +262,32 @@ fn runOperation(
         };
         vm.setInsert(nowOp.p1 as usize, string)?;
       }
-      VmOpType::OP_SetFound => {
+      VmOpType::OP_JSetFound | VmOpType::OP_SetSetFound => {
         let poped = popOneMem(vm)?.stringify();
         if vm.setFound(nowOp.p1 as usize, poped)? {
-          pc = nowOp.p2 as usize - 1;
+          if let VmOpType::OP_JSetFound = nowOp.vmOpType {
+            pc = nowOp.p2 as usize - 1;
+          } else {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          }
+        } else {
+          if let VmOpType::OP_SetSetFound = nowOp.vmOpType {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
-      VmOpType::OP_SetNotFound => {
+      VmOpType::OP_JSetNotFound => {
         let poped = popOneMem(vm)?.stringify();
         if !vm.setFound(nowOp.p1 as usize, poped)? {
-          pc = nowOp.p2 as usize - 1;
+          if let VmOpType::OP_JSetFound = nowOp.vmOpType {
+            pc = nowOp.p2 as usize - 1;
+          } else {
+            vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+          }
+        } else {
+          if let VmOpType::OP_SetSetFound = nowOp.vmOpType {
+            vm.pushStack(VmMem::MEM_INT(0));
+          }
         }
       }
       VmOpType::OP_SetClear => vm.setClear(nowOp.p1 as usize)?,
@@ -708,6 +724,13 @@ fn runOperation(
       }
       VmOpType::OP_SetOpen => {
         vm.openSet(nowOp.p1 as usize);
+      }
+      VmOpType::OP_SetSetEmpty => {
+        if vm.setEmpty(nowOp.p1 as usize)? {
+          vm.pushStack(VmMem::MEM_INT(nowOp.p2));
+        } else {
+          vm.pushStack(VmMem::MEM_INT(0));
+        }
       }
       _ => {
         return Err(format!("unknown operation: {:?}", nowOp));
