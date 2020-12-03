@@ -21,6 +21,7 @@ pub struct VirtualMachine {
   pub sorters: Vec<VmSorter>,
   pub sets: Vec<VmSet>,
   pub agg: VmAgg,
+  pub transactionId: i32,
 }
 
 /// method for stack
@@ -60,7 +61,7 @@ impl VirtualMachine {
       self.vmCursors.resize(num + 1, VmCursor::default());
     }
     self.closeCursor(num);
-    self.vmCursors[num] = VmCursor::new(cursorName, flag);
+    self.vmCursors[num] = VmCursor::new(cursorName, flag, self.transactionId);
   }
   fn getCursor(self: &mut Self, num: usize) -> Result<&mut VmCursor, String> {
     if num < self.vmCursors.len() {
@@ -254,14 +255,14 @@ impl VirtualMachine {
 
 /// method for transaction
 impl VirtualMachine {
-  pub fn transaction(self: &Self) {
-    DbWrapper::transaction();
+  pub fn transaction(self: &mut Self) {
+    DbWrapper::transaction(&mut self.transactionId);
   }
   pub fn rollback(self: &Self) {
-    DbWrapper::rollback();
+    DbWrapper::rollback(self.transactionId);
   }
   pub fn commit(self: &Self) {
-    DbWrapper::commit();
+    DbWrapper::commit(self.transactionId);
   }
   pub fn getCookies(self: &Self) -> i32 {
     DbWrapper::getCookies()

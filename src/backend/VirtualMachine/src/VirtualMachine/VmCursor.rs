@@ -10,6 +10,7 @@ pub struct VmCursor {
   keyAsData: bool,
   keyCache: VmMemString,
   valueCache: VmMemString,
+  transactionId: i32,
 }
 impl Default for VmCursor {
   fn default() -> Self {
@@ -20,18 +21,20 @@ impl Default for VmCursor {
       keyAsData: false,
       keyCache: VmMemString::default(),
       valueCache: VmMemString::default(),
+      transactionId: -1,
     }
   }
 }
 impl VmCursor {
-  pub fn new(cursorName: &String, flag: i32) -> Self {
+  pub fn new(cursorName: &String, flag: i32, transactionId: i32) -> Self {
     VmCursor {
-      cursor: DbWrapper::open(&cursorName.as_bytes().to_vec(), flag),
+      cursor: DbWrapper::open(transactionId, &cursorName.as_bytes().to_vec(), flag),
       key: VmMemString::default(),
       isIdx: false,
       keyAsData: false,
       keyCache: VmMemString::default(),
       valueCache: VmMemString::default(),
+      transactionId,
     }
   }
   fn getCursor(self: &Self) -> Result<*mut Cursor, String> {
@@ -45,7 +48,7 @@ impl VmCursor {
     self.isIdx = flag;
   }
   pub fn rewind(self: &mut Self) -> Result<(), String> {
-    DbWrapper::reset(self.getCursor()?);
+    DbWrapper::reset(self.transactionId, self.getCursor()?);
     self.clear();
     Ok(())
   }
@@ -57,9 +60,9 @@ impl VmCursor {
   }
   /// return false if it's the end of cursor
   pub fn next(self: &mut Self) -> Result<(), String> {
-    DbWrapper::next(self.getCursor()?);
-    self.keyCache = VmMemString::new(DbWrapper::getKey(self.cursor));
-    self.valueCache = VmMemString::new(DbWrapper::getValue(self.cursor));
+    DbWrapper::next(self.transactionId, self.getCursor()?);
+    self.keyCache = VmMemString::new(DbWrapper::getKey(self.transactionId, self.cursor));
+    self.valueCache = VmMemString::new(DbWrapper::getValue(self.transactionId, self.cursor));
     Ok(())
   }
   pub fn clear(self: &mut Self) {
@@ -70,20 +73,20 @@ impl VmCursor {
     self.valueCache = VmMemString::default();
   }
   pub fn close(self: &mut Self) -> Result<(), String> {
-    DbWrapper::close(self.getCursor()?);
+    DbWrapper::close(self.transactionId, self.getCursor()?);
     self.clear();
     Ok(())
   }
   pub fn insert(self: &mut Self, key: &VmMemString, value: &VmMemString) -> Result<(), String> {
-    DbWrapper::insert(self.getCursor()?, key, value);
+    DbWrapper::insert(self.transactionId, self.getCursor()?, key, value);
     Ok(())
   }
   pub fn find(self: &mut Self, key: &VmMemString) -> Result<(), String> {
-    DbWrapper::find(self.getCursor()?, key);
+    DbWrapper::find(self.transactionId, self.getCursor()?, key);
     Ok(())
   }
   pub fn erase(self: &mut Self) -> Result<(), String> {
-    DbWrapper::erase(self.getCursor()?);
+    DbWrapper::erase(self.transactionId, self.getCursor()?);
     Ok(())
   }
   pub fn getKeyAsData(self: &Self) -> bool {

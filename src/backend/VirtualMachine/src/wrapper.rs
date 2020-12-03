@@ -27,12 +27,12 @@ pub mod rustLayer {
     ret
   }
   // open the index
-  pub fn open(indexName: &Vec<u8>, flag: i32) -> *mut Cursor {
-    unsafe { cLayer::open(indexName.as_ptr() as *const i8, flag) }
+  pub fn open(transactionId: i32, indexName: &Vec<u8>, flag: i32) -> *mut Cursor {
+    unsafe { cLayer::open(transactionId, indexName.as_ptr() as *const i8, flag) }
   }
   // close the cursor
-  pub fn close(cursor: *mut Cursor) -> i32 {
-    unsafe { cLayer::close(cursor) }
+  pub fn close(transactionId: i32, cursor: *mut Cursor) -> i32 {
+    unsafe { cLayer::close(transactionId, cursor) }
   }
   // create dbTable with indexName indexType indexColumnCnt and indexColumns
   pub fn create(
@@ -56,21 +56,22 @@ pub mod rustLayer {
       )
     }
   }
-  pub fn find(cursor: *mut Cursor, key: &Vec<u8>) -> i32 {
-    unsafe { cLayer::find(cursor, key.as_ptr() as *const ffi::c_void) }
+  pub fn find(transactionId: i32, cursor: *mut Cursor, key: &Vec<u8>) -> i32 {
+    unsafe { cLayer::find(transactionId, cursor, key.as_ptr() as *const ffi::c_void) }
   }
   // get the key of the data that current cursor points to
-  pub fn getKey(cursor: *mut Cursor) -> Vec<u8> {
-    unsafe { getVecFromPtr(cLayer::getKey(cursor)) }
+  pub fn getKey(transactionId: i32, cursor: *mut Cursor) -> Vec<u8> {
+    unsafe { getVecFromPtr(cLayer::getKey(transactionId, cursor)) }
   }
   // get the value of the data that current cursor points to
-  pub fn getValue(cursor: *mut Cursor) -> Vec<u8> {
-    unsafe { getVecFromPtr(cLayer::getValue(cursor)) }
+  pub fn getValue(transactionId: i32, cursor: *mut Cursor) -> Vec<u8> {
+    unsafe { getVecFromPtr(cLayer::getValue(transactionId, cursor)) }
   }
   // insert into Cursor with key and value
-  pub fn insert(cursor: *mut Cursor, key: &Vec<u8>, value: &Vec<u8>) -> i32 {
+  pub fn insert(transactionId: i32, cursor: *mut Cursor, key: &Vec<u8>, value: &Vec<u8>) -> i32 {
     unsafe {
       cLayer::insert(
+        transactionId,
         cursor,
         key.as_ptr() as *const ffi::c_void,
         value.as_ptr() as *const ffi::c_void,
@@ -78,16 +79,16 @@ pub mod rustLayer {
     }
   }
   // erase the element that cursor points to
-  pub fn erase(cursor: *mut Cursor) -> i32 {
-    unsafe { cLayer::erase(cursor) }
+  pub fn erase(transactionId: i32, cursor: *mut Cursor) -> i32 {
+    unsafe { cLayer::erase(transactionId, cursor) }
   }
   // move the cursor to the next
-  pub fn next(cursor: *mut Cursor) -> i32 {
-    unsafe { cLayer::next(cursor) }
+  pub fn next(transactionId: i32, cursor: *mut Cursor) -> i32 {
+    unsafe { cLayer::next(transactionId, cursor) }
   }
   // reset the cursor to the first
-  pub fn reset(cursor: *mut Cursor) -> i32 {
-    unsafe { cLayer::reset(cursor) }
+  pub fn reset(transactionId: i32, cursor: *mut Cursor) -> i32 {
+    unsafe { cLayer::reset(transactionId, cursor) }
   }
   pub fn createTable(sql: &Vec<u8>) -> i32 {
     unsafe { cLayer::createTable(sql.as_ptr() as *const i8) }
@@ -103,14 +104,14 @@ pub mod rustLayer {
       cLayer::setCookies(cookies);
     }
   }
-  pub fn transaction() -> i32 {
-    unsafe { cLayer::transaction() }
+  pub fn transaction(transactionId: &mut i32) -> i32 {
+    unsafe { cLayer::transaction(transactionId as *mut i32) }
   }
-  pub fn commit() -> i32 {
-    unsafe { cLayer::commit() }
+  pub fn commit(transactionId: i32) -> i32 {
+    unsafe { cLayer::commit(transactionId) }
   }
-  pub fn rollback() -> i32 {
-    unsafe { cLayer::rollback() }
+  pub fn rollback(transactionId: i32) -> i32 {
+    unsafe { cLayer::rollback(transactionId) }
   }
   pub type nmsql_callback = ::std::option::Option<
     unsafe extern "C" fn(
@@ -144,10 +145,14 @@ pub mod cLayer {
   #[automock(mod mock;)]
   extern "C" {
     pub fn open(
+      transactionId: ::std::os::raw::c_int,
       indexName: *const ::std::os::raw::c_char,
       flag: ::std::os::raw::c_int,
     ) -> *mut Cursor;
-    pub fn close(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn close(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> ::std::os::raw::c_int;
     pub fn create(
       dbTable: *const ::std::os::raw::c_char,
       indexName: *const ::std::os::raw::c_char,
@@ -155,17 +160,35 @@ pub mod cLayer {
       indexColumnCnt: ::std::os::raw::c_int,
       indexColumns: *mut *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
-    pub fn find(cursor: *mut Cursor, key: *const ::std::os::raw::c_void) -> ::std::os::raw::c_int;
-    pub fn getKey(cursor: *mut Cursor) -> *mut ::std::os::raw::c_void;
-    pub fn getValue(cursor: *mut Cursor) -> *mut ::std::os::raw::c_void;
+    pub fn find(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+      key: *const ::std::os::raw::c_void,
+    ) -> ::std::os::raw::c_int;
+    pub fn getKey(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> *mut ::std::os::raw::c_void;
+    pub fn getValue(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> *mut ::std::os::raw::c_void;
     pub fn insert(
+      transactionId: ::std::os::raw::c_int,
       cursor: *mut Cursor,
       key: *const ::std::os::raw::c_void,
       value: *const ::std::os::raw::c_void,
     ) -> ::std::os::raw::c_int;
-    pub fn erase(cursor: *mut Cursor) -> ::std::os::raw::c_int;
-    pub fn next(cursor: *mut Cursor) -> ::std::os::raw::c_int;
-    pub fn reset(cursor: *mut Cursor) -> ::std::os::raw::c_int;
+    pub fn erase(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> ::std::os::raw::c_int;
+    pub fn next(transactionId: ::std::os::raw::c_int, cursor: *mut Cursor)
+      -> ::std::os::raw::c_int;
+    pub fn reset(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> ::std::os::raw::c_int;
     pub fn createTable(sql: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
     pub fn reorganize() -> ::std::os::raw::c_int;
     pub fn getMetaData(tableName: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_void;
@@ -174,9 +197,9 @@ pub mod cLayer {
     pub fn getTableColumns(
       tableName: *const ::std::os::raw::c_char,
     ) -> *mut *mut ::std::os::raw::c_char;
-    pub fn transaction() -> ::std::os::raw::c_int;
-    pub fn commit() -> ::std::os::raw::c_int;
-    pub fn rollback() -> ::std::os::raw::c_int;
+    pub fn transaction(transactionId: *mut ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+    pub fn commit(transactionId: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+    pub fn rollback(transactionId: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
   }
 }
 #[cfg(test)]
