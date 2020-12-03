@@ -418,17 +418,14 @@ codeGeneratorTest = test [
                     ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
                     +: cExprWrapper EmptyExpr
                     +: insertTemp (appendInstructions
-                        [Instruction opColumn       0   0 ""
-                        ,Instruction opColumn       0   1 ""
-                        ,Instruction opColumn       0   2 ""
-                        ,Instruction opColumn       0   3 ""
-                        ,Instruction opCallback     4   0 ""])
+                        [Instruction opAggIncr 1 0 ""])
                     +: prependEnv (appendInstructions
-                        [Instruction opColumnCount  4   0 ""
-                        ,Instruction opColumnName   0   0 "xxx.a"
-                        ,Instruction opColumnName   1   0 "xxx.b"
-                        ,Instruction opColumnName   2   0 "xxx.c"
-                        ,Instruction opColumnName   3   0 "xxx.x"
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "count(*)"
+                        ,Instruction opAggReset     0   1 ""
                         ,Instruction opVerifyCookie 234 0 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet       0   0 ""
+                        ,Instruction opCallback     1   0 ""]
                     >: Right []
     ]

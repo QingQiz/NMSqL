@@ -25,7 +25,7 @@ cSelect select selType =
         newMd        = getMetadata >>= \mds ->
                        putMetadata $ filter (\md -> metadata_name md `elem` tableName) mds
         verifyCookie = getMetadata >>= \mds -> appendInst opVerifyCookie (metadata_cookie (head mds)) 0 ""
-     in newMd >> verifyCookie >> cExprWrapper selWhere >> getRes >> cSelRes selRes selType
+     in newMd >> verifyCookie >> cExprWrapper selWhere >> cSelRes selRes selType
 
 
 cSelRes :: [(Expr, String)] -> SelectResultType -> CodeGenEnv
@@ -45,23 +45,25 @@ cSelRes selRes (UnionSel op n) | length selRes /= n =
 
 cSelRes selRes selType =
     let
-     in cSelRes' >> putSelRes >> prependEnv (configAgg >> configOutput)
+     in cSelRes' >> putSelRes >> configOutput
     where
         colNr = length selRes
 
         configOutput =
             let colNames = zipWith (\(a, b) idx -> appendInst opColumnName idx 0
                          $ if b == "" then show a else b) selRes [0..]
-             in appendInst opColumnCount colNr 0 "" >> connectCodeGenEnv colNames
-
-        configAgg = getAgg >>= \case
-            0 -> doNothing
-            a -> appendInst opAggReset 0 a ""
+             in case selType of
+                Normal -> prependEnv $
+                          appendInst opColumnCount colNr 0 "" >> connectCodeGenEnv colNames
+                _      -> doNothing
 
         putSelRes = case selType of
             ToSet set -> prependEnv (appendInst opSetOpen   set   0 "")
                       >> insertTemp (appendInst opSetInsert set   0 "")
-            Normal    -> insertTemp (appendInst opCallback  colNr 0 "")
+            Normal    -> getAgg >>= \case
+                0 -> insertTemp (appendInst opCallback  colNr 0 "")
+                a -> prependEnv (appendInst opAggReset 0 a "")
+                  >> appendInst opCallback colNr 0 ""
             ToSorter  -> throwError "TODO Not implemented"
             UnionSel _ _  -> throwError "TODO Not implemented"
 
@@ -76,9 +78,10 @@ cSelRes selRes selType =
                      >> putCacheState 1
                      >> appendInst opAggGet 0 agg ""
                      >> putCacheState 0
+                     >> updateAgg
 
                 cExpr' e = try (putFuncDef funcDef1 >> cExpr e >> toAgg)
-                               (putFuncDef funcDef2 >> cExpr e)
+                               (putFuncDef funcDef2 >> cExpr e >> putCacheState 0)
 
 
 ----------------------------------------------------------

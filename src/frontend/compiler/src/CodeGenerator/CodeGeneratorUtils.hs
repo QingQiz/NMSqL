@@ -11,6 +11,8 @@ import Data.Maybe
 import Control.Monad.State
 import Control.Monad.Except
 
+import Debug.Trace
+
 
 ----------------------------------------------------------
 -- some data structure
@@ -35,10 +37,14 @@ data SelectResultType = ToSet Int | ToSorter | Normal | UnionSel CompoundOp Int
 -- some help functions
 ----------------------------------------------------------
 getRes :: CodeGenEnv
-getRes = fst3 . snd3 <$> lift get
+getRes = getCacheState >>= \case
+    0 -> fst3 . snd3 <$> lift get
+    _ -> snd3 . snd3 <$> lift get
 
 putRes :: [Instruction] -> CodeGenEnv
-putRes is = get >>= (\(a, (_, x1, x2), c) -> put (a, (is, x1, x2), c)) >> getRes
+putRes is = getCacheState >>= \case
+    0 -> get >>= (\(a, (_, x1, x2), c) -> put (a, (is, x1, x2), c)) >> getRes
+    _ -> get >>= (\(a, (x1, _, x2), c) -> put (a, (x1, is, x2), c)) >> getRes
 
 clrRes :: CodeGenEnv
 clrRes = putRes []
@@ -118,7 +124,7 @@ prependEnv env = do
 -- insert env before tempInstruction
 insertTemp :: CodeGenEnv -> CodeGenEnv
 insertTemp env = do
-    res <- getRes >>= \x -> return $ break (==Instruction opTempInst 0 0 "") x
+    res <- break (==Instruction opTempInst 0 0 "") <$> getRes
     putRes (fst res) >> env >> appendInstructions (snd res)
 
 
@@ -174,3 +180,13 @@ connectCodeGenEnv = foldl (>>) (return [])
 
 try :: CodeGenEnv -> CodeGenEnv -> CodeGenEnv
 try a b = get >>= \st -> catchError a $ \_ -> put st >> b
+
+-- debugger
+dbgTrace :: Show a => a -> a
+dbgTrace val = trace (show val) val
+
+dbgShow :: Show a1 => a1 -> a2 -> a2
+dbgShow val = trace (show val)
+
+dbgShowRes :: CodeGenEnv
+dbgShowRes = getRes >>= \res -> dbgShow res getRes

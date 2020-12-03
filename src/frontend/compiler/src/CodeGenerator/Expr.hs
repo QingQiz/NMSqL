@@ -111,8 +111,9 @@ exprFuncCall funcName paramList =
                 ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
                 ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
                 ("substr", 3) -> pl' >> appendInst opSubstr 0 0 ""
-                ("count" , 1) -> getAgg >>= \agg -> appendInst opAggIncr 1 agg ""
-                              >> updateAgg >> putCacheState 1
+                ("count" , 1) -> getAgg >>= \agg -> updateAgg
+                              >> insertTemp (appendInst opAggIncr 1 agg "")
+                              >> putCacheState 1
                               >> appendInst opAggGet 0 agg ""
                 ("max"   , 1) -> getAgg >>= \agg
                               -> cNormalExpr (head pl)
