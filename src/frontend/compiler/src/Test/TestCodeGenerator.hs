@@ -413,10 +413,10 @@ codeGeneratorTest = test [
                         ,Instruction opColumnName   3   0 "xxx.x"
                         ,Instruction opVerifyCookie 234 0 ""])
                     >: Right []
-    , "select"      ~: "select count(*) from xxx"
-                    ~: cSelectStr "select count(*) from xxx" Normal
+    , "select"      ~: "select count(*) from xxx where a > 1"
+                    ~: cSelectStr "select count(*) from xxx where a > 1" Normal
                     ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
-                    +: cExprWrapper EmptyExpr
+                    +: cExprWrapperStr "a>1"
                     +: insertTemp (appendInstructions
                         [Instruction opAggIncr 1 0 ""])
                     +: prependEnv (appendInstructions
@@ -425,7 +425,71 @@ codeGeneratorTest = test [
                         ,Instruction opAggReset     0   1 ""
                         ,Instruction opVerifyCookie 234 0 ""])
                     +: appendInstructions
-                        [Instruction opAggGet       0   0 ""
-                        ,Instruction opCallback     1   0 ""]
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    >: Right []
+    , "select"      ~: "select max(max(a,b)) from xxx"
+                    ~: cSelectStr "select max(max(a,b)) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (cExprStr "max(a,b)")
+                    +: insertTemp (appendInstructions
+                        [Instruction opAggGet 0 0 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "max(max(a,b))"
+                        ,Instruction opAggReset     0   1 ""
+                        ,Instruction opVerifyCookie 234 0 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    >: Right []
+    , "select"      ~: "select max(max(a),min(b)) from xxx"
+                    ~: cSelectStr "select max(max(a),min(b)) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opAggGet 0 0 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 0 ""
+                        ,Instruction opColumn 0 1 ""
+                        ,Instruction opAggGet 0 1 ""
+                        ,Instruction opMin    0 0 ""
+                        ,Instruction opAggSet 0 1 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "max(max(a),min(b))"
+                        ,Instruction opAggReset     0   2 ""
+                        ,Instruction opVerifyCookie 234 0 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opAggGet   0 1 ""
+                        ,Instruction opMax      0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    >: Right []
+    , "select"      ~: "select a,max(a) from xxx"
+                    ~: cSelectStr "select a,max(a) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opAggSet 0 0 ""
+                        ,Instruction opColumn 0 0 ""
+                        ,Instruction opAggGet 0 1 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 1 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  2   0 ""
+                        ,Instruction opColumnName   0   0 "a"
+                        ,Instruction opColumnName   1   0 "max(a)"
+                        ,Instruction opAggReset     0   2 ""
+                        ,Instruction opVerifyCookie 234 0 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opAggGet   0 1 ""
+                        ,Instruction opCallback 2 0 ""]
                     >: Right []
     ]

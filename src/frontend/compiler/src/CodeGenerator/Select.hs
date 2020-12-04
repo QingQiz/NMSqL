@@ -31,7 +31,10 @@ cSelect select selType =
 cSelRes :: [(Expr, String)] -> SelectResultType -> CodeGenEnv
 cSelRes [] _ = throwError "Select result can not be empty"
 
-cSelRes selRes _ | not $ selResValid selRes = throwError "Semantic error on `*'"
+cSelRes selRes _ | not selResValid = throwError "Semantic error on `*'" where
+    selResValid =
+        let anyColIdx = findIndex ((\case AnyColumn -> True; _ -> False) . fst) selRes
+         in isNothing anyColIdx || length selRes == 1
 
 cSelRes [(AnyColumn, _)] t =
     let getColumns = concatMap (\md -> map (TableColumn $ metadata_name md) (metadata_column md))
@@ -67,27 +70,17 @@ cSelRes selRes selType =
             ToSorter  -> throwError "TODO Not implemented"
             UnionSel _ _  -> throwError "TODO Not implemented"
 
-        cSelRes' = try (putFuncDef funcDef1 >> insertTemp (connectCodeGenEnv (map (cExpr . fst) selRes)))
-                       (connectCodeGenEnv (map (cExpr' . fst) selRes) >> applyCache)
+        cSelRes' = try (putFuncDef funcDef1 >> insertTemp (connectCodeGenEnv $ map (cExpr . fst) selRes))
+                       (insertTemp (connectCodeGenEnv $ map (cExpr' . fst) selRes) >> applyCache)
             where
                 funcDef1 = [("max", 2), ("min", 2), ("substr", 3)]
                 funcDef2 = [("max", 2), ("min", 2), ("substr", 3), ("count", 1), ("max", 1), ("min", 1)]
 
-                toAgg = getAgg >>= \agg
-                     -> appendInst opAggSet 0 agg ""
+                toAgg = getAgg >>= \agg -> updateAgg
+                     >> appendInst opAggSet 0 agg ""
                      >> putCacheState 1
                      >> appendInst opAggGet 0 agg ""
                      >> putCacheState 0
-                     >> updateAgg
 
                 cExpr' e = try (putFuncDef funcDef1 >> cExpr e >> toAgg)
                                (putFuncDef funcDef2 >> cExpr e >> putCacheState 0)
-
-
-----------------------------------------------------------
--- help functions
-----------------------------------------------------------
-selResValid :: [(Expr, b)] -> Bool
-selResValid selRes =
-    let anyColIdx = findIndex ((\case AnyColumn -> True; _ -> False) . fst) selRes
-     in isNothing anyColIdx || length selRes == 1

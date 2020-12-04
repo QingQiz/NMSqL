@@ -111,23 +111,26 @@ exprFuncCall funcName paramList =
                 ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
                 ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
                 ("substr", 3) -> pl' >> appendInst opSubstr 0 0 ""
-                ("count" , 1) -> getAgg >>= \agg -> updateAgg
-                              >> insertTemp (appendInst opAggIncr 1 agg "")
+                ("count" , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> appendInst opAggIncr 1 agg ""
                               >> putCacheState 1
                               >> appendInst opAggGet 0 agg ""
-                ("max"   , 1) -> getAgg >>= \agg
-                              -> cNormalExpr (head pl)
+                ("max"   , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> cNormalExpr (head pl)
                               >> appendInst opAggGet 0 agg ""
                               >> appendInst opMax    0 0   ""
                               >> appendInst opAggSet 0 agg ""
-                              >> updateAgg >> putCacheState 1
+                              >> putCacheState 1
                               >> appendInst opAggGet 0 agg ""
-                ("min"   , 1) -> getAgg >>= \agg
-                              -> cNormalExpr (head pl)
+                ("min"   , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> cNormalExpr (head pl)
                               >> appendInst opAggGet 0 agg ""
                               >> appendInst opMin    0 0   ""
                               >> appendInst opAggSet 0 agg ""
-                              >> updateAgg >> putCacheState 1
+                              >> putCacheState 1
                               >> appendInst opAggGet 0 agg ""
                 _ -> error "never here"
             | otherwise = case findIndex ((==fn) . fst) fnDef of
