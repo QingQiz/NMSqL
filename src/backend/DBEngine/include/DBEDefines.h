@@ -17,4 +17,10 @@
 #define INSERT_SUCCESS 1
 #define INSERT_FAILED 0
 
+#define NEXT_SUCCESS 1
+#define NEXT_FAILED 0
+
+#define RESET_SUCCESS 1
+#define RESET_FAILED 0
+
 #endif //DBENGINE_DBEDEFINES_H

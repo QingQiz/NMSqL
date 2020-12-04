@@ -7,6 +7,17 @@
 #include "DBEDefines.h"
 #include <cstdlib>
 
+using std::string;
+
+string extractString(const char *st) {
+    string s;
+    int len = st[1] + st[0] * 256;
+    for (int i = 0; i < len; i++) {
+        s += st[4 + i];
+    }
+    return s;
+}
+
 /*
  * realization of DBEngine.h
  */
@@ -20,14 +31,16 @@ int findPageByName(const char *name) {
  */
 
 Cursor *open(const char *indexName, int flag) {
+    string idxName = extractString(indexName);
     if (flag == CURSOR_BTREE) {
         auto *btcursor = (btCursor *) malloc(sizeof(btCursor));
-        auto rootPage = (pgno_t) findPageByName(indexName);
+        auto rootPage = (pgno_t) findPageByName(idxName.c_str());
         BPTree bpTree;
         bpTree.open(btcursor, rootPage);
         auto *cursor = (Cursor *) malloc(sizeof(Cursor));
         cursor->cursor = (void *) btcursor;
         cursor->cursorType = CURSOR_BTREE;
+        bpTree.close();
         return cursor;
     } else {
         auto *cursor = (Cursor *) malloc(sizeof(Cursor));
@@ -51,10 +64,12 @@ int create(const char *dbTable, const char *indexName, CursorType indexType,
            const int indexColumnCnt, const char **indexColumns) {}
 
 int find(Cursor *cursor, const void *key) {
+    key_t k(extractString((const char *) key).c_str());
     if (cursor->cursorType == CURSOR_BTREE) {
         auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
-        bpTree.search(btcursor, *((key_t *) key));
+        bpTree.search(btcursor, k);
+        bpTree.close();
         return FIND_SUCCESS;
     } else {
         return FIND_FAILED;
@@ -77,9 +92,16 @@ void *getValue(Cursor *cursor) {
     /*
      * requires api from pager
      */
+    if (cursor->cursorType == CURSOR_BTREE) {
+        return NULL;
+    } else {
+        return NULL;
+    }
 }
 
 int insert(Cursor *cursor, const void *key, const void *value) {
+    key_t k(extractString((const char *) key).c_str());
+    string data = extractString((const char *) value);
     if (cursor->cursorType == CURSOR_BTREE) {
         auto *btcursor = cursor->cursor;
         BPTree bpTree;
@@ -87,23 +109,43 @@ int insert(Cursor *cursor, const void *key, const void *value) {
     } else {
         return INSERT_FAILED;
     }
-    //    TODO:API requires re-define.
 }
 
 int erase(Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = cursor->cursor;
+        auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
+        bpTree.remove(btcursor);
+        bpTree.close();
         return ERASE_SUCCESS;
     } else {
         return ERASE_FAILED;
     }
-    //    TODO:API requires re-define.
 }
 
-int next(Cursor *cursor) {}
+int next(Cursor *cursor) {
+    if (cursor->cursorType==CURSOR_BTREE){
+        auto *btcursor=(btCursor *) cursor->cursor;
+        BPTree bpTree;
+        bpTree.next(btcursor);
+        bpTree.close();
+        return NEXT_SUCCESS;
+    } else {
+        return NEXT_FAILED;
+    }
+}
 
-int reset(Cursor *cursor) {}
+int reset(Cursor *cursor) {
+    if (cursor->cursorType==CURSOR_BTREE){
+        auto *btcursor=(btCursor *) cursor->cursor;
+        BPTree bpTree;
+        bpTree.first(btcursor);
+        bpTree.close();
+        return RESET_SUCCESS;
+    } else {
+        return RESET_FAILED;
+    }
+}
 
 
 int createTable(const char *sql) {}
@@ -113,6 +155,8 @@ int reorganize() {}
 void *getMetaData(const char *tableName) {}
 
 int getCookies() {}
+
+int setCookies(int cookies){}
 
 char **getTableColumns(const char *tableName) {}
 
