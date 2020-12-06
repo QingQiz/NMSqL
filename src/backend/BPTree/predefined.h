@@ -11,6 +11,8 @@
 typedef int Pgno_t;
 typedef int Offset_t;
 typedef unsigned int Size_t;
+typedef int ReturnCode;
+
 struct Address_t{
     Pgno_t pgno;
     Offset_t offset;
@@ -21,7 +23,8 @@ struct Address_t{
     }
 };
 
-const Address_t NULLAddress = Address_t(0, 0); // 这是一个不该出现的地址
+const Address_t NULLAddress = Address_t(0, 0); // illegel address
+const Pgno_t NULLPgno = 0; // illegel pgno
 
 struct Key_t{
     char data[16];
@@ -51,36 +54,51 @@ bool operator<=(const Key_t &l, const Key_t &r){
     return keycmp(l, r) <= 0;
 }
 
+bool operator>=(const Key_t &l, const Key_t &r){
+    return keycmp(l, r) >= 0;
+}
 
 /* meta information of B+ tree */
 struct BPTreeMeta_t{
-    int capacity; // capacity of the node
-    int value_size; // size of the value
-    int key_size; // size of the key
-    int internal_node_num;
-    int leaf_node_num;
-    int height;
-    Address_t slot; // where is the place to insert data
-    Address_t root; // where is the root of B+Tree
-    Address_t first; // where is the first of leaf node
+    int capacity; // maximun capacity of the node
+    Size_t page_header_size; // size of page header
+    Size_t cell_size; // size of the cell
+    Size_t page_size;
+    Size_t cellPointer_size; // 
+    Size_t internal_node_num;
+    Size_t leaf_node_num;
+    Size_t height;
+    // Address_t slot; // where is the place to insert data
+    Pgno_t root; // where is the root of B+Tree
+    Address_t first; // where is the first of data row。
+};
+
+union Data_t{ // data stored in the cell
+    void* pData; // used in leaf node 
+    Pgno_t childAddress; // used in internal node
+    Data_t(){}
+    Data_t(void* pData):pData(pData){}
+    Data_t(Pgno_t address):childAddress(address){} // NOTE：根据输入类型的不同，调用不同的构造函数。之前没这么用过，不知道这样可不可以。
 };
 
 
 struct Record_t{
     Key_t key;
-    Address_t address; // offset of the cell pointer
-    int offset; // offset of the data (NOTE: BPTree的阶段并不进行offset的维护，写回的时候，由pager来维护)
+    Address_t address; // if leaf node offset of the cell pointer
+                       // if internal node offset of the leaf node
+    Offset_t offset; // offset of the data
     Size_t nData; // size of the data
-    void* pData; // data in the memory
+    Data_t data;
+    Record_t(){}
+    Record_t(Key_t key, Address_t address, Offset_t offset, Size_t nData, Data_t data):key(key), address(address), offset(offset), nData(nData), data(data){}
 };
 
 struct Node_t {
     bool isLeaf;
-    Address_t parent; // parent node offset
-    Address_t next;
-    Address_t prev;
-    // Size_t record_num;
-    // Record_t *records; // records array, dynamic memory allocation (NOTE：内存分配的时候应该比record_num多分配一个)
+    Address_t parent; // parent index offset
+    Pgno_t address;
+    Pgno_t next;
+    Pgno_t prev;
     std::vector<Record_t> records; // records array
 };
 
@@ -91,12 +109,5 @@ struct BtCursor{
 
 };
 
-/*
- * 
- */
-struct MemPage{
-    bool isLeaf; //True if is leaf node
-
-};
 
 #endif //BPTREE_PREDEFINED_H

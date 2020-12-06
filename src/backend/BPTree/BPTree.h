@@ -7,7 +7,6 @@
 
 #include "predefined.h"
 
-typedef int ReturnCode;
 
 class BPTree {
 public:
@@ -35,9 +34,15 @@ BPTreeMeta_t metaData; // metaData of the BPTree
 ReturnCode BPTreeSearch(BtCursor* cursor, Key_t key);
 
 
-ReturnCode insertInNode(Pgno_t pgno, Key_t key, void* pData, Size_t nData);
-ReturnCode splitNode(Pgno_t pgno, Pgno_t &newPageNo1, Pgno_t &newPageNo2);
+ReturnCode insertInLeafNode(Pgno_t leaf_pgno, Key_t key, void* pData, Size_t nData);
+ReturnCode insertInInternalNode(Pgno_t internal_pgno, Key_t key, Node_t* childNode);
+ReturnCode splitNode(Pgno_t pgno);
+ReturnCode updateParentIndex(Address_t parentAddress, Key_t newKey); // 修改指向某个子节点的父节点的索引。
 ReturnCode deleteInNode(Pgno_t pgno, Key_t key); // delete the key in the node
+ReturnCode reArrangeNode(Pgno_t pgno); // after insert, spilt or remove operation neet to rearrange the node
+ReturnCode isRootPage(Pgno_t pgno);
+
+int getIdInCellPointArray(Address_t address); // 
 
 };
 
