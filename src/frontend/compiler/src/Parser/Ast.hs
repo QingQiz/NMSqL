@@ -5,6 +5,16 @@ import Data.List
 
 
 ----------------------------------------------------------
+-- SQL
+----------------------------------------------------------
+data SQL = SQLIndex IndexAction
+         | SQLTable TableActon
+         | SQLDelete Delete
+         | SQLInsert Insert
+         | SQLUpdate Update
+         | SQLSelect Select
+
+----------------------------------------------------------
 -- Some Operators
 ----------------------------------------------------------
 data BinOp = Multiply | Divide   -- (*) (/)
@@ -129,7 +139,6 @@ data TableActon = CreateTable TableName [ColumnDef] [TableContraint]
 data IndexAction = CreateIndex IndexName TableName [(ColumnName, SortOrder)]
                  | DropIndex IndexName
                  deriving (Show)
-
 
 ----------------------------------------------------------
 -- Instance Show for Expr

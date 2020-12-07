@@ -5,7 +5,7 @@ module Select (cSelect) where
 import Ast
 import Expr ( cExpr )
 import Instruction
-import FFIStructure
+import TableMetadata
 import CodeGeneratorUtils
 import {-# SOURCE #-} CodeGenerator
 

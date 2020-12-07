@@ -7,7 +7,7 @@ import Ast
 import Expr
 import Select
 import Instruction
-import FFIStructure
+import TableMetadata
 import CodeGeneratorUtils
 
 import Data.List

@@ -4,7 +4,7 @@ module CodeGeneratorUtils where
 
 import Ast
 import Instruction
-import FFIStructure
+import TableMetadata
 
 import Data.List
 import Data.Maybe

@@ -3,7 +3,7 @@ module TestUtils where
 
 import Expr
 import Parser
-import FFIStructure
+import TableMetadata
 import CodeGenerator
 import CodeGeneratorUtils
 

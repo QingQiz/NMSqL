@@ -76,8 +76,9 @@ checkChar f = Parser $ \inp ->
             | otherwise -> Nothing
 
 
--- peek the next char to parse
-peek = checkChar (const True)
+eof = Parser $ \case
+    "" -> Just (True, "")
+    _  -> Nothing
 
 space  = satisfy isSpace
 letter = satisfy isLetter
@@ -385,3 +386,15 @@ select = matchAndRet "select" Select
 
         -- sort-expr     ::= expr [sort-order]
         sortExpr = (,) <$> expr <*> sortOrder
+
+sql :: Parser SQL
+sql =
+    let alternative =
+            SQLDelete <$> delete                      <|>
+            SQLIndex  <$> (createIndex <|> dropIndex) <|>
+            SQLTable  <$> (createTable <|> dropTable) <|>
+            SQLUpdate <$> update                      <|>
+            SQLInsert <$> insert                      <|>
+            SQLDelete <$> delete                      <|>
+            SQLSelect <$> select
+     in alternative >>= \res -> many space >> eof >> return res
