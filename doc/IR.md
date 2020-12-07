@@ -127,7 +127,7 @@ IR大致可以分为以下几类：
 |116|SetOpen|Y|N|N|开启一个编号为P1的set|
 |117|SetSetFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中出现 则将P2压栈，否则将 `0` 压栈|
 |118|SetSetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则将P2压栈，否则将 `0` 压栈|
-|119|SetSetEmpty|Y|Y|N|若第P1个Set为空中 则将P2压栈，否则将 `0` 压栈|
+|119|SetSetEmpty|Y|Y|N|若第P1个Set为空 则将P2压栈，否则将 `0` 压栈|
 
 ### Removed IR
 
