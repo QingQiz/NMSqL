@@ -127,6 +127,12 @@ insertTemp env = do
     res <- break (==Instruction opTempInst 0 0 "") <$> getRes
     putRes (fst res) >> env >> appendInstructions (snd res)
 
+removeTemp :: CodeGenEnv
+removeTemp = do
+    res <- break (==Instruction opTempInst 0 0 "") <$> getRes
+    case res of
+        (a, [])  -> putRes a
+        (a, _:b) -> putRes $ a ++ b
 
 -- fst, snd, trd for (,,)
 fst3 :: (a, b, c) -> a

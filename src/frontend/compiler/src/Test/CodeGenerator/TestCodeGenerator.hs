@@ -278,6 +278,30 @@ codeGeneratorTest = test [
     , "in expr"     ~: "right-hand side of IN is not a constant (not-expr)"
                     ~: cExprStr "x in (not x)"
                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"     ~: "in select"
+                    ~: cExprStr "x in (select * from xxx)"
+                    ?: Left "Only a single result allowed for a SELECT that is part of an expression"
+
+    , "in expr"     ~: "in select"
+                    ~: cExprStr "a in (select a from xxx)"
+                    ?: Left "Ambiguous column name: a"
+
+    , "in expr"     ~: "in (select a from xxx)"
+                    ~: putRes [Instruction opNoop 0 (-1) ""]
+                    +: cExprStr "xxx.a in (select a from yyy)"
+                    ?: Right [Instruction opSetOpen 0 0 ""]
+                    /: (getMetadata >>= \mds -> putMetadata [last mds])
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opSetInsert 0 0 ""])
+                    +: appendInstructions
+                        [Instruction opNoop 0 (-1) ""
+                        ,Instruction opColumn 0 0 ""
+                        ,Instruction opSetSetFound 0 1 ""]
+                    +: removeTemp
+                    >: Right []
 ---------------------------------------------------------
     , "not expr"    ~: ""
                     ~: cExprStr "not c"
@@ -302,6 +326,7 @@ codeGeneratorTest = test [
                     ~: cExprWrapperStr "d = 1 + 2 and 4 = xxx.b  and xxx.a = 3 and yyy.a = 1 and yyy.b > 10"
                     ?: Right [Instruction opOpen     0 0 "idx_xxx_a_b"
                              ,Instruction opOpen     1 0 "idx_yyy_d"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opInteger  3 0 ""
                              ,Instruction opInteger  4 0 ""
                              ,Instruction opMakeKey  2 0 ""
@@ -328,6 +353,7 @@ codeGeneratorTest = test [
                     ~: cExprWrapperStr "xxx.b > 10 and d = 1 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
                              ,Instruction opOpen     1 0 "idx_yyy_d"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opInteger  1 0 ""
                              ,Instruction opMakeKey  1 0 ""
                              ,Instruction opBeginIdx 1 0 ""
@@ -350,6 +376,7 @@ codeGeneratorTest = test [
                     ~: cExprWrapperStr "xxx.b > 10 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
                              ,Instruction opOpen     1 0 "yyy"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opRewind   0 0 ""
                              ,Instruction opNoop     0 1 ""
                              ,Instruction opRewind   1 0 ""
@@ -410,8 +437,8 @@ codeGeneratorTest = test [
                         ,Instruction opColumnName   0   0 "xxx.a"
                         ,Instruction opColumnName   1   0 "xxx.b"
                         ,Instruction opColumnName   2   0 "xxx.c"
-                        ,Instruction opColumnName   3   0 "xxx.x"
-                        ,Instruction opVerifyCookie 234 0 ""])
+                        ,Instruction opColumnName   3   0 "xxx.x"])
+                    +: removeTemp
                     >: Right []
     , "select"      ~: "select count(*) from xxx where a > 1"
                     ~: cSelectStr "select count(*) from xxx where a > 1" Normal
@@ -422,11 +449,11 @@ codeGeneratorTest = test [
                     +: prependEnv (appendInstructions
                         [Instruction opColumnCount  1   0 ""
                         ,Instruction opColumnName   0   0 "count(*)"
-                        ,Instruction opAggReset     0   1 ""
-                        ,Instruction opVerifyCookie 234 0 ""])
+                        ,Instruction opAggReset     0   1 ""])
                     +: appendInstructions
                         [Instruction opAggGet   0 0 ""
                         ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
                     >: Right []
     , "select"      ~: "select max(max(a,b)) from xxx"
                     ~: cSelectStr "select max(max(a,b)) from xxx" Normal
@@ -440,11 +467,11 @@ codeGeneratorTest = test [
                     +: prependEnv (appendInstructions
                         [Instruction opColumnCount  1   0 ""
                         ,Instruction opColumnName   0   0 "max(max(a,b))"
-                        ,Instruction opAggReset     0   1 ""
-                        ,Instruction opVerifyCookie 234 0 ""])
+                        ,Instruction opAggReset     0   1 ""])
                     +: appendInstructions
                         [Instruction opAggGet   0 0 ""
                         ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
                     >: Right []
     , "select"      ~: "select max(max(a),min(b)) from xxx"
                     ~: cSelectStr "select max(max(a),min(b)) from xxx" Normal
@@ -462,13 +489,13 @@ codeGeneratorTest = test [
                     +: prependEnv (appendInstructions
                         [Instruction opColumnCount  1   0 ""
                         ,Instruction opColumnName   0   0 "max(max(a),min(b))"
-                        ,Instruction opAggReset     0   2 ""
-                        ,Instruction opVerifyCookie 234 0 ""])
+                        ,Instruction opAggReset     0   2 ""])
                     +: appendInstructions
                         [Instruction opAggGet   0 0 ""
                         ,Instruction opAggGet   0 1 ""
                         ,Instruction opMax      0 0 ""
                         ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
                     >: Right []
     , "select"      ~: "select a,max(a) from xxx"
                     ~: cSelectStr "select a,max(a) from xxx" Normal
@@ -485,11 +512,11 @@ codeGeneratorTest = test [
                         [Instruction opColumnCount  2   0 ""
                         ,Instruction opColumnName   0   0 "a"
                         ,Instruction opColumnName   1   0 "max(a)"
-                        ,Instruction opAggReset     0   2 ""
-                        ,Instruction opVerifyCookie 234 0 ""])
+                        ,Instruction opAggReset     0   2 ""])
                     +: appendInstructions
                         [Instruction opAggGet   0 0 ""
                         ,Instruction opAggGet   0 1 ""
                         ,Instruction opCallback 2 0 ""]
+                    +: removeTemp
                     >: Right []
     ]

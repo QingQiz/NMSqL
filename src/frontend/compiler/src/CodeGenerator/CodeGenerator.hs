@@ -18,7 +18,9 @@ import qualified Data.Map as Map
 cExprWrapper :: Expr -> CodeGenEnv
 cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr expr mds) where
     wrapperExpr :: [TableMetadata] ->  [(Int, String, [Expr])] -> [Expr] -> CodeGenEnv
-    wrapperExpr mds inp condExpr = openTbAndIdx >> wrapper >> closeTbAndIdx where
+    wrapperExpr mds inp condExpr = openTbAndIdx >> verifyCookie >> wrapper >> closeTbAndIdx where
+        verifyCookie = appendInst opVerifyCookie (metadata_cookie (head mds)) 0 ""
+
         wrapper = getLabel >>= \lab -> updateLabel
                 >> wrapperIdx idxNames (map trd3 inp) lab
                 >> mkLabel lab
@@ -162,4 +164,4 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                     inIndex _ = False
 
 cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
-cSelectWrapper = cSelect
+cSelectWrapper a b = cSelect a b >> removeTemp

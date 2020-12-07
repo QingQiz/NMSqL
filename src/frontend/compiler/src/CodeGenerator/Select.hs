@@ -22,10 +22,12 @@ cSelect select selType =
     let selRes       = selectResult select
         selWhere     = fromMaybe EmptyExpr (selectWhere select)
         tableName    = selectTableName select
-        newMd        = getMetadata >>= \mds ->
-                       putMetadata $ filter (\md -> metadata_name md `elem` tableName) mds
-        verifyCookie = getMetadata >>= \mds -> appendInst opVerifyCookie (metadata_cookie (head mds)) 0 ""
-     in newMd >> verifyCookie >> cExprWrapper selWhere >> cSelRes selRes selType
+        newMd        = filter (\md -> metadata_name md `elem` tableName)
+     in getMetadata >>= \mds -> putMetadata (newMd mds)
+     >> cExprWrapper selWhere
+     >> cSelRes selRes selType
+     >> putMetadata mds
+     >> getRes
 
 
 cSelRes :: [(Expr, String)] -> SelectResultType -> CodeGenEnv
