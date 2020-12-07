@@ -5,6 +5,7 @@ use super::VmMem::VmMemString;
 use super::VmOp::VmOp;
 use super::VmOp::VmOpType;
 use crate::wrapper::rustLayer as DbWrapper;
+use std::cmp::min;
 use std::ffi;
 
 fn parseOperations(operations: String) -> Vec<VmOp> {
@@ -709,14 +710,15 @@ pub fn runOperation(
           popOneMem(vm)?.integerify()
         } else {
           nowOp.p1
-        } as usize;
+        } - 1;
         let string = popOneMem(vm)?.stringify().removeHead();
-        if (lo + len) as usize <= string.len() {
+        if lo >= 0 {
+          let lo = lo as usize;
           vm.pushStack(VmMem::MEM_STRING(VmMemString::new(
-            string[lo..(lo + len)].to_vec(),
+            string[lo..min(lo + len, string.len())].to_vec(),
           )));
         } else {
-          return Err(format!("substr out of bound with lo={} len={}", lo, len));
+          vm.pushStack(VmMem::MEM_STRING(VmMemString::new(vec![])));
         }
       }
       VmOpType::OP_SortSetDesc => {
@@ -739,3 +741,6 @@ pub fn runOperation(
     pc += 1;
   }
 }
+
+#[cfg(test)]
+mod runnerTest {}
