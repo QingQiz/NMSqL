@@ -8,7 +8,9 @@
 
 // move cursor to the root page
 ReturnCode BPTree::root(BtCursor* cursor){
-    cursor->address = Address_t(cursor->rootPage, 0);
+    cursor->address = Address_t(this->metaData.root, 0);
+    cursor->rootPage = this->metaData.root;
+    cursor->id = 0;
 }
 
 // ReturnCode 0:not find;
@@ -40,7 +42,7 @@ ReturnCode BPTree::BPTreeSearch(BtCursor* cursor, Key_t key){ //seach in the nod
             if(key == record.key){
                 cursor->address = record.address;
                 cursor->id = i;
-                isFound = 1;
+                if(!record.isDelete) isFound = 1;
                 break;
             }
             else if(key > record.key){
@@ -56,7 +58,8 @@ ReturnCode BPTree::BPTreeSearch(BtCursor* cursor, Key_t key){ //seach in the nod
 
 // move cursor to the first data row
 ReturnCode BPTree::first(BtCursor* cursor){
-    cursor->address = metaData.first; // NOTE:不要忘了维护BTree metaData中的first
+    cursor->address = metaData.first;
+    cursor->id = 0;
     return 1;
 }
 
@@ -65,6 +68,7 @@ ReturnCode BPTree::first(BtCursor* cursor){
 //            1:SUCCESS
 ReturnCode BPTree::next(BtCursor* cursor){
     Node_t* node = (Node_t*)getMemPage(cursor->address.pgno);
+
     if(cursor->id < node->records.size() - 1){
         cursor->id++;
         cursor->address = node->records[cursor->id].address;
@@ -75,7 +79,9 @@ ReturnCode BPTree::next(BtCursor* cursor){
         cursor->id = 0;
         cursor->address = node->records[0].address;
     }
-    return 1;
+
+    if(node->records[cursor->id].isDelete == 1) return next(cursor);
+    else return 1;
 }
 
 ReturnCode BPTree::insert(BtCursor* cursor, Key_t key, void* pData, Size_t nData){
@@ -84,17 +90,69 @@ ReturnCode BPTree::insert(BtCursor* cursor, Key_t key, void* pData, Size_t nData
     return rc;
 }
 
-ReturnCode BPTree::remove(BtCursor*){
-
+// soft delete, than move the cursor to the next data row
+ReturnCode BPTree::remove(BtCursor* cursor){
+    Node_t* node = (Node_t*)getMemPage(cursor->address.pgno);
+    int id = cursor->id;
+    node->records[id].isDelete = 1;
+    next(cursor);
+    return 1;
 }
 
+
 //******************* Node related operation *****************************
+
+// return 1 : success
+//        0 : can't find the key failed
+ReturnCode BPTree::deleteInNode(BtCursor* cursor){
+    Node_t* node = (Node_t*)getMemPage(cursor->address.pgno);
+    node->records.erase(node->records.begin()+cursor->id);
+    if(node->records.size() < this->metaData.maxDegree / 2){ // node does not have enough records
+        Node_t* leftNode = (Node_t*)getMemPage(node->prev);
+        Node_t* rightNode = (Node_t*)getMemPage(node->next);
+        if(halfMoreRecords(node->prev) && node->parent.pgno == leftNode->parent.pgno){ // try borrow from left node
+            Record_t temp = leftNode->records.back();
+            leftNode->records.erase(leftNode->records.end());
+            node->records.insert(node->records.begin(), temp);
+            updateParentIndex(leftNode->parent, leftNode->records.back().key);
+        }
+        else if(halfMoreRecords(node->next) && node->parent.pgno == rightNode->parent.pgno){ // try borrow from right node
+            Record_t temp = rightNode->records.front();
+            rightNode->records.erase(rightNode->records.begin());
+            node->records.push_back(temp);
+            updateParentIndex(node->parent, node->records.back().key);
+        }
+        else{ // merge with brother node
+            // NOTE：左右兄弟都没有多余record的情况，需要进行合并。
+            if(leftNode->parent.pgno == node->parent.pgno){
+                // NOTE：和左边兄弟节点进行合并
+                // NOTE：这里的删除操作就不用考虑，删除完之后将cursor移动到下一个data row了。
+                leftNode->records.insert(leftNode->records.end(), node->records.begin(), node->records.end());
+                leftNode->next = node->next;
+                deletePage(node->address);
+                
+
+            }
+            else if(rightNode->parent.pgno == node->parent.pgno){
+                // NOTE：和右边兄弟节点进行合并
+
+            }
+            else return 0;
+        }
+    }
+    else{ // delete the key directly
+        if(cursor->id == node->records.size()){
+            updateParentIndex(node->parent, node->records.back().key);
+        }
+        reArrangeNode(node->address);
+    }
+}
 
 // insert key to the leaf node
 ReturnCode BPTree::insertInLeafNode(Pgno_t pgno, Key_t key, void* pData, Size_t nData){
     Node_t* node = (Node_t*)getMemPage(pgno);
 
-    bool needToSpilt = (node->records.size() == this->metaData.capacity);
+    bool needToSpilt = (node->records.size() == this->metaData.maxDegree);
 
     if(key >= node->records.back().key){
         // if inserting key is no lees than the last key in node, insert the end of the array
@@ -128,7 +186,7 @@ ReturnCode BPTree::insertInLeafNode(Pgno_t pgno, Key_t key, void* pData, Size_t 
 ReturnCode BPTree::insertInInternalNode(Pgno_t internalPgno, Key_t key, Node_t* childNode){
     Node_t* node = (Node_t*)getMemPage(internalPgno);
 
-    bool needToSplit = (node->records.size() == this->metaData.capacity);
+    bool needToSplit = (node->records.size() == this->metaData.maxDegree);
 
     if(key >= node->records.back().key){
         Record_t newRecord(key, NULLAddress, 0, sizeof(Address_t), Data_t(childNode->address));
@@ -183,17 +241,6 @@ ReturnCode BPTree::splitNode(Pgno_t pgno){
     }
 }
 
-// return 1 : success
-//        0 : can't find the key failed
-ReturnCode BPTree::deleteInNode(Pgno_t pgno, Key_t key){
-    Node_t* node = (Node_t*)getMemPage(pgno);
-
-    for(int i = 0; i < node->records.size(); i++){
-        
-    }
-
-}
-
 
 // 修改指向某个子节点的父节点中的索引。
 ReturnCode BPTree::updateParentIndex(Address_t address, Key_t newKey){
@@ -212,7 +259,6 @@ int BPTree::getIdInCellPointArray(Address_t address){
 }
 
 
-
 ReturnCode BPTree::reArrangeNode(Pgno_t pgno){
     Node_t* node = (Node_t*)getMemPage(pgno);
     for(int i = 0; i < node->records.size(); i++){
@@ -224,5 +270,11 @@ ReturnCode BPTree::reArrangeNode(Pgno_t pgno){
 
 ReturnCode BPTree::isRootPage(Pgno_t pgno){
     return pgno == this->metaData.root;
+}
+
+ReturnCode BPTree::halfMoreRecords(Pgno_t pgno){
+    if(pgno == NULLPgno) return 0;
+    Node_t* node = (Node_t*)getMemPage(pgno);
+    return node->records.size() > this->metaData.maxDegree / 2;
 }
 

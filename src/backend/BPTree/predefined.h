@@ -60,7 +60,7 @@ bool operator>=(const Key_t &l, const Key_t &r){
 
 /* meta information of B+ tree */
 struct BPTreeMeta_t{
-    int capacity; // maximun capacity of the node
+    int maxDegree; // maximun capacity of the node
     Size_t page_header_size; // size of page header
     Size_t cell_size; // size of the cell
     Size_t page_size;
@@ -84,13 +84,14 @@ union Data_t{ // data stored in the cell
 
 struct Record_t{
     Key_t key;
+    bool isDelete;
     Address_t address; // if leaf node offset of the cell pointer
                        // if internal node offset of the leaf node
     Offset_t offset; // offset of the data
     Size_t nData; // size of the data
     Data_t data;
     Record_t(){}
-    Record_t(Key_t key, Address_t address, Offset_t offset, Size_t nData, Data_t data):key(key), address(address), offset(offset), nData(nData), data(data){}
+    Record_t(Key_t key, Address_t address, Offset_t offset, Size_t nData, Data_t data):key(key), isDelete(0), address(address), offset(offset), nData(nData), data(data){}
 };
 
 struct Node_t {

@@ -4,6 +4,7 @@
 
 void* getMemPage(Pgno_t pgno);
 void* createNewPage(int size); //创建一个新的page，然后返回。
+void* deletePage(Pgno_t pgno); 
 
 // 分配 size 大小的空闲存储
 void* pageMalloc(int size);
