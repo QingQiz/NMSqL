@@ -76,8 +76,9 @@ checkChar f = Parser $ \inp ->
             | otherwise -> Nothing
 
 
--- peek the next char to parse
-peek = checkChar (const True)
+eof = Parser $ \case
+    "" -> Just (True, "")
+    _  -> Nothing
 
 space  = satisfy isSpace
 letter = satisfy isLetter
@@ -330,7 +331,8 @@ expr = pd1 where
           (FunctionCall . map toLower <$> ident <*> surroundByBrackets (argsListOrEmpty pd1))   <|>
           (Column       <$> ident)                                                              <|>
           (ConstValue   <$> value)                                                              <|>
-          (SelectExpr   <$> surroundByBrackets select)
+          (SelectExpr   <$> surroundByBrackets select)                                          <|>
+          matchAndRet "*" AnyColumn
 
 
 -- sql ::= INSERT INTO table-name [\( column-list \)] VALUES \( value-list \)
@@ -365,7 +367,7 @@ delete = matchTwoAndRet "delete" "from" Delete
 -- xxx-list ::= xxx[,xxx]*
 -- result   ::= * | column-result-list
 select = matchAndRet "select" Select
-    <*> (argsList resultCol <|> (spcChar '*' >> return [(AnyColumn, "")]))
+    <*> argsList resultCol
     <*> (spcStrIgnoreCase "from" >> argsList ident)
     <*> (matchAndRet "where" Just <*> expr <|> return Nothing)
     <*> ((matchTwoAndRet "group" "by" id >> argsList expr) <|> return [])
@@ -384,3 +386,15 @@ select = matchAndRet "select" Select
 
         -- sort-expr     ::= expr [sort-order]
         sortExpr = (,) <$> expr <*> sortOrder
+
+sql :: Parser SQL
+sql =
+    let alternative =
+            SQLDelete <$> delete                      <|>
+            SQLIndex  <$> (createIndex <|> dropIndex) <|>
+            SQLTable  <$> (createTable <|> dropTable) <|>
+            SQLUpdate <$> update                      <|>
+            SQLInsert <$> insert                      <|>
+            SQLDelete <$> delete                      <|>
+            SQLSelect <$> select
+     in alternative >>= \res -> many space >> eof >> return res

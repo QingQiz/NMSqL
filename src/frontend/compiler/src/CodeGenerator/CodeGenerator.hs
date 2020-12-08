@@ -5,8 +5,9 @@ module CodeGenerator where
 
 import Ast
 import Expr
+import Select
 import Instruction
-import FFIStructure
+import TableMetadata
 import CodeGeneratorUtils
 
 import Data.List
@@ -17,7 +18,9 @@ import qualified Data.Map as Map
 cExprWrapper :: Expr -> CodeGenEnv
 cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr expr mds) where
     wrapperExpr :: [TableMetadata] ->  [(Int, String, [Expr])] -> [Expr] -> CodeGenEnv
-    wrapperExpr mds inp condExpr = openTbAndIdx >> wrapper >> closeTbAndIdx where
+    wrapperExpr mds inp condExpr = openTbAndIdx >> verifyCookie >> wrapper >> closeTbAndIdx where
+        verifyCookie = appendInst opVerifyCookie (metadata_cookie (head mds)) 0 ""
+
         wrapper = getLabel >>= \lab -> updateLabel
                 >> wrapperIdx idxNames (map trd3 inp) lab
                 >> mkLabel lab
@@ -159,3 +162,6 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                 where
                     inIndex (TableColumn _ cn, _) = cn `elem` cns
                     inIndex _ = False
+
+cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
+cSelectWrapper a b = cSelect a b >> removeTemp

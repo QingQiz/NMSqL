@@ -1,127 +1,261 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 module Instruction where
 
-opTempInst     = "opTempInst"      --0
-opTransaction  = "opTransaction"   --1
-opCommit       = "opCommit"        --2
-opRollback     = "opRollback"      --3
-opReadCookie   = "opReadCookie"    --4
-opSetCookie    = "opSetCookie"     --5
-opVerifyCookie = "opVerifyCookie"  --6
-opOpen         = "opOpen"          --7
-opOpenTemp     = "opOpenTemp"      --8
-opOpenWrite    = "opOpenWrite"     --9
-opClose        = "opClose"         --10
-opMoveTo       = "opMoveTo"        --11
-opFcnt         = "opFcnt"          --12
-opNewRecno     = "opNewRecno"      --13
-opPut          = "opPut"           --14
-opDistinct     = "opDistinct"      --15
-opFound        = "opFound"         --16
-opNotFound     = "opNotFound"      --17
-opDelete       = "opDelete"        --18
-opColumn       = "opColumn"        --19
-opKeyAsData    = "opKeyAsData"     --20
-opRecno        = "opRecno"         --21
-opFullKey      = "opFullKey"       --22
-opRewind       = "opRewind"        --23
-opNext         = "opNext"          --24
-opDestroy      = "opDestroy"       --25
-opClear        = "opClear"         --26
-opCreateIndex  = "opCreateIndex"   --27
-opCreateTable  = "opCreateTable"   --28
-opReorganize   = "opReorganize"    --29
-opBeginIdx     = "opBeginIdx"      --30
-opNextIdx      = "opNextIdx"       --31
-opPutIdx       = "opPutIdx"        --32
-opDeleteIdx    = "opDeleteIdx"     --33
-opMemLoad      = "opMemLoad"       --34
-opMemStore     = "opMemStore"      --35
-opListOpen     = "opListOpen"      --36
-opListWrite    = "opListWrite"     --37
-opListRewind   = "opListRewind"    --38
-opListRead     = "opListRead"      --39
-opListClose    = "opListClose"     --40
-opSortOpen     = "opSortOpen"      --41
-opSortPut      = "opSortPut"       --42
-opSortMakeRec  = "opSortMakeRec"   --43
-opSortMakeKey  = "opSortMakeKey"   --44
-opSort         = "opSort"          --45
-opSortNext     = "opSortNext"      --46
-opSortKey      = "opSortKey"       --47
-opSortCallback = "opSortCallback"  --48
-opSortClose    = "opSortClose"     --49
-opFileOpen     = "opFileOpen"      --50
-opFileRead     = "opFileRead"      --51
-opFileColumn   = "opFileColumn"    --52
-opFileClose    = "opFileClose"     --53
-opAggReset     = "opAggReset"      --54
-opAggFocus     = "opAggFocus"      --55
-opAggIncr      = "opAggIncr"       --56
-opAggNext      = "opAggNext"       --57
-opAggSet       = "opAggSet"        --58
-opAggGet       = "opAggGet"        --59
-opSetInsert    = "opSetInsert"     --60
-opSetFound     = "opSetFound"      --61
-opSetNotFound  = "opSetNotFound"   --62
-opSetClear     = "opSetClear"      --63
-opMakeRecord   = "opMakeRecord"    --64
-opMakeKey      = "opMakeKey"       --65
-opMakeIdxKey   = "opMakeIdxKey"    --66
-opGoto         = "opGoto"          --67
-opJIf          = "opJIf"           --68
-opHalt         = "opHalt"          --69
-opColumnCount  = "opColumnCount"   --70
-opColumnName   = "opColumnName"    --71
-opCallback     = "opCallback"      --72
-opInteger      = "opInteger"       --73
-opString       = "opString"        --74
-opNull         = "opNull"          --75
-opPop          = "opPop"           --76
-opDup          = "opDup"           --77
-opPull         = "opPull"          --78
-opAdd          = "opAdd"           --79
-opAddImm       = "opAddImm"        --80
-opSubtract     = "opSubtract"      --81
-opMultiply     = "opMultiply"      --82
-opDivide       = "opDivide"        --83
-opMin          = "opMin"           --84
-opMax          = "opMax"           --85
-opJLike        = "opJLike"         --86
-opJGlob        = "opJGlob"         --87
-opJEq          = "opJEq"           --88
-opJNe          = "opJNe"           --89
-opJLt          = "opJLt"           --90
-opJLe          = "opJLe"           --91
-opJGt          = "opJGt"           --92
-opJGe          = "opJGe"           --93
-opJIsNull      = "opJIsNull"       --94
-opJNotNull     = "opJNotNull"      --95
-opNegative     = "opNegative"      --96
-opAnd          = "opAnd"           --97
-opOr           = "opOr"            --98
-opNot          = "opNot"           --99
-opConcat       = "opConcat"        --100
-opNoop         = "opNoop"          --101
-opStrlen       = "opStrlen"        --102
-opSubstr       = "opSubstr"        --103
-opSetIf        = "opSetIf"         --104
-opSetLike      = "opSetLike"       --105
-opSetGlob      = "opSetGlob"       --106
-opSetEq        = "opSetEq"         --107
-opSetNe        = "opSetNe"         --108
-opSetLt        = "opSetLt"         --109
-opSetLe        = "opSetLe"         --110
-opSetGt        = "opSetGt"         --111
-opSetGe        = "opSetGe"         --112
-opSetIsNull    = "opSetIsNull"     --113
-opSetNotNull   = "opSetNotNull"    --114
+opTempInst       = 0   :: Integer
+opTransaction    = 1   :: Integer
+opCommit         = 2   :: Integer
+opRollback       = 3   :: Integer
+opReadCookie     = 4   :: Integer
+opSetCookie      = 5   :: Integer
+opVerifyCookie   = 6   :: Integer
+opOpen           = 7   :: Integer
+opOpenTemp       = 8   :: Integer
+opOpenWrite      = 9   :: Integer
+opClose          = 10  :: Integer
+opMoveTo         = 11  :: Integer
+opFcnt           = 12  :: Integer
+opNewRecno       = 13  :: Integer
+opPut            = 14  :: Integer
+opDistinct       = 15  :: Integer
+opFound          = 16  :: Integer
+opNotFound       = 17  :: Integer
+opDelete         = 18  :: Integer
+opColumn         = 19  :: Integer
+opKeyAsData      = 20  :: Integer
+opRecno          = 21  :: Integer
+opFullKey        = 22  :: Integer
+opRewind         = 23  :: Integer
+opNext           = 24  :: Integer
+opDestroy        = 25  :: Integer
+opClear          = 26  :: Integer
+opCreateIndex    = 27  :: Integer
+opCreateTable    = 28  :: Integer
+opReorganize     = 29  :: Integer
+opBeginIdx       = 30  :: Integer
+opNextIdx        = 31  :: Integer
+opPutIdx         = 32  :: Integer
+opDeleteIdx      = 33  :: Integer
+opMemLoad        = 34  :: Integer
+opMemStore       = 35  :: Integer
+opListOpen       = 36  :: Integer
+opListWrite      = 37  :: Integer
+opListRewind     = 38  :: Integer
+opListRead       = 39  :: Integer
+opListClose      = 40  :: Integer
+opSortOpen       = 41  :: Integer
+opSortPut        = 42  :: Integer
+opSortMakeRec    = 43  :: Integer
+opSortMakeKey    = 44  :: Integer
+opSort           = 45  :: Integer
+opSortNext       = 46  :: Integer
+opSortKey        = 47  :: Integer
+opSortCallback   = 48  :: Integer
+opSortClose      = 49  :: Integer
+opFileOpen       = 50  :: Integer
+opFileRead       = 51  :: Integer
+opFileColumn     = 52  :: Integer
+opFileClose      = 53  :: Integer
+opAggReset       = 54  :: Integer
+opAggFocus       = 55  :: Integer
+opAggIncr        = 56  :: Integer
+opAggNext        = 57  :: Integer
+opAggSet         = 58  :: Integer
+opAggGet         = 59  :: Integer
+opSetInsert      = 60  :: Integer
+opJSetFound      = 61  :: Integer
+opJSetNotFound   = 62  :: Integer
+opSetClear       = 63  :: Integer
+opMakeRecord     = 64  :: Integer
+opMakeKey        = 65  :: Integer
+opMakeIdxKey     = 66  :: Integer
+opGoto           = 67  :: Integer
+opJIf            = 68  :: Integer
+opHalt           = 69  :: Integer
+opColumnCount    = 70  :: Integer
+opColumnName     = 71  :: Integer
+opCallback       = 72  :: Integer
+opInteger        = 73  :: Integer
+opString         = 74  :: Integer
+opNull           = 75  :: Integer
+opPop            = 76  :: Integer
+opDup            = 77  :: Integer
+opPull           = 78  :: Integer
+opAdd            = 79  :: Integer
+opAddImm         = 80  :: Integer
+opSubtract       = 81  :: Integer
+opMultiply       = 82  :: Integer
+opDivide         = 83  :: Integer
+opMin            = 84  :: Integer
+opMax            = 85  :: Integer
+opJLike          = 86  :: Integer
+opJGlob          = 87  :: Integer
+opJEq            = 88  :: Integer
+opJNe            = 89  :: Integer
+opJLt            = 90  :: Integer
+opJLe            = 91  :: Integer
+opJGt            = 92  :: Integer
+opJGe            = 93  :: Integer
+opJIsNull        = 94  :: Integer
+opJNotNull       = 95  :: Integer
+opNegative       = 96  :: Integer
+opAnd            = 97  :: Integer
+opOr             = 98  :: Integer
+opNot            = 99  :: Integer
+opConcat         = 100 :: Integer
+opNoop           = 101 :: Integer
+opStrlen         = 102 :: Integer
+opSubstr         = 103 :: Integer
+opSetIf          = 104 :: Integer
+opSetLike        = 105 :: Integer
+opSetGlob        = 106 :: Integer
+opSetEq          = 107 :: Integer
+opSetNe          = 108 :: Integer
+opSetLt          = 109 :: Integer
+opSetLe          = 110 :: Integer
+opSetGt          = 111 :: Integer
+opSetGe          = 112 :: Integer
+opSetIsNull      = 113 :: Integer
+opSetNotNull     = 114 :: Integer
+opSortSetDesc    = 115 :: Integer
+opSetOpen        = 116 :: Integer
+opSetSetFound    = 117 :: Integer
+opSetSetNotFound = 118 :: Integer
+opSetSetEmpty    = 119 :: Integer
 
-type OpCode = String
+instructions = [
+     "opTempInst"
+    ,"opTransaction"
+    ,"opCommit"
+    ,"opRollback"
+    ,"opReadCookie"
+    ,"opSetCookie"
+    ,"opVerifyCookie"
+    ,"opOpen"
+    ,"opOpenTemp"
+    ,"opOpenWrite"
+    ,"opClose"
+    ,"opMoveTo"
+    ,"opFcnt"
+    ,"opNewRecno"
+    ,"opPut"
+    ,"opDistinct"
+    ,"opFound"
+    ,"opNotFound"
+    ,"opDelete"
+    ,"opColumn"
+    ,"opKeyAsData"
+    ,"opRecno"
+    ,"opFullKey"
+    ,"opRewind"
+    ,"opNext"
+    ,"opDestroy"
+    ,"opClear"
+    ,"opCreateIndex"
+    ,"opCreateTable"
+    ,"opReorganize"
+    ,"opBeginIdx"
+    ,"opNextIdx"
+    ,"opPutIdx"
+    ,"opDeleteIdx"
+    ,"opMemLoad"
+    ,"opMemStore"
+    ,"opListOpen"
+    ,"opListWrite"
+    ,"opListRewind"
+    ,"opListRead"
+    ,"opListClose"
+    ,"opSortOpen"
+    ,"opSortPut"
+    ,"opSortMakeRec"
+    ,"opSortMakeKey"
+    ,"opSort"
+    ,"opSortNext"
+    ,"opSortKey"
+    ,"opSortCallback"
+    ,"opSortClose"
+    ,"opFileOpen"
+    ,"opFileRead"
+    ,"opFileColumn"
+    ,"opFileClose"
+    ,"opAggReset"
+    ,"opAggFocus"
+    ,"opAggIncr"
+    ,"opAggNext"
+    ,"opAggSet"
+    ,"opAggGet"
+    ,"opSetInsert"
+    ,"opJSetFound"
+    ,"opJSetNotFound"
+    ,"opSetClear"
+    ,"opMakeRecord"
+    ,"opMakeKey"
+    ,"opMakeIdxKey"
+    ,"opGoto"
+    ,"opJIf"
+    ,"opHalt"
+    ,"opColumnCount"
+    ,"opColumnName"
+    ,"opCallback"
+    ,"opInteger"
+    ,"opString"
+    ,"opNull"
+    ,"opPop"
+    ,"opDup"
+    ,"opPull"
+    ,"opAdd"
+    ,"opAddImm"
+    ,"opSubtract"
+    ,"opMultiply"
+    ,"opDivide"
+    ,"opMin"
+    ,"opMax"
+    ,"opJLike"
+    ,"opJGlob"
+    ,"opJEq"
+    ,"opJNe"
+    ,"opJLt"
+    ,"opJLe"
+    ,"opJGt"
+    ,"opJGe"
+    ,"opJIsNull"
+    ,"opJNotNull"
+    ,"opNegative"
+    ,"opAnd"
+    ,"opOr"
+    ,"opNot"
+    ,"opConcat"
+    ,"opNoop"
+    ,"opStrlen"
+    ,"opSubstr"
+    ,"opSetIf"
+    ,"opSetLike"
+    ,"opSetGlob"
+    ,"opSetEq"
+    ,"opSetNe"
+    ,"opSetLt"
+    ,"opSetLe"
+    ,"opSetGt"
+    ,"opSetGe"
+    ,"opSetIsNull"
+    ,"opSetNotNull"
+    ,"opSortSetDesc"
+    ,"opSetOpen"
+    ,"opSetSetFound"
+    ,"opSetSetNotFound"
+    ,"opSetSetEmpty"]
+
+type OpCode = Integer
 
 data Instruction = Instruction {
     iOpCode :: OpCode,
     iP1     :: Int,
     iP2     :: Int,
     iP3     :: String
-} deriving (Show, Eq)
+} deriving Eq
+
+
+instance Show Instruction where
+    show (Instruction op p1 p2 p3) =
+        let op' = instructions !! fromIntegral op
+            op'' = if length op' < 8 then op' ++ "\t" else op'
+         in "\n\t" ++ op'' ++ "\t" ++ show p1 ++ "\t" ++ show p2 ++ "\t" ++ show p3

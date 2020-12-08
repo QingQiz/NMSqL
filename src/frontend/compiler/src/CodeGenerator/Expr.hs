@@ -5,13 +5,16 @@ module Expr (cExpr, isConstExpr) where
 import Ast
 import Instruction
 import CodeGeneratorUtils
+import {-# SOURCE #-} CodeGenerator
 
-import Control.Monad.Except
+import Data.List (findIndex)
+import Control.Monad.Except (MonadError(throwError))
 
 
 ----------------------------------------------------------
 -- Code Generator
 ----------------------------------------------------------
+
 cExpr :: Expr -> CodeGenEnv
 cExpr = \case
     BinExpr op e1 e2
@@ -19,17 +22,32 @@ cExpr = \case
         | op == Or                                  -> exprOr  e1 e2
         | op `elem` [Plus, Minus, Divide, Multiply] -> exprArith op e1 e2
         | otherwise                                 -> exprCompr op e1 e2
-    LikeExpr op e1 e2                               -> exprLike  op e1 e2
-    ConstValue val                                  -> exprConst val
+    LikeExpr     op e1 e2                           -> exprLike  op e1 e2
+    ConstValue   val                                -> exprConst val
     FunctionCall fn pl                              -> exprFuncCall fn pl
-    IsNull e                                        -> cExpr e >> appendInst opSetIsNull 0 1 ""
-    Between e1 e2 e3                                -> exprBetween e1 e2 e3
-    InExpr a b                                      -> exprIn a b
-    NotExpr e                                       -> cExpr e >> appendInst opNot 0 0 ""
-    SelectExpr _                                    -> throwError "not implemented"
-    Column cn                                       -> exprColumn cn
-    TableColumn tn cn                               -> exprTableColumn tn cn
-    _                                               -> throwError "Semantic error"
+    IsNull       e                                  -> cExpr e >> appendInst opSetIsNull 0 1 ""
+    Between      e1 e2 e3                           -> exprBetween e1 e2 e3
+    InExpr       a b                                -> exprIn a b
+    NotExpr      e                                  -> cExpr e >> appendInst opNot 0 0 ""
+    SelectExpr   s                                  -> cSelectExpr s
+    Column       cn                                 -> exprColumn cn
+    TableColumn  tn cn                              -> exprTableColumn tn cn
+    AnyColumn                                       -> throwError "`*' was not allowed here"
+    EmptyExpr                                       -> putTrue
+
+
+cNormalExpr :: Expr -> CodeGenEnv
+cNormalExpr expr = getFuncDef >>= \oldFD -> putFuncDef simpleFuncDef >> cExpr expr >> putFuncDef oldFD
+    where
+        simpleFuncDef  = [("max", 2), ("min", 2), ("substr", 3)]
+
+
+-- code generator for select-expr
+cSelectExpr :: Select -> CodeGenEnv
+cSelectExpr sel = getSet >>= \set -> updateSet
+    >> prependEnv (cSelectWrapper sel $ ToSet set)
+    >> appendInst opSetSetEmpty set 1 ""
+    >> appendInst opNot         0   0 ""
 
 
 -- code generator for between-expr
@@ -50,23 +68,20 @@ exprBetween a b c = getLabel >>= \labelAva
 -- code generator for in-expr
 exprIn :: Expr -> ValueList -> CodeGenEnv
 exprIn a (ValueList vl) =
-    let genValueList = do
-            oldRes <- getRes
-            insSet <- (>>) (putRes []) $ foldr ((>>) . \x
-                        -> throwErrorIfNotConst x
-                        >> cExpr x
-                        >> getSet >>= \sn
-                        -> appendInst opSetInsert sn 0 "") getRes vl
-            putRes $ insSet ++ oldRes
-        mkRes = do
-            lab <- getLabel
-            set <- getSet
-            mkBoolVal opSetFound set lab ""
+    let genValueList sn = prependEnv $
+            appendInst opSetOpen sn 0 "" >>
+            connectCodeGenEnv (map (\e   ->
+                throwErrorIfNotConst e   >>
+                cExpr e                  >>
+                appendInst opSetInsert sn 0 "") vl)
      in case vl of
             [] -> putFalse
-            _  -> genValueList >> cExpr a >> mkRes >> updateSet
+            _  -> getSet >>= \set -> updateSet
+               >> genValueList set >> cExpr a >> appendInst opSetSetFound set 1 ""
 
-exprIn _ (SelectResult _) = throwError "not implemented"
+exprIn a (SelectResult sel) = getSet >>= \set -> updateSet
+    >> prependEnv (cSelectWrapper sel $ ToSet set)
+    >> cExpr a >> appendInst opSetSetFound set 1 ""
 
 
 -- code generator for column
@@ -86,17 +101,45 @@ exprTableColumn tn cn = getMetadata >>= \mds -> case tableColumnIdx tn cn mds of
 
 -- code generator for function-call-expr
 exprFuncCall :: String -> [Expr] -> CodeGenEnv
-exprFuncCall fn pl =
-    let plLength   = length pl
-        pl'        = map cExpr pl
-     in getFuncDef >>= \fnDef -> case dropWhile ((fn/=) . fst3) fnDef of
-             []  -> throwError $ "No such function: " ++ fn
-             (_, args, Just op):_
-                 | plLength < args -> throwError $ "Too few arguments to function: "  ++ fn
-                 | plLength > args -> throwError $ "Too many arguments to function: " ++ fn
-                 | otherwise -> foldr (>>) getRes pl'
-                             >> appendInst op 0 0 ""
-             (_, _, Nothing):_ -> throwError "Not implemented"
+exprFuncCall funcName paramList =
+    let
+     in getFuncDef >>= \fnDef -> cFunc fnDef funcName paramList
+    where
+        plLength = length paramList
+        cFunc fnDef fn pl
+            | (fn, plLength) `elem` fnDef = case (fn, plLength) of
+                ("max"   , 2) -> pl' >> appendInst opMax    0 0 ""
+                ("min"   , 2) -> pl' >> appendInst opMin    0 0 ""
+                ("substr", 3) -> pl' >> appendInst opSubstr 0 0 ""
+                ("count" , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> appendInst opAggIncr 1 agg ""
+                              >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
+                ("max"   , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> cNormalExpr (head pl)
+                              >> appendInst opAggGet 0 agg ""
+                              >> appendInst opMax    0 0   ""
+                              >> appendInst opAggSet 0 agg ""
+                              >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
+                ("min"   , 1) -> putCacheState 0
+                              >> getAgg >>= \agg -> updateAgg
+                              >> cNormalExpr (head pl)
+                              >> appendInst opAggGet 0 agg ""
+                              >> appendInst opMin    0 0   ""
+                              >> appendInst opAggSet 0 agg ""
+                              >> putCacheState 1
+                              >> appendInst opAggGet 0 agg ""
+                _ -> error "never here"
+            | otherwise = case findIndex ((==fn) . fst) fnDef of
+                Nothing -> throwError $ "No such function: " ++ fn
+                Just  i -> if   plLength   > snd (fnDef !! i)
+                           then throwError $ "Too many arguments to function: " ++ fn
+                           else throwError $ "Too few arguments to function: "  ++ fn
+            where
+                pl' = connectCodeGenEnv $ map cExpr pl
 
 
 -- code generator for const-expr
@@ -195,14 +238,6 @@ putTrue = appendInst opInteger 1 0 ""
 
 putFalse :: CodeGenEnv
 putFalse = appendInst opInteger 0 0 ""
-
-mkBoolVal :: OpCode -> Int -> Int -> String -> CodeGenEnv
-mkBoolVal opCode p1 p2 p3 = appendInst opCode p1 p2 p3
-    >> putFalse
-    >> goto (p2 + 1)
-    >> mkCurrentLabel
-    >> putTrue
-    >> mkCurrentLabel
 
 -- const expr checker
 isConstExpr :: Expr -> Bool

@@ -1,6 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 
-module FFIStructure where
+module TableMetadata where
 
 
 import Data.Int  (Int32)
@@ -50,7 +50,7 @@ data TableMetadata = TableMetadata {
     metadata_index       :: [TableIndex],
     metadata_column      :: [String],
     metadata_cookie      :: Int
-} deriving (Show)
+} deriving (Eq, Show)
 
 fromTableMetadata_c :: String -> TableMetadata_c -> IO TableMetadata
 fromTableMetadata_c tn metadata_c =

@@ -25,3 +25,5 @@ stack.yaml.lock
 *.cabal
 
 hie.yaml
+
+*.out

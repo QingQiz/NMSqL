@@ -15,10 +15,21 @@ library:
     - src/CodeGenerator
     - src/FFI
 
+executables:
+  libCompiler.so:
+    main: src/FFI/FFI.hs
+    dependencies:
+      - compiler
+    ghc-options:
+      - -no-hs-main
+      - -fPIC
+      - -shared
+      - -dynamic
+
 tests:
-  compiler-test:
+  module-test:
     main:         Main.hs
-    source-dirs:  src/Test
+    source-dirs:  src/Test/CodeGenerator
     dependencies:
       - compiler
       - HUnit == 1.6.0.0

@@ -1,10 +1,18 @@
-lib:
-	stack build
+.PHONY: clean test
 
 test:
-	stack test
+	@stack test
+	@make -C src/Test/FFI
+
+
+libCompiler.so: prebuild
+	@stack install --local-bin-path . &>/dev/null
+
+
+prebuild:
+	@stack build
+
 
 clean:
 	stack clean --full
-
-.PHONY: clean lib test
+	make -C src/Test/FFI clean

@@ -1,8 +1,11 @@
 module TestCodeGenerator where
 
 
+import Ast ( Expr(EmptyExpr), CompoundOp(Union) )
+import Expr (cExpr)
 import TestUtils
 import Instruction
+import CodeGenerator
 import CodeGeneratorUtils
 
 import Test.HUnit
@@ -15,15 +18,10 @@ import Test.HUnit
 --  table yyy has 4 columns: a, b, d, y
 --            has 2 indexes: idx_yyy_d  : d,
 --                           idx_yyy_a_b: (a, b)
+-- assume that: database cookie is 234
 
 codeGeneratorTest :: Test
-codeGeneratorTest =
-    let toBool = Right [Instruction opInteger 0 0 ""
-                       ,Instruction opGoto    0 1 ""
-                       ,Instruction opNoop    0 0 ""
-                       ,Instruction opInteger 1 0 ""
-                       ,Instruction opNoop    0 1 ""]
-     in test [
+codeGeneratorTest = test [
 ----------------------------------------------------------
 -- Test code generator: expr
 ----------------------------------------------------------
@@ -79,6 +77,14 @@ codeGeneratorTest =
                     ~: cExprStr "null"
                     ?: Right [Instruction opNull 0 0 ""]
 ----------------------------------------------------------
+    , "any-column"  ~: "*"
+                    ~: cExprStr "max(*,2)"
+                    ?: Left "`*' was not allowed here"
+----------------------------------------------------------
+    , "empty-expr"  ~: ""
+                    ~: cExpr EmptyExpr
+                    ?: Right [Instruction opInteger 1 0 ""]
+----------------------------------------------------------
     , "binary expr" ~: "plus (+)"
                     ~: cExprStr "c+d"
                     ?: cExprStr "c" +: cExprStr "d"
@@ -114,7 +120,7 @@ codeGeneratorTest =
     , "binary expr" ~: "or"
                     ~: cExprStr "c or d"
                     ?: cExprStr "c"
-                    >: Right [Instruction opJIf 0 0 ""]
+                    >: Right [Instruction opJIf     0 0 ""]
                     /: cExprStr "d"
                     >: Right [Instruction opJIf     0 0 ""
                              ,Instruction opInteger 0 0 ""
@@ -215,10 +221,10 @@ codeGeneratorTest =
     , "between"     ~: ""
                     ~: cExprStr "x between c and d"
                     ?: cExprStr "x"
-                    >: Right [Instruction opDup 0 0 ""]
+                    >: Right [Instruction opDup     0 0 ""]
                     /: cExprStr "d"
-                    >: Right [Instruction opJGt 0 0 ""
-                             ,Instruction opDup 0 0 ""]
+                    >: Right [Instruction opJGt     0 0 ""
+                             ,Instruction opDup     0 0 ""]
                     /: cExprStr "c"
                     >: Right [Instruction opJLt     0 0 ""
                              ,Instruction opPop     1 0 ""
@@ -234,16 +240,16 @@ codeGeneratorTest =
                     ?: Right [Instruction opInteger 0 0 ""]
 
     , "in expr"     ~: ""
-                    ~: putRes [Instruction opNoop 0 (-1) ""]
+                    ~: putRes [Instruction opNoop     0 (-1) ""]
                     +: cExprStr "x in (1,2)"
-                    ?: Right [Instruction opInteger 1 0 ""
+                    ?: Right [Instruction opSetOpen   0 0 ""
+                             ,Instruction opInteger   1 0 ""
                              ,Instruction opSetInsert 0 0 ""
-                             ,Instruction opInteger 2 0 ""
+                             ,Instruction opInteger   2 0 ""
                              ,Instruction opSetInsert 0 0 ""
-                             ,Instruction opNoop 0 (-1) ""]
+                             ,Instruction opNoop      0 (-1) ""]
                     /: cExprStr "x"
-                    >: Right [Instruction opSetFound 0 0 ""]
-                    /: toBool
+                    >: Right [Instruction opSetSetFound 0 1 ""]
 
     , "in expr"     ~: "right-hand side of IN is not a constant (column)"
                     ~: cExprStr "x in (x)"
@@ -272,6 +278,30 @@ codeGeneratorTest =
     , "in expr"     ~: "right-hand side of IN is not a constant (not-expr)"
                     ~: cExprStr "x in (not x)"
                     ?: Left "Right-hand side of IN operator must be constant"
+
+    , "in expr"     ~: "in select"
+                    ~: cExprStr "x in (select * from xxx)"
+                    ?: Left "Only a single result allowed for a SELECT that is part of an expression"
+
+    , "in expr"     ~: "in select"
+                    ~: cExprStr "a in (select a from xxx)"
+                    ?: Left "Ambiguous column name: a"
+
+    , "in expr"     ~: "in (select a from xxx)"
+                    ~: putRes [Instruction opNoop 0 (-1) ""]
+                    +: cExprStr "xxx.a in (select a from yyy)"
+                    ?: Right [Instruction opSetOpen 0 0 ""]
+                    /: (getMetadata >>= \mds -> putMetadata [last mds])
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opSetInsert 0 0 ""])
+                    +: appendInstructions
+                        [Instruction opNoop 0 (-1) ""
+                        ,Instruction opColumn 0 0 ""
+                        ,Instruction opSetSetFound 0 1 ""]
+                    +: removeTemp
+                    >: Right []
 ---------------------------------------------------------
     , "not expr"    ~: ""
                     ~: cExprStr "not c"
@@ -280,7 +310,6 @@ codeGeneratorTest =
 ----------------------------------------------------------
 -- Test code generator: cExprWrapper
 ----------------------------------------------------------
--- NOTE the expr collected first is at the end of the list, so expr should be reversed
 -- XXX  expr order can be optimized
 {-
 
@@ -291,14 +320,13 @@ codeGeneratorTest =
     expr "yyy.a > 9 and xxx.b > 10"                   next   "yyy"
                                                       expr "yyy.a > 9"
 -}
-
-    , "test index"  ~: "" -- use index idx_yyy_d and idx_xxx_a_b, eq-pair xxx.a = 3 fall back to simple expr
-                          -- index: (xxx.a, xxx.b) = (3, 4)
+    , "test index"  ~: "" -- index: (xxx.a, xxx.b) = (3, 4)
                           -- index: yyy.d = 1 + 2
                           -- cond : yyy.a = 1 and yyy.b > 10
                     ~: cExprWrapperStr "d = 1 + 2 and 4 = xxx.b  and xxx.a = 3 and yyy.a = 1 and yyy.b > 10"
                     ?: Right [Instruction opOpen     0 0 "idx_xxx_a_b"
                              ,Instruction opOpen     1 0 "idx_yyy_d"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opInteger  3 0 ""
                              ,Instruction opInteger  4 0 ""
                              ,Instruction opMakeKey  2 0 ""
@@ -320,19 +348,18 @@ codeGeneratorTest =
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
                              ,Instruction opClose    1 0 ""]
-    , "test index"  ~: "" -- only use index idx_yyy_d
-                          -- index: yyy.d = 1
+    , "test index"  ~: "" -- index: yyy.d = 1
                           -- cond : xxx.b > 10 and yyy.a > 9
                     ~: cExprWrapperStr "xxx.b > 10 and d = 1 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
                              ,Instruction opOpen     1 0 "idx_yyy_d"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opInteger  1 0 ""
                              ,Instruction opMakeKey  1 0 ""
                              ,Instruction opBeginIdx 1 0 ""
                              ,Instruction opNoop     0 1 ""
                              ,Instruction opRewind   0 0 ""
-                             ,Instruction opNoop     0 3 ""
-                    ]
+                             ,Instruction opNoop     0 3 ""]
                     /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
                              ,Instruction opTempInst 0 0 ""
@@ -349,6 +376,7 @@ codeGeneratorTest =
                     ~: cExprWrapperStr "xxx.b > 10 and yyy.a > 9"
                     ?: Right [Instruction opOpen     0 0 "xxx"
                              ,Instruction opOpen     1 0 "yyy"
+                             ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opRewind   0 0 ""
                              ,Instruction opNoop     0 1 ""
                              ,Instruction opRewind   1 0 ""
@@ -365,5 +393,130 @@ codeGeneratorTest =
                              ,Instruction opNoop     0 0 ""
                              ,Instruction opClose    0 0 ""
                              ,Instruction opClose    1 0 ""]
-
+----------------------------------------------------------
+-- Test code generator: cSelect
+----------------------------------------------------------
+-- NOTE we should test help functions first
+    , "insert-temp" ~: ""
+                    ~: putRes [Instruction opNoop     0 0 ""
+                              ,Instruction opTempInst 0 0 ""
+                              ,Instruction opNoop     0 1 ""]
+                    +: insertTemp (appendInst opNoop  0 2 "")
+                    ?: Right  [Instruction opNoop     0 0 ""
+                              ,Instruction opNoop     0 2 ""
+                              ,Instruction opTempInst 0 0 ""
+                              ,Instruction opNoop     0 1 ""]
+    , "prependEnv"  ~: ""
+                    ~: putRes [Instruction opNoop    0 0 ""]
+                    +: prependEnv (appendInst opNoop 0 1 "")
+                    ?: Right  [Instruction opNoop    0 1 ""
+                              ,Instruction opNoop    0 0 ""]
+----------------------------------------------------------
+    , "sel-res"     ~: "select *,a from xxx"
+                    ~: cSelectStr "select *,a from xxx" Normal
+                    ?: Left "Semantic error on `*'"
+    , "sel-res"     ~: "select * form xxx -- (to set)"
+                    ~: cSelectStr "select * from xxx" (ToSet 0)
+                    ?: Left "Only a single result allowed for a SELECT that is part of an expression"
+    , "sel-res"     ~: "union select a from xxx -- (need 2 result)"
+                    ~: cSelectStr "select a from xxx" (UnionSel Union 2)
+                    ?: Left "SELECTs to the left and right of UNION do not have the same number of result columns"
+----------------------------------------------------------
+    , "select"      ~: "select * from xxx"
+                    ~: cSelectStr "select * from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn       0   0 ""
+                        ,Instruction opColumn       0   1 ""
+                        ,Instruction opColumn       0   2 ""
+                        ,Instruction opColumn       0   3 ""
+                        ,Instruction opCallback     4   0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  4   0 ""
+                        ,Instruction opColumnName   0   0 "xxx.a"
+                        ,Instruction opColumnName   1   0 "xxx.b"
+                        ,Instruction opColumnName   2   0 "xxx.c"
+                        ,Instruction opColumnName   3   0 "xxx.x"])
+                    +: removeTemp
+                    >: Right []
+    , "select"      ~: "select count(*) from xxx where a > 1"
+                    ~: cSelectStr "select count(*) from xxx where a > 1" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapperStr "a>1"
+                    +: insertTemp (appendInstructions
+                        [Instruction opAggIncr 1 0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "count(*)"
+                        ,Instruction opAggReset     0   1 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
+                    >: Right []
+    , "select"      ~: "select max(max(a,b)) from xxx"
+                    ~: cSelectStr "select max(max(a,b)) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (cExprStr "max(a,b)")
+                    +: insertTemp (appendInstructions
+                        [Instruction opAggGet 0 0 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 0 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "max(max(a,b))"
+                        ,Instruction opAggReset     0   1 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
+                    >: Right []
+    , "select"      ~: "select max(max(a),min(b)) from xxx"
+                    ~: cSelectStr "select max(max(a),min(b)) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opAggGet 0 0 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 0 ""
+                        ,Instruction opColumn 0 1 ""
+                        ,Instruction opAggGet 0 1 ""
+                        ,Instruction opMin    0 0 ""
+                        ,Instruction opAggSet 0 1 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  1   0 ""
+                        ,Instruction opColumnName   0   0 "max(max(a),min(b))"
+                        ,Instruction opAggReset     0   2 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opAggGet   0 1 ""
+                        ,Instruction opMax      0 0 ""
+                        ,Instruction opCallback 1 0 ""]
+                    +: removeTemp
+                    >: Right []
+    , "select"      ~: "select a,max(a) from xxx"
+                    ~: cSelectStr "select a,max(a) from xxx" Normal
+                    ?: (getMetadata >>= \mds -> putMetadata [head mds]) -- only use metadata of table xxx
+                    +: cExprWrapper EmptyExpr
+                    +: insertTemp (appendInstructions
+                        [Instruction opColumn 0 0 ""
+                        ,Instruction opAggSet 0 0 ""
+                        ,Instruction opColumn 0 0 ""
+                        ,Instruction opAggGet 0 1 ""
+                        ,Instruction opMax    0 0 ""
+                        ,Instruction opAggSet 0 1 ""])
+                    +: prependEnv (appendInstructions
+                        [Instruction opColumnCount  2   0 ""
+                        ,Instruction opColumnName   0   0 "a"
+                        ,Instruction opColumnName   1   0 "max(a)"
+                        ,Instruction opAggReset     0   2 ""])
+                    +: appendInstructions
+                        [Instruction opAggGet   0 0 ""
+                        ,Instruction opAggGet   0 1 ""
+                        ,Instruction opCallback 2 0 ""]
+                    +: removeTemp
+                    >: Right []
     ]
