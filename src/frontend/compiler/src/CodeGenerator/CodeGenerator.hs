@@ -4,11 +4,12 @@ module CodeGenerator where
 
 
 import Ast
-import Expr
-import Select
 import Instruction
 import TableMetadata
 import CodeGeneratorUtils
+
+import Generator.Expr (cExpr, isConstExpr)
+import Generator.Select (cSelect)
 
 import Data.List
 import Data.Maybe

@@ -2,11 +2,12 @@ module TestCodeGenerator where
 
 
 import Ast ( Expr(EmptyExpr), CompoundOp(Union) )
-import Expr (cExpr)
 import TestUtils
 import Instruction
 import CodeGenerator
 import CodeGeneratorUtils
+
+import Generator.Expr (cExpr)
 
 import Test.HUnit
 

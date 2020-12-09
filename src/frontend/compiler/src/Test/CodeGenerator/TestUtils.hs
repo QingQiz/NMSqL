@@ -1,11 +1,12 @@
 module TestUtils where
 
 
-import Expr
 import Parser
 import TableMetadata
 import CodeGenerator
 import CodeGeneratorUtils
+
+import Generator.Expr
 
 import Test.HUnit
 import Control.Monad.State
