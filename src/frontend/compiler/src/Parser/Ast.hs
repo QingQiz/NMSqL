@@ -34,10 +34,10 @@ data CompoundOp = Union     | UnionAll
                 | Intersect | Except
 
 
-data Type = TInt | TString Int | TDouble deriving (Show)
+data Type = TInt | TString Int | TDouble
 
 
-data SortOrder = ASC | DESC deriving (Show)
+data SortOrder = ASC | DESC
 
 
 ----------------------------------------------------------
@@ -58,16 +58,14 @@ data ColumnConstraint = ColNotNull
                       | ColUnique
                       | ColCheck Expr
                       | ColDefault Value
-                      deriving (Show)
 
 
 data TableContraint = TbPrimaryKey [ColumnName]
                     | TbUnique [ColumnName]
                     | TbCheck Expr
-                    deriving (Show)
 
 
-data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint] deriving (Show)
+data ColumnDef = ColumnDef ColumnName Type [ColumnConstraint]
 
 
 data Expr = BinExpr BinOp Expr Expr          -- 2 binOp 3
@@ -131,7 +129,6 @@ data Delete = Delete TableName (Maybe Expr)
 ----------------------------------------------------------
 data TableActon = CreateTable TableName [ColumnDef] [TableContraint]
                 | DropTable TableName
-                deriving (Show)
 
 ----------------------------------------------------------
 -- Create and Drop Index Stmt
@@ -195,3 +192,34 @@ instance Show Value where
 instance Show ValueList where
     show (ValueList vl)     = "(" ++ intercalate "," (map show vl) ++ ")"
     show (SelectResult sel) = "(" ++ show sel ++ ")"
+
+instance Show Type where
+    show TInt = "int"
+    show (TString len) = "string(" ++ show len ++ ")"
+    show TDouble = "double"
+
+instance Show SortOrder where
+    show ASC = "ASC"
+    show DESC = "DESC"
+
+instance Show ColumnConstraint where
+    show ColNotNull = "NOT NULL"
+    show (ColPrimaryKey ord) = "PRIMARY KEY " ++ show ord
+    show ColUnique = "UNIQUE"
+    show (ColCheck expr) = "CHECK(" ++ show expr ++ ")"
+    show (ColDefault val) = "DEFAULT " ++ show val
+
+instance Show TableContraint where
+    show (TbPrimaryKey cs) = "PRIMARY KEY(" ++ intercalate "," cs ++ ")"
+    show (TbUnique cs) = "UNIQUE(" ++ intercalate "," cs ++ ")"
+    show (TbCheck expr) = "CHECK(" ++ show expr ++ ")"
+
+instance Show ColumnDef where
+    show (ColumnDef name tp colCtt) = name ++ " " ++ show tp ++ concatMap (\x -> " " ++ show x) colCtt
+
+instance Show TableActon where
+    show (CreateTable name colDef tbCtt) =
+        let colDef' = intercalate "," (map show colDef)
+            tbCtt'  = concatMap (\x -> "," ++ show x) tbCtt
+         in "CREATE TABLE " ++ name ++ " (" ++ colDef' ++ tbCtt' ++ ")"
+    show (DropTable name) = "DROP TABLE " ++ name
