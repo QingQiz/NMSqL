@@ -168,9 +168,17 @@ cursor后移
 
 ### 数据库相关操作
 
-#### create(createTableSql)
+#### createTable()
 
-建表
+获取一个新的空页，并返回页号
+
+#### clear(page)
+
+传入页号，清空以此页号为根页的树的数据
+
+#### destroy(page)
+
+传入页号，删除以此页为根页的树
 
 #### Reorganize(dbTable)
 
