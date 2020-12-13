@@ -8,7 +8,6 @@ import TableMetadata
 import CodeGeneratorUtils
 
 
-
 cTableAction :: TableActon -> CodeGenEnv
 cTableAction = \case
     ast@(CreateTable name colDef tbCtt) -> getMetadata >>= (\cookie
@@ -29,7 +28,25 @@ cTableAction = \case
                  in sum (map getColCttCnt colDef) + getTbCttCnt
             mkIdxName i = "(" ++ name ++ " autoindex " ++ show i ++ ")"
 
-    ast@DropTable {}   -> undefined
+    DropTable tbName -> getMetadata >>= (\cookie
+        -> appendInstructions [Instruction opTransaction  0      0 ""
+                              ,Instruction opVerifyCookie cookie 0 ""
+                              ,Instruction opSetCookie    (nextCookie cookie) 0 ""
+                              ,Instruction opOpenWrite    0      0 "NMSqL_Master"
+                              ,Instruction opRewind       0      0 ""
+                              ,Instruction opNoop         0      1 ""
+                              ,Instruction opString       0      0 tbName
+                              ,Instruction opColumn       0      2 ""
+                              ,Instruction opJNe          0      2 ""
+                              ,Instruction opColumn       0      3 ""
+                              ,Instruction opDestroy      0      0 ""
+                              ,Instruction opNoop         0      2 ""
+                              ,Instruction opNext         0      0 ""
+                              ,Instruction opGoto         0      1 ""
+                              ,Instruction opNoop         0      0 ""
+                              ,Instruction opClose        0      0 ""
+                              ,Instruction opCommit       0      0 ""]
+            ) . metadata_cookie . head
 
 
 createIdx :: String -> String -> CodeGenEnv
