@@ -7,10 +7,13 @@ import CodeGenerator
 import CodeGeneratorUtils
 
 import Generator.Expr
+import Generator.Table
 
 import Test.HUnit
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Except
+
 
 
 type CGTestCase = (CodeGenEnv, CodeGenRes)
@@ -35,6 +38,9 @@ cExprWrapperStr s = cExprWrapper $ runParser expr s
 
 cSelectStr :: String -> SelectResultType -> CodeGenEnv
 cSelectStr s = cSelectWrapper (runParser select s)
+
+cTableActionStr :: String -> CodeGenEnv
+cTableActionStr s = cTableAction (runParser (createTable <|> dropTable) s)
 
 runParser :: Parser a -> String -> a
 runParser p s = case parse p s of

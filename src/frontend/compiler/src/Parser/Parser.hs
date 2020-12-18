@@ -5,7 +5,6 @@ module Parser where
 import Ast
 
 import Data.Char
-import Control.Monad()
 import Control.Applicative
 
 

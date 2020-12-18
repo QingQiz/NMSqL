@@ -7,6 +7,8 @@ import Instruction
 import TableMetadata
 import CodeGeneratorUtils
 
+import Control.Monad.Except
+
 
 cTableAction :: TableActon -> CodeGenEnv
 cTableAction = \case
@@ -28,30 +30,33 @@ cTableAction = \case
                  in sum (map getColCttCnt colDef) + getTbCttCnt
             mkIdxName i = "(" ++ name ++ " autoindex " ++ show i ++ ")"
 
-    DropTable tbName -> getMetadata >>= (\cookie
-        -> appendInstructions [Instruction opTransaction  0      0 ""
-                              ,Instruction opVerifyCookie cookie 0 ""
-                              ,Instruction opSetCookie    (nextCookie cookie) 0 ""
-                              ,Instruction opOpenWrite    0      0 "NMSqL_Master"
-                              ,Instruction opRewind       0      0 ""
-                              ,Instruction opNoop         0      1 ""
-                              ,Instruction opString       0      0 tbName
-                              ,Instruction opColumn       0      2 ""
-                              ,Instruction opJNe          0      2 ""
-                              ,Instruction opColumn       0      3 ""
-                              ,Instruction opDestroy      0      0 ""
-                              ,Instruction opNoop         0      2 ""
-                              ,Instruction opNext         0      0 ""
-                              ,Instruction opGoto         0      1 ""
-                              ,Instruction opNoop         0      0 ""
-                              ,Instruction opClose        0      0 ""
-                              ,Instruction opCommit       0      0 ""]
-            ) . metadata_cookie . head
+    DropTable tbName -> getMetadata >>= \mds
+        -> if   tbExists tbName mds
+           then appendInstructions
+                [Instruction opTransaction  0                         0 ""
+                ,Instruction opVerifyCookie (cookie mds)              0 ""
+                ,Instruction opSetCookie    (nextCookie $ cookie mds) 0 ""
+                ,Instruction opOpenWrite    0                         0 "NMSqL_Master"
+                ,Instruction opRewind       0                         0 ""
+                ,Instruction opNoop         0                         1 ""
+                ,Instruction opString       0                         0 tbName
+                ,Instruction opColumn       0                         2 ""
+                ,Instruction opJNe          0                         2 ""
+                ,Instruction opColumn       0                         3 ""
+                ,Instruction opDestroy      0                         0 ""
+                ,Instruction opNoop         0                         2 ""
+                ,Instruction opNext         0                         0 ""
+                ,Instruction opGoto         0                         1 ""
+                ,Instruction opNoop         0                         0 ""
+                ,Instruction opClose        0                         0 ""
+                ,Instruction opCommit       0                         0 ""]
+           else throwError $ "no such table: " ++ tbName
+           where cookie = metadata_cookie . head
 
 
 createIdx :: String -> String -> CodeGenEnv
 createIdx idxName tableName = appendInstructions
-    [Instruction opNewRecno    0 0 ""
+    [Instruction opDefaultKey  0 0 ""
     ,Instruction opString      0 0 "index"
     ,Instruction opString      0 0 idxName
     ,Instruction opString      0 0 tableName
@@ -62,13 +67,20 @@ createIdx idxName tableName = appendInstructions
 
 
 createTable :: String -> String -> CodeGenEnv
-createTable tbName sql = appendInstructions
-    [Instruction opNewRecno    0 0 ""
-    ,Instruction opString      0 0 "index"
-    ,Instruction opString      0 0 tbName
-    ,Instruction opString      0 0 tbName
-    ,Instruction opCreateIndex 0 0 ""
-    ,Instruction opString      0 0 sql
-    ,Instruction opMakeRecord  5 0 ""
-    ,Instruction opPut         0 0 ""]
+createTable tbName sql = getMetadata >>= \mds
+    -> if   tbExists tbName mds
+       then throwError $ "table " ++ tbName ++ " already exists"
+       else appendInstructions
+            [Instruction opDefaultKey  0 0 ""
+            ,Instruction opString      0 0 "table"
+            ,Instruction opString      0 0 tbName
+            ,Instruction opString      0 0 tbName
+            ,Instruction opCreateTable 0 0 ""
+            ,Instruction opString      0 0 sql
+            ,Instruction opMakeRecord  5 0 ""
+            ,Instruction opPut         0 0 ""]
 
+
+tbExists :: String -> [TableMetadata] -> Bool
+tbExists _ [] = False
+tbExists tbName (md:mds) = (metadata_name md == tbName) || tbExists tbName mds
