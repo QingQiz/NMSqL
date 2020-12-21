@@ -121,6 +121,7 @@ opSetOpen        = 116 :: Integer
 opSetSetFound    = 117 :: Integer
 opSetSetNotFound = 118 :: Integer
 opSetSetEmpty    = 119 :: Integer
+opDefaultKey     = 120 :: Integer
 
 instructions = [
      "opTempInst"
@@ -242,7 +243,8 @@ instructions = [
     ,"opSetOpen"
     ,"opSetSetFound"
     ,"opSetSetNotFound"
-    ,"opSetSetEmpty"]
+    ,"opSetSetEmpty"
+    ,"opDefaultKey"]
 
 type OpCode = Integer
 

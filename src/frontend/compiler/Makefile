@@ -1,4 +1,4 @@
-.PHONY: clean test
+.PHONY: clean test purge
 
 test:
 	@stack test
@@ -14,5 +14,8 @@ prebuild:
 
 
 clean:
-	stack clean --full
 	make -C src/Test/FFI clean
+
+
+purge: clean
+	stack clean --full

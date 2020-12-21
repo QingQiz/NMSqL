@@ -2,11 +2,12 @@ module TestCodeGenerator where
 
 
 import Ast ( Expr(EmptyExpr), CompoundOp(Union) )
-import Expr (cExpr)
 import TestUtils
 import Instruction
 import CodeGenerator
 import CodeGeneratorUtils
+
+import Generator.Expr (cExpr)
 
 import Test.HUnit
 
@@ -519,4 +520,61 @@ codeGeneratorTest = test [
                         ,Instruction opCallback 2 0 ""]
                     +: removeTemp
                     >: Right []
+----------------------------------------------------------
+-- Test code generator: create table
+----------------------------------------------------------
+    , "create table"~: "create table xxx (a int)"
+                    ~: cTableActionStr "create table xxx (a int)"
+                    ?: Left "table xxx already exists"
+
+    , "create table"~: "create table zzz(a int unique primary key check(a>1), b string(3) unique, primary key (b))"
+                    ~: cTableActionStr "create table zzz(a int unique primary key check(a>1), b string(3), primary key (b))"
+                    ?: let idx :: Integer -> [Instruction]
+                           idx n = [Instruction opDefaultKey  0 0 ""
+                                   ,Instruction opString      0 0 "index"
+                                   ,Instruction opString      0 0 $ "(zzz autoindex " ++ show n ++ ")"
+                                   ,Instruction opString      0 0 "zzz"
+                                   ,Instruction opCreateIndex 0 0 ""
+                                   ,Instruction opNull        0 0 ""
+                                   ,Instruction opMakeRecord  5 0 ""
+                                   ,Instruction opPut         0 0 ""]
+                        in Right $ [Instruction opTransaction  0   0 ""
+                                   ,Instruction opVerifyCookie 234 0 ""
+                                   ,Instruction opOpenWrite    0   0 "NMSqL_Master"]
+                                ++ idx 1 ++ idx 2 ++ idx 3
+                                ++ [Instruction opDefaultKey   0          0 ""
+                                   ,Instruction opString       0          0 "table"
+                                   ,Instruction opString       0          0 "zzz"
+                                   ,Instruction opString       0          0 "zzz"
+                                   ,Instruction opCreateTable  0          0 ""
+                                   ,Instruction opString       0          0 "CREATE TABLE zzz (a int UNIQUE PRIMARY KEY ASC CHECK((a>1)),b string(3),PRIMARY KEY(b))"
+                                   ,Instruction opMakeRecord   5          0 ""
+                                   ,Instruction opPut          0          0 ""
+                                   ,Instruction opSetCookie    1725595867 0 ""
+                                   ,Instruction opClose        0          0 ""
+                                   ,Instruction opCommit       0          0 ""]
+
+    , "drop table"  ~: "drop table zzz"
+                    ~: cTableActionStr "drop table zzz"
+                    ?: Left "no such table: zzz"
+
+    , "drop table"  ~: "drop table xxx"
+                    ~: cTableActionStr "drop table xxx"
+                    ?: Right [Instruction opTransaction  0          0 ""
+                             ,Instruction opVerifyCookie 234        0 ""
+                             ,Instruction opSetCookie    1725595867 0 ""
+                             ,Instruction opOpenWrite    0          0 "NMSqL_Master"
+                             ,Instruction opRewind       0          0 ""
+                             ,Instruction opNoop         0          1 ""
+                             ,Instruction opString       0          0 "xxx"
+                             ,Instruction opColumn       0          2 ""
+                             ,Instruction opJNe          0          2 ""
+                             ,Instruction opColumn       0          3 ""
+                             ,Instruction opDestroy      0          0 ""
+                             ,Instruction opNoop         0          2 ""
+                             ,Instruction opNext         0          0 ""
+                             ,Instruction opGoto         0          1 ""
+                             ,Instruction opNoop         0          0 ""
+                             ,Instruction opClose        0          0 ""
+                             ,Instruction opCommit       0          0 ""]
     ]

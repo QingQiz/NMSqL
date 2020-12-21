@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-module Expr (cExpr, isConstExpr) where
+module Generator.Expr (cExpr, isConstExpr) where
 
 
 import Ast
