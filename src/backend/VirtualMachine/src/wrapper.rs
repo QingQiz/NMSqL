@@ -90,8 +90,14 @@ pub mod rustLayer {
   pub fn reset(transactionId: i32, cursor: *mut Cursor) -> i32 {
     unsafe { cLayer::reset(transactionId, cursor) }
   }
-  pub fn createTable(sql: &Vec<u8>) -> i32 {
-    unsafe { cLayer::createTable(sql.as_ptr() as *const i8) }
+  pub fn createTable() -> i32 {
+    unsafe { cLayer::createTable() }
+  }
+  pub fn clear(page: i32) -> i32 {
+    unsafe { cLayer::clear(page) }
+  }
+  pub fn destroy(page: i32) -> i32 {
+    unsafe { cLayer::destroy(page) }
   }
   pub fn reorganize() -> i32 {
     unsafe { cLayer::reorganize() }
@@ -153,6 +159,7 @@ pub mod rustLayer {
 }
 pub mod cLayer {
   pub type CursorType = u32;
+  pub type pgno_t = i32;
   #[repr(C)]
   #[derive(Debug, Copy, Clone)]
   pub struct Cursor {
@@ -209,7 +216,9 @@ pub mod cLayer {
       transactionId: ::std::os::raw::c_int,
       cursor: *mut Cursor,
     ) -> ::std::os::raw::c_int;
-    pub fn createTable(sql: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
+    pub fn createTable() -> pgno_t;
+    pub fn clear(page: pgno_t) -> i32;
+    pub fn destroy(page: pgno_t) -> i32;
     pub fn reorganize() -> ::std::os::raw::c_int;
     pub fn getMetaData(tableName: *const ::std::os::raw::c_char) -> *mut ::std::os::raw::c_void;
     pub fn getCookies() -> ::std::os::raw::c_int;

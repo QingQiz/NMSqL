@@ -120,6 +120,7 @@ pub enum VmOpType {
   OP_SetSetFound,
   OP_SetSetNotFound,
   OP_SetSetEmpty,
+  OP_DefaultKey,
 }
 
 impl Default for VmOpType {
