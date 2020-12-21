@@ -11,3 +11,6 @@ extern crate num_derive;
 
 #[macro_use]
 extern crate if_chain;
+
+#[macro_use]
+extern crate mockall;

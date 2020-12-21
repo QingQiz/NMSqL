@@ -141,10 +141,22 @@ pub fn runOperation(
           vm.cursorNext(nowOp.p1 as usize)?;
         }
       }
-      VmOpType::OP_Destroy => unimplemented!(),
-      VmOpType::OP_Clear => unimplemented!(),
-      VmOpType::OP_CreateIndex => unimplemented!(),
-      VmOpType::OP_CreateTable => unimplemented!(),
+      VmOpType::OP_Destroy => {
+        let page = popOneMem(vm)?.integerify();
+        DbWrapper::destroy(page);
+      }
+      VmOpType::OP_Clear => {
+        let page = popOneMem(vm)?.integerify();
+        DbWrapper::clear(page);
+      }
+      VmOpType::OP_CreateIndex => {
+        let page = DbWrapper::createTable();
+        vm.pushStack(VmMem::MEM_INT(page));
+      }
+      VmOpType::OP_CreateTable => {
+        let page = DbWrapper::createTable();
+        vm.pushStack(VmMem::MEM_INT(page));
+      }
       VmOpType::OP_Reorganize => {
         vm.reorganize();
       }
@@ -734,6 +746,10 @@ pub fn runOperation(
           vm.pushStack(VmMem::MEM_INT(0));
         }
       }
+      VmOpType::OP_DefaultKey => vm.pushStack(VmMem::MEM_STRING(VmMem::genVmString(
+        Vec::new(),
+        VmMemString::MEM_FLAG_STRING,
+      ))),
       _ => {
         return Err(format!("unknown operation: {:?}", nowOp));
       }
