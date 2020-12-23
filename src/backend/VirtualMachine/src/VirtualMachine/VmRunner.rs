@@ -150,7 +150,7 @@ pub fn runOperation(
         DbWrapper::clear(page);
       }
       VmOpType::OP_CreateIndex => {
-        let page = DbWrapper::createTable();
+        let page = DbWrapper::createIndex();
         vm.pushStack(VmMem::MEM_INT(page));
       }
       VmOpType::OP_CreateTable => {

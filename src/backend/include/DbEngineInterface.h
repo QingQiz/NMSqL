@@ -39,6 +39,7 @@ int next(int transactionId, Cursor *cursor);
 int reset(int transactionId, Cursor *cursor);
 
 pgno_t createTable();
+pgno_t createIndex();
 int clear(pgno_t page);
 int destroy(pgno_t page);
 

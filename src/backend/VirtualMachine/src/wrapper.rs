@@ -93,6 +93,9 @@ pub mod rustLayer {
   pub fn createTable() -> i32 {
     unsafe { cLayer::createTable() }
   }
+  pub fn createIndex() -> i32 {
+    unsafe { cLayer::createIndex() }
+  }
   pub fn clear(page: i32) -> i32 {
     unsafe { cLayer::clear(page) }
   }
@@ -217,6 +220,7 @@ pub mod cLayer {
       cursor: *mut Cursor,
     ) -> ::std::os::raw::c_int;
     pub fn createTable() -> pgno_t;
+    pub fn createIndex() -> pgno_t;
     pub fn clear(page: pgno_t) -> i32;
     pub fn destroy(page: pgno_t) -> i32;
     pub fn reorganize() -> ::std::os::raw::c_int;
