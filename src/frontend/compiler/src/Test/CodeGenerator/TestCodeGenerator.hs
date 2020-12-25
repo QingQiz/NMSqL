@@ -562,7 +562,6 @@ codeGeneratorTest = test [
                     ~: cTableActionStr "drop table xxx"
                     ?: Right [Instruction opTransaction  0          0 ""
                              ,Instruction opVerifyCookie 234        0 ""
-                             ,Instruction opSetCookie    1725595867 0 ""
                              ,Instruction opOpenWrite    0          0 "NMSqL_Master"
                              ,Instruction opRewind       0          0 ""
                              ,Instruction opNoop         0          1 ""
@@ -570,11 +569,13 @@ codeGeneratorTest = test [
                              ,Instruction opColumn       0          2 ""
                              ,Instruction opJNe          0          2 ""
                              ,Instruction opColumn       0          3 ""
+                             ,Instruction opDelete       0          0 ""
                              ,Instruction opDestroy      0          0 ""
                              ,Instruction opNoop         0          2 ""
                              ,Instruction opNext         0          0 ""
                              ,Instruction opGoto         0          1 ""
                              ,Instruction opNoop         0          0 ""
+                             ,Instruction opSetCookie    1725595867 0 ""
                              ,Instruction opClose        0          0 ""
                              ,Instruction opCommit       0          0 ""]
     ]

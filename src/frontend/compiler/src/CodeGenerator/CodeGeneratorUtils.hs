@@ -200,3 +200,8 @@ dbgShowRes = getRes >>= \res -> dbgShow res getRes
 -- random number generator, see `https://en.wikipedia.org/wiki/Linear_congruential_generator`
 nextCookie :: Integral a => a -> a
 nextCookie n = (7368787 * n + 1299709) `mod` 2147483647
+
+
+tbExists :: String -> [TableMetadata] -> Bool
+tbExists _ [] = False
+tbExists tbName (md:mds) = (metadata_name md == tbName) || tbExists tbName mds

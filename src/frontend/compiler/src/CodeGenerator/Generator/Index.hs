@@ -1,0 +1,99 @@
+{-# LANGUAGE LambdaCase #-}
+module Generator.Index (cIndexAction) where
+
+
+import Ast
+import Instruction
+import TableMetadata
+import CodeGeneratorUtils
+
+import Data.List
+import Data.Maybe
+import Control.Monad.Except
+
+
+cIndexAction :: IndexAction -> CodeGenEnv
+cIndexAction = \case
+    ast@(CreateIndex idxName tbName idxDefs) -> getMetadata >>= \mds
+        -> appendInstructions [Instruction opTransaction  0            0 ""
+                              ,Instruction opVerifyCookie (cookie mds) 0 ""
+                              ,Instruction opOpenWrite    0            0 "NMSqL_Master"]
+        >> createIndex idxName tbName (show ast)
+        >> appendInstructions [Instruction opClose  0 0 ""
+                              ,Instruction opOpen   0 0 tbName
+                              ,Instruction opOpen   1 0 idxName
+                              ,Instruction opRewind 0 0 ""
+                              ,Instruction opNoop   0 1 ""]
+        >> updateIndex mds
+        >> appendInstructions [Instruction opNoop      0               2 ""
+                              ,Instruction opNext      0               0 ""
+                              ,Instruction opGoto      0               1 ""
+                              ,Instruction opNoop      0               0 ""
+                              ,Instruction opSetCookie (newCookie mds) 0 ""
+                              ,Instruction opClose     0               0 ""
+                              ,Instruction opClose     1               0 ""
+                              ,Instruction opCommit    0               0 ""]
+        where
+            updateIndex mds = case filter (\md -> metadata_name md == tbName) mds of
+                [md] -> let cols  = metadata_column md
+                            idxes = map (fromMaybe (-1) . (`elemIndex` cols) . fst) idxDefs
+                            other = filter (`notElem` idxes) [0 .. length cols - 1]
+                         in appendInstructions (map (\idx -> Instruction opColumn 0 idx "") idxes)
+                         >> appendInst opMakeKey (length idxes) 0 ""
+                         >> appendInstructions (map (\idx -> Instruction opColumn 0 idx "") other)
+                         >> appendInstructions [Instruction opMakeRecord (length other) 0 ""
+                                               ,Instruction opPut 1 0 ""]
+                _ -> throwError $ "no such table: " ++ tbName
+
+    DropIndex idxName -> getMetadata >>= \mds
+        -> if not $ idxExists idxName mds then throwError $ "not such index: " ++ idxName else doNothing
+        >> appendInstructions
+                [Instruction opTransaction  0                         0 ""
+                ,Instruction opVerifyCookie (cookie mds)              0 ""
+                ,Instruction opOpenWrite    0                         0 "NMSqL_Master"
+                ,Instruction opRewind       0                         0 ""
+                ,Instruction opNoop         0                         1 ""
+                ,Instruction opString       0                         0 idxName
+                ,Instruction opColumn       0                         1 ""
+                ,Instruction opJNe          0                         2 ""
+                ,Instruction opColumn       0                         3 ""
+                ,Instruction opDelete       0                         0 ""
+                ,Instruction opDestroy      0                         0 ""
+                ,Instruction opGoto         0                         0 "" -- only one result, so we can break
+                ,Instruction opNoop         0                         2 ""
+                ,Instruction opNext         0                         0 ""
+                ,Instruction opGoto         0                         1 ""
+                ,Instruction opNoop         0                         0 ""
+                ,Instruction opSetCookie    (nextCookie $ cookie mds) 0 ""
+                ,Instruction opClose        0                         0 ""
+                ,Instruction opCommit       0                         0 ""]
+
+
+createIndex :: String -> String -> String -> CodeGenEnv
+createIndex idxName tbName sql = getMetadata >>= \mds
+    -> if   idxExists idxName mds
+       then throwError $ "index " ++ idxName ++ " already exists"
+       else appendInstructions
+            [Instruction opDefaultKey  0 0 ""
+            ,Instruction opString      0 0 "index"
+            ,Instruction opString      0 0 idxName
+            ,Instruction opString      0 0 tbName
+            ,Instruction opCreateIndex 0 0 ""
+            ,Instruction opString      0 0 sql
+            ,Instruction opMakeRecord  5 0 ""
+            ,Instruction opPut         0 0 ""]
+
+
+idxExists :: String -> [TableMetadata] -> Bool
+idxExists _ [] = False
+idxExists idxName (md : mds) = (idxName `elem'` metadata_index md) || idxExists idxName mds where
+    _ `elem'` [] = False
+    a `elem'` (x:xs) = a == fst x || a `elem'` xs
+
+
+-- help functions
+cookie :: [TableMetadata] -> Int
+cookie = metadata_cookie . head
+
+newCookie :: [TableMetadata] -> Int
+newCookie = nextCookie . cookie
