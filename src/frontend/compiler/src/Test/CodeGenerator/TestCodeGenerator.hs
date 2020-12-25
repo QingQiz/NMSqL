@@ -521,7 +521,7 @@ codeGeneratorTest = test [
                     +: removeTemp
                     >: Right []
 ----------------------------------------------------------
--- Test code generator: create table
+-- Test code generator: create table / drop table
 ----------------------------------------------------------
     , "create table"~: "create table xxx (a int)"
                     ~: cTableActionStr "create table xxx (a int)"
@@ -578,4 +578,81 @@ codeGeneratorTest = test [
                              ,Instruction opSetCookie    1725595867 0 ""
                              ,Instruction opClose        0          0 ""
                              ,Instruction opCommit       0          0 ""]
+----------------------------------------------------------
+-- Test code generator: create index / drop index
+----------------------------------------------------------
+    , "create index"~: "create index idx_xxx_a on xxx(a)"
+                    ~: cIndexActionStr "create index idx_xxx_a on xxx (a)"
+                    ?: Left "index idx_xxx_a already exists"
+
+    , "create index"~: "create index idx_xxx_z on xxx(z)"
+                    ~: cIndexActionStr "create index idx_xxx_z on xxx (z)"
+                    ?: Left "no such column: z"
+
+    , "create index"~: "create index idx_xxx_a_x on xxx(a,x)"
+                    ~: cIndexActionStr "create index idx_xxx_a_x on xxx(a,x)"
+                    ?: Right [Instruction opTransaction  0   0 ""
+                             ,Instruction opVerifyCookie 234 0 ""
+                             -- write index to master table
+                             ,Instruction opOpenWrite    0          0 "NMSqL_Master"
+                             ,Instruction opDefaultKey   0          0 ""
+                             ,Instruction opString       0          0 "index"
+                             ,Instruction opString       0          0 "idx_xxx_a_x"
+                             ,Instruction opString       0          0 "xxx"
+                             ,Instruction opCreateIndex  0          0 ""
+                             ,Instruction opString       0          0 "CREATE INDEX idx_xxx_a_x ON xxx(a,x)"
+                             ,Instruction opMakeRecord   5          0 ""
+                             ,Instruction opPut          0          0 ""
+                             ,Instruction opClose        0          0 ""
+                             -- update data
+                             ,Instruction opOpen         0          0 "xxx"
+                             ,Instruction opOpenWrite    1          0 "idx_xxx_a_x"
+                             ,Instruction opRewind       0          0 ""
+                             ,Instruction opNoop         0          1 ""
+                             -- index key
+                             ,Instruction opColumn       0          0 ""
+                             ,Instruction opColumn       0          3 ""
+                             ,Instruction opMakeKey      2          0 ""
+                             -- index value
+                             ,Instruction opColumn       0          1 ""
+                             ,Instruction opColumn       0          2 ""
+                             ,Instruction opMakeRecord   2          0 ""
+                             -- update index
+                             ,Instruction opPut          1          0 ""
+                             ,Instruction opNoop         0          2 ""
+                             ,Instruction opNext         0          0 ""
+                             ,Instruction opGoto         0          1 ""
+                             ,Instruction opNoop         0          0 ""
+                             ,Instruction opSetCookie    1725595867 0 ""
+                             ,Instruction opClose        0          0 ""
+                             ,Instruction opClose        1          0 ""
+                             ,Instruction opCommit       0          0 ""]
+
+    , "drop index"  ~: "drop index idx_xxx_z"
+                    ~: cIndexActionStr "drop index idx_xxx_z"
+                    ?: Left "no such index: idx_xxx_z"
+
+    , "drop index"  ~: "drop index idx_xxx_a"
+                    ~: cIndexActionStr "drop index idx_xxx_a"
+                    ?: Right [Instruction opTransaction  0          0 ""
+                             ,Instruction opVerifyCookie 234        0 ""
+                             ,Instruction opOpenWrite    0          0 "NMSqL_Master"
+                             ,Instruction opRewind       0          0 ""
+                             ,Instruction opNoop         0          1 ""
+                             ,Instruction opString       0          0 "idx_xxx_a"
+                             ,Instruction opColumn       0          1 ""
+                             ,Instruction opJNe          0          2 ""
+                             ,Instruction opColumn       0          3 ""
+                             ,Instruction opDelete       0          0 ""
+                             ,Instruction opDestroy      0          0 ""
+                             ,Instruction opGoto         0          0 ""
+                             ,Instruction opNoop         0          2 ""
+                             ,Instruction opNext         0          0 ""
+                             ,Instruction opGoto         0          1 ""
+                             ,Instruction opNoop         0          0 ""
+                             ,Instruction opSetCookie    1725595867 0 ""
+                             ,Instruction opClose        0          0 ""
+                             ,Instruction opCommit       0          0 ""
+
+                    ]
     ]

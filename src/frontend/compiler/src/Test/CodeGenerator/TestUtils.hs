@@ -8,6 +8,7 @@ import CodeGeneratorUtils
 
 import Generator.Expr
 import Generator.Table
+import Generator.Index
 
 import Test.HUnit
 import Control.Applicative
@@ -41,6 +42,9 @@ cSelectStr s = cSelectWrapper (runParser select s)
 
 cTableActionStr :: String -> CodeGenEnv
 cTableActionStr s = cTableAction (runParser (createTable <|> dropTable) s)
+
+cIndexActionStr :: String -> CodeGenEnv
+cIndexActionStr s = cIndexAction (runParser (createIndex <|> dropIndex) s)
 
 runParser :: Parser a -> String -> a
 runParser p s = case parse p s of

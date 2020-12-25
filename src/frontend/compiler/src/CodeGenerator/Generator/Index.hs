@@ -8,7 +8,6 @@ import TableMetadata
 import CodeGeneratorUtils
 
 import Data.List
-import Data.Maybe
 import Control.Monad.Except
 
 
@@ -19,11 +18,11 @@ cIndexAction = \case
                               ,Instruction opVerifyCookie (cookie mds) 0 ""
                               ,Instruction opOpenWrite    0            0 "NMSqL_Master"]
         >> createIndex idxName tbName (show ast)
-        >> appendInstructions [Instruction opClose  0 0 ""
-                              ,Instruction opOpen   0 0 tbName
-                              ,Instruction opOpen   1 0 idxName
-                              ,Instruction opRewind 0 0 ""
-                              ,Instruction opNoop   0 1 ""]
+        >> appendInstructions [Instruction opClose     0 0 ""
+                              ,Instruction opOpen      0 0 tbName
+                              ,Instruction opOpenWrite 1 0 idxName
+                              ,Instruction opRewind    0 0 ""
+                              ,Instruction opNoop      0 1 ""]
         >> updateIndex mds
         >> appendInstructions [Instruction opNoop      0               2 ""
                               ,Instruction opNext      0               0 ""
@@ -35,18 +34,27 @@ cIndexAction = \case
                               ,Instruction opCommit    0               0 ""]
         where
             updateIndex mds = case filter (\md -> metadata_name md == tbName) mds of
-                [md] -> let cols  = metadata_column md
-                            idxes = map (fromMaybe (-1) . (`elemIndex` cols) . fst) idxDefs
-                            other = filter (`notElem` idxes) [0 .. length cols - 1]
-                         in appendInstructions (map (\idx -> Instruction opColumn 0 idx "") idxes)
+                [md] -> let cols   = metadata_column md
+                            idxes  = map (\df -> colIdx (fst df) cols) idxDefs
+                            idxes' = map (\case (Right i) -> i; _ -> -1) idxes
+                            other  = filter (`notElem` idxes') [0 .. length cols - 1]
+                         in connectCodeGenEnv (map idxToCol idxes)
                          >> appendInst opMakeKey (length idxes) 0 ""
                          >> appendInstructions (map (\idx -> Instruction opColumn 0 idx "") other)
                          >> appendInstructions [Instruction opMakeRecord (length other) 0 ""
                                                ,Instruction opPut 1 0 ""]
                 _ -> throwError $ "no such table: " ++ tbName
 
+            colIdx col cols = case col `elemIndex` cols of
+                Nothing -> Left $ "no such column: " ++ col
+                Just  i -> Right i
+
+            idxToCol idx = case idx of
+                Right i -> appendInst opColumn 0 i ""
+                Left er -> throwError er
+
     DropIndex idxName -> getMetadata >>= \mds
-        -> if not $ idxExists idxName mds then throwError $ "not such index: " ++ idxName else doNothing
+        -> if not $ idxExists idxName mds then throwError $ "no such index: " ++ idxName else doNothing
         >> appendInstructions
                 [Instruction opTransaction  0                         0 ""
                 ,Instruction opVerifyCookie (cookie mds)              0 ""

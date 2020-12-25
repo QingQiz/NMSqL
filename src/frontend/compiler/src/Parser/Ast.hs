@@ -135,7 +135,6 @@ data TableActon = CreateTable TableName [ColumnDef] [TableContraint]
 ----------------------------------------------------------
 data IndexAction = CreateIndex IndexName TableName [(ColumnName, SortOrder)]
                  | DropIndex IndexName
-                 deriving (Show)
 
 ----------------------------------------------------------
 -- Instance Show for Expr
@@ -223,3 +222,7 @@ instance Show TableActon where
             tbCtt'  = concatMap (\x -> "," ++ show x) tbCtt
          in "CREATE TABLE " ++ name ++ " (" ++ colDef' ++ tbCtt' ++ ")"
     show (DropTable name) = "DROP TABLE " ++ name
+
+instance Show IndexAction where
+    show (CreateIndex idxName tbName defs) = "CREATE INDEX " ++ idxName ++ " ON " ++ tbName ++ "(" ++ intercalate "," (map fst defs) ++ ")"
+    show (DropIndex idxName) = "DROP INDEX " ++ idxName
