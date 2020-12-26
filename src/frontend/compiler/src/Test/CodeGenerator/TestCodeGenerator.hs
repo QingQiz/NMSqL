@@ -185,7 +185,7 @@ codeGeneratorTest = test [
                     ?: Left "No such function: asd"
 
     , "func call"   ~: "too few arguments"
-                    ~: cExprStr "min()"
+                    ~: cExprStr "min(a)"
                     ?: Left "Too few arguments to function: min"
 
     , "func call"   ~: "too many arguments"
@@ -651,7 +651,26 @@ codeGeneratorTest = test [
                              ,Instruction opNoop         0          0 ""
                              ,Instruction opSetCookie    1725595867 0 ""
                              ,Instruction opClose        0          0 ""
-                             ,Instruction opCommit       0          0 ""
-
-                    ]
+                             ,Instruction opCommit       0          0 ""]
+----------------------------------------------------------
+-- Test code generator: delete from
+----------------------------------------------------------
+    , "delete"  ~: "delete from xxx"
+                ~: cDeleteStr "delete from xxx"
+                ?: Right [Instruction opTransaction  0          0 ""
+                         ,Instruction opVerifyCookie 234        0 ""
+                         ,Instruction opOpen         0          0 "NMSqL_Master"
+                         ,Instruction opRewind       0          0 ""
+                         ,Instruction opNoop         0          1 ""
+                         ,Instruction opString       0          0 "xxx"
+                         ,Instruction opColumn       0          2 ""
+                         ,Instruction opJNe          0          2 ""
+                         ,Instruction opColumn       0          3 ""
+                         ,Instruction opClear        0          0 ""
+                         ,Instruction opNoop         0          2 ""
+                         ,Instruction opNext         0          0 ""
+                         ,Instruction opGoto         0          1 ""
+                         ,Instruction opNoop         0          0 ""
+                         ,Instruction opClose        0          0 ""
+                         ,Instruction opCommit       0          0 ""]
     ]

@@ -10,6 +10,9 @@ import CodeGeneratorUtils
 
 import Generator.Expr (cExpr, isConstExpr)
 import Generator.Select (cSelect)
+import Generator.Table (cTableAction)
+import Generator.Index (cIndexAction)
+import Generator.Delete (cDelete)
 
 import Data.List
 import Data.Maybe
@@ -26,17 +29,22 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                 >> wrapperIdx idxNames (map trd3 inp) lab
                 >> mkLabel lab
 
+        len = length allTbNames
+
         openTbAndIdx =
             let listToOpen = collectTbOrIdx allTbNames tbNames idxNames
-             in connectCodeGenEnv
-              $ zipWith (\name idx -> appendInst opOpen idx 0 name) listToOpen [0..]
+             in connectCodeGenEnv (zipWith (\name idx -> getWriteFlag >>= \wf
+                                                      -> appendInst (if wf then opOpenWrite else opOpen) idx 0 name
+                                                      >> getCursorOpened >>= \co
+                                                      -> putCursorOpened (name : co)) listToOpen [0 .. len - 1])
+             >> putCursor len
             where
                 collectTbOrIdx (tn:tns) tbs idxes
                     | tn `elem` tbs = head idxes : collectTbOrIdx tns (tail tbs) (tail idxes)
                     | otherwise     = tn         : collectTbOrIdx tns tbs idxes
                 collectTbOrIdx _ _ _ = []
 
-        closeTbAndIdx = connectCodeGenEnv [appendInst opClose i 0 "" | i <- [0 .. (length allTbNames - 1)]]
+        closeTbAndIdx = connectCodeGenEnv [appendInst opClose i 0 "" | i <- [0 .. len - 1]]
 
         wrapperIdx :: [String] -> [[Expr]] -> Int -> CodeGenEnv
         wrapperIdx (idx:idxes) (key:keys) labEnd =
@@ -166,3 +174,15 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
 
 cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
 cSelectWrapper a b = cSelect a b >> removeTemp
+
+
+cIndexActionWrapper :: IndexAction -> CodeGenEnv
+cIndexActionWrapper = cIndexAction
+
+
+cTableActionWrapper :: TableActon -> CodeGenEnv
+cTableActionWrapper = cTableAction
+
+
+cDeleteWrapper :: Delete -> CodeGenEnv
+cDeleteWrapper = cDelete

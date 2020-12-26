@@ -12,15 +12,15 @@ import Control.Monad.Except
 
 cTableAction :: TableActon -> CodeGenEnv
 cTableAction = \case
-    ast@(CreateTable name colDef tbCtt) -> getMetadata >>= (\cookie
-        -> appendInstructions [Instruction opTransaction  0      0 ""
-                              ,Instruction opVerifyCookie cookie 0 ""
-                              ,Instruction opOpenWrite    0      0 "NMSqL_Master"]
+    ast@(CreateTable name colDef tbCtt) -> getMetadata >>= (\c
+        -> appendInstructions [Instruction opTransaction  0 0 ""
+                              ,Instruction opVerifyCookie c 0 ""
+                              ,Instruction opOpenWrite    0 0 "NMSqL_Master"]
         >> connectCodeGenEnv (map (\i -> createIdx (mkIdxName i) name) [1..idxNum])
         >> createTable name (show ast)
-        >> appendInstructions [Instruction opSetCookie (nextCookie cookie) 0 ""
-                              ,Instruction opClose     0                   0 ""
-                              ,Instruction opCommit    0                   0 ""]
+        >> appendInstructions [Instruction opSetCookie (nextCookie c) 0 ""
+                              ,Instruction opClose     0              0 ""
+                              ,Instruction opCommit    0              0 ""]
         ) . metadata_cookie . head
         where
             idxNum =
@@ -52,7 +52,6 @@ cTableAction = \case
                 ,Instruction opClose        0                         0 ""
                 ,Instruction opCommit       0                         0 ""]
            else throwError $ "no such table: " ++ tbName
-           where cookie = metadata_cookie . head
 
 
 -- -----------------------------------------
