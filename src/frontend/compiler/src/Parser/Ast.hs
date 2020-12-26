@@ -122,7 +122,6 @@ data Insert = Insert TableName [ColumnName] ValueList
 -- Delete Stmt
 ----------------------------------------------------------
 data Delete = Delete TableName (Maybe Expr)
-            deriving (Show)
 
 ----------------------------------------------------------
 -- Create and Drop Table Stmt

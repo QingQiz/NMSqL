@@ -36,13 +36,11 @@ cIndexAction = \case
             updateIndex mds = case filter (\md -> metadata_name md == tbName) mds of
                 [md] -> let cols   = metadata_column md
                             idxes  = map (\df -> colIdx (fst df) cols) idxDefs
-                            idxes' = map (\case (Right i) -> i; _ -> -1) idxes
-                            other  = filter (`notElem` idxes') [0 .. length cols - 1]
                          in connectCodeGenEnv (map idxToCol idxes)
                          >> appendInst opMakeKey (length idxes) 0 ""
-                         >> appendInstructions (map (\idx -> Instruction opColumn 0 idx "") other)
-                         >> appendInstructions [Instruction opMakeRecord (length other) 0 ""
-                                               ,Instruction opPut 1 0 ""]
+                         >> appendInstructions [Instruction opAddress    0 0 ""
+                                               ,Instruction opMakeRecord 1 0 ""
+                                               ,Instruction opPut        1 0 ""]
                 _ -> throwError $ "no such table: " ++ tbName
 
             colIdx col cols = case col `elemIndex` cols of

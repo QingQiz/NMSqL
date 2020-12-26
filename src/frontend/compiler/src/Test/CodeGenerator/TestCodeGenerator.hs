@@ -614,9 +614,8 @@ codeGeneratorTest = test [
                              ,Instruction opColumn       0          3 ""
                              ,Instruction opMakeKey      2          0 ""
                              -- index value
-                             ,Instruction opColumn       0          1 ""
-                             ,Instruction opColumn       0          2 ""
-                             ,Instruction opMakeRecord   2          0 ""
+                             ,Instruction opAddress      0          0 ""
+                             ,Instruction opMakeRecord   1          0 ""
                              -- update index
                              ,Instruction opPut          1          0 ""
                              ,Instruction opNoop         0          2 ""

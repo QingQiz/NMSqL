@@ -122,6 +122,7 @@ opSetSetFound    = 117 :: Integer
 opSetSetNotFound = 118 :: Integer
 opSetSetEmpty    = 119 :: Integer
 opDefaultKey     = 120 :: Integer
+opAddress        = 121 :: Integer
 
 instructions = [
      "opTempInst"
