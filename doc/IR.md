@@ -129,6 +129,7 @@ IR大致可以分为以下几类：
 |118|SetSetNotFound|Y|Y|N|出栈一个元素 若此元素在第P1个Set中没出现 则将P2压栈，否则将 `0` 压栈|
 |119|SetSetEmpty|Y|Y|N|若第P1个Set为空 则将P2压栈，否则将 `0` 压栈|
 |120|DefaultKey|Y|N|N|获取 cursor P1 的默认 Key 并压栈，默认 Key 暂时定为 **空字符串**|
+|121|Address|Y|N|N|将 cursor P1 指向的数据的地址 （pagenumber+offset）压栈|
 
 ### Removed IR
 
