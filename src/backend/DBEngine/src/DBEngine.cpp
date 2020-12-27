@@ -103,8 +103,9 @@ int insert(Cursor *cursor, const void *key, const void *value) {
     key_t k(extractString((const char *) key).c_str());
     string data = extractString((const char *) value);
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = cursor->cursor;
+        auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
+        bpTree.insert(btcursor, *((key_t *) key), (void *) data.c_str());
         return INSERT_SUCCESS;
     } else {
         return INSERT_FAILED;
@@ -124,8 +125,8 @@ int erase(Cursor *cursor) {
 }
 
 int next(Cursor *cursor) {
-    if (cursor->cursorType==CURSOR_BTREE){
-        auto *btcursor=(btCursor *) cursor->cursor;
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
         bpTree.next(btcursor);
         bpTree.close();
@@ -136,8 +137,8 @@ int next(Cursor *cursor) {
 }
 
 int reset(Cursor *cursor) {
-    if (cursor->cursorType==CURSOR_BTREE){
-        auto *btcursor=(btCursor *) cursor->cursor;
+    if (cursor->cursorType == CURSOR_BTREE) {
+        auto *btcursor = (btCursor *) cursor->cursor;
         BPTree bpTree;
         bpTree.first(btcursor);
         bpTree.close();
@@ -148,17 +149,34 @@ int reset(Cursor *cursor) {
 }
 
 
-int createTable(const char *sql) {}
+int createTable(const char *sql) {
+    string data = extractString((sql));
+    data = data.substr(13);
+    BPTree bpTree;
+    auto ret = bpTree.create((char *) data.c_str());
+    return (int) ret;
+}
 
-int reorganize() {}
+int reorganize() {
+    return REORGANIZE_FAILED;
+}
 
-void *getMetaData(const char *tableName) {}
+void *getMetaData(const char *tableName) {
+    return NULL;
+}
 
-int getCookies() {}
+int getCookies() {
+    return 0;
+}
 
-int setCookies(int cookies){}
+int setCookies(int cookies) {
+    return SET_COOKIES_FAILED;
+}
 
-char **getTableColumns(const char *tableName) {}
+char **getTableColumns(const char *tableName) {
+    // 好像没有这个接口
+    return NULL;
+}
 
 /*
  * 事务相关
