@@ -185,4 +185,4 @@ cTableActionWrapper = cTableAction
 
 
 cDeleteWrapper :: Delete -> CodeGenEnv
-cDeleteWrapper = cDelete
+cDeleteWrapper d = cDelete d >> removeTemp

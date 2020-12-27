@@ -32,14 +32,13 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                        ,Instruction opGoto    0 1 ""
                        ,Instruction opNoop    0 0 ""
                        ,Instruction opClose   0 0 ""]
-        Just cond -> appendInst opListOpen 0 0 ""
-                  >> putWriteFlag True >> cExprWrapper cond
+        Just cond -> putWriteFlag True >> cExprWrapper cond
                   >> getCursorOpened >>= \co
                   -> insertTemp (deleteFromIndex idxs co >> appendInst opDelete 0 0 "")
                   >> putWriteFlag False where
+
             md   = head mds
             idxs = metadata_index md
-            idxN = length idxs
 
             -- delete only refer to one table, so cursor number must be 1
             -- co is cursor name opened
@@ -48,7 +47,8 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                 then doNothing
                 else getLabel >>= \lab ->
                      appendInstructions
-                        [Instruction opOpenWrite 1  0         ""
+                        [Instruction opOpenWrite 1  0         tbName
+                        ,Instruction opRewind    1  0         ""
                         ,Instruction opNoop      0  (lab + 1) ""
                         ,Instruction opAddress   0  0         ""
                         ,Instruction opAddress   1  0         ""
@@ -67,8 +67,8 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                 then doNothing >> deleteFromIndex xs co
                 else let idx = map (snd . (`columnIdx` mds)) colNames
                          key = appendInstructions (map (\i -> Instruction opColumn 0 i "") idx)
-                            >> appendInst opMakeKey  idxN 0 ""
-                            >> appendInst opBeginIdx 1    0 ""
+                            >> appendInst opMakeKey  (length colNames) 0 ""
+                            >> appendInst opBeginIdx 1                 0 ""
                       in appendInst opOpenWrite 1 0 name >> key >> getLabel >>= \lab
                       -> appendInstructions
                             [Instruction opNoop    0  (lab + 1) ""

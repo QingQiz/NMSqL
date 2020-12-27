@@ -1,7 +1,7 @@
 module TestCodeGenerator where
 
 
-import Ast ( Expr(EmptyExpr), CompoundOp(Union) )
+import Ast
 import TestUtils
 import Instruction
 import CodeGenerator
@@ -655,22 +655,145 @@ codeGeneratorTest = test [
 ----------------------------------------------------------
 -- Test code generator: delete from
 ----------------------------------------------------------
+    , "delete"  ~: "delete from asd"
+                ~: cDeleteStr "delete from asd"
+                ?: Left "no such table: asd"
+
     , "delete"  ~: "delete from xxx"
                 ~: cDeleteStr "delete from xxx"
-                ?: Right [Instruction opTransaction  0          0 ""
-                         ,Instruction opVerifyCookie 234        0 ""
-                         ,Instruction opOpen         0          0 "NMSqL_Master"
-                         ,Instruction opRewind       0          0 ""
-                         ,Instruction opNoop         0          1 ""
-                         ,Instruction opString       0          0 "xxx"
-                         ,Instruction opColumn       0          2 ""
-                         ,Instruction opJNe          0          2 ""
-                         ,Instruction opColumn       0          3 ""
-                         ,Instruction opClear        0          0 ""
-                         ,Instruction opNoop         0          2 ""
-                         ,Instruction opNext         0          0 ""
-                         ,Instruction opGoto         0          1 ""
-                         ,Instruction opNoop         0          0 ""
-                         ,Instruction opClose        0          0 ""
-                         ,Instruction opCommit       0          0 ""]
+                ?: Right [Instruction opTransaction  0   0 ""
+                         ,Instruction opVerifyCookie 234 0 ""
+                         ,Instruction opOpen         0   0 "NMSqL_Master"
+                         ,Instruction opRewind       0   0 ""
+                         ,Instruction opNoop         0   1 ""
+                         ,Instruction opString       0   0 "xxx"
+                         ,Instruction opColumn       0   2 ""
+                         ,Instruction opJNe          0   2 ""
+                         ,Instruction opColumn       0   3 ""
+                         ,Instruction opClear        0   0 ""
+                         ,Instruction opNoop         0   2 ""
+                         ,Instruction opNext         0   0 ""
+                         ,Instruction opGoto         0   1 ""
+                         ,Instruction opNoop         0   0 ""
+                         ,Instruction opClose        0   0 ""
+                         ,Instruction opCommit       0   0 ""]
+
+    , "delete"  ~: "delete from xxx where a = 1"
+                ~: cDeleteStr "delete from xxx where a = 1"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""]
+                /: (getMetadata >>= \mds -> putMetadata [head mds] >> putWriteFlag True)
+                -- after do this, label should be 3
+                +: cExprWrapperStr "a=1"
+                -- delete data from idx_xxx_a_b
+                -- after do this, label should be 6
+                +: insertTemp (appendInstructions
+                    [Instruction opOpenWrite    1 0 "idx_xxx_a_b"
+                    -- make key (a, b) for index_xxx_a_b
+                    ,Instruction opColumn       0 0 ""
+                    ,Instruction opColumn       0 1 ""
+                    ,Instruction opMakeKey      2 0 ""
+                    -- begin index
+                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opNoop         0 4 ""
+                    -- compare address, jump when negative
+                    ,Instruction opAddress      0 0 ""
+                    ,Instruction opAddress      1 0 ""
+                    ,Instruction opJNe          0 5 ""
+                    -- delete and break
+                    ,Instruction opDelete       1 0 ""
+                    ,Instruction opGoto         0 3 ""
+                    --
+                    ,Instruction opNoop         0 5 ""
+                    ,Instruction opNextIdx      0 3 ""
+                    ,Instruction opGoto         0 4 ""
+                    ,Instruction opNoop         0 3 ""
+                    --
+                    ,Instruction opClose        1 0 ""])
+                -- delte from table
+                +: insertTemp (appendInstructions
+                    [Instruction opOpenWrite    1 0 "xxx"
+                    -- rewind
+                    ,Instruction opRewind       1 0 ""
+                    ,Instruction opNoop         0 7 ""
+                    -- compare address, jump when negative
+                    ,Instruction opAddress      0 0 ""
+                    ,Instruction opAddress      1 0 ""
+                    ,Instruction opJNe          0 8 ""
+                    -- delete and break
+                    ,Instruction opDelete       1 0 ""
+                    ,Instruction opGoto         0 6 ""
+                    --
+                    ,Instruction opNoop         0 8 ""
+                    ,Instruction opNext         0 6 ""
+                    ,Instruction opGoto         0 7 ""
+                    ,Instruction opNoop         0 6 ""
+                    --
+                    ,Instruction opClose        1 0 ""])
+                -- delete from index_xxx_a
+                +: insertTemp (appendInst opDelete 0 0 "")
+                +: removeTemp
+                >: Right [Instruction opCommit 0 0 ""]
+
+    , "delete"  ~: "delete from xxx where b = 1"
+                ~: cDeleteStr "delete from xxx where b = 1"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""]
+                /: (getMetadata >>= \mds -> putMetadata [head mds] >> putWriteFlag True)
+                -- after do this, label should be 3
+                +: cExprWrapperStr "b=1"
+                -- delete data from idx_xxx_a
+                -- after do this, label should be 6
+                +: insertTemp (appendInstructions
+                    [Instruction opOpenWrite    1 0 "idx_xxx_a"
+                    -- make key (a) for index_xxx_a
+                    ,Instruction opColumn       0 0 ""
+                    ,Instruction opMakeKey      1 0 ""
+                    -- begin index
+                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opNoop         0 4 ""
+                    -- compare address, jump when negative
+                    ,Instruction opAddress      0 0 ""
+                    ,Instruction opAddress      1 0 ""
+                    ,Instruction opJNe          0 5 ""
+                    -- delete and break
+                    ,Instruction opDelete       1 0 ""
+                    ,Instruction opGoto         0 3 ""
+                    --
+                    ,Instruction opNoop         0 5 ""
+                    ,Instruction opNextIdx      0 3 ""
+                    ,Instruction opGoto         0 4 ""
+                    ,Instruction opNoop         0 3 ""
+                    --
+                    ,Instruction opClose        1 0 ""])
+                -- delte from idx_xxx_a_b
+                +: insertTemp (appendInstructions
+                    [Instruction opOpenWrite    1 0 "idx_xxx_a_b"
+                    -- make key (a,b) for index_xxx_a_b
+                    ,Instruction opColumn       0 0 ""
+                    ,Instruction opColumn       0 1 ""
+                    ,Instruction opMakeKey      2 0 ""
+                    -- begin index
+                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opNoop         0 7 ""
+                    -- compare address, jump when negative
+                    ,Instruction opAddress      0 0 ""
+                    ,Instruction opAddress      1 0 ""
+                    ,Instruction opJNe          0 8 ""
+                    -- delete and break
+                    ,Instruction opDelete       1 0 ""
+                    ,Instruction opGoto         0 6 ""
+                    --
+                    ,Instruction opNoop         0 8 ""
+                    ,Instruction opNextIdx      0 6 ""
+                    ,Instruction opGoto         0 7 ""
+                    ,Instruction opNoop         0 6 ""
+                    --
+                    ,Instruction opClose        1 0 ""])
+                -- delete from table
+                +: insertTemp (appendInst opDelete 0 0 "")
+                +: removeTemp
+                >: Right [Instruction opCommit 0 0 ""]
     ]
