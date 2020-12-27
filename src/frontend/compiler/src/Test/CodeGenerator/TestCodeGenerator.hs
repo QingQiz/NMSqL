@@ -520,6 +520,51 @@ codeGeneratorTest = test [
                         ,Instruction opCallback 2 0 ""]
                     +: removeTemp
                     >: Right []
+    , "select"      ~: "select * from xxx where a in (select a from yyy)"
+                    ~: cSelectStr "select * from xxx where a in (select a from yyy)" Normal
+                    ?: Right [Instruction opColumnCount  4   0 ""
+                             ,Instruction opColumnName   0   0 "xxx.a"
+                             ,Instruction opColumnName   1   0 "xxx.b"
+                             ,Instruction opColumnName   2   0 "xxx.c"
+                             ,Instruction opColumnName   3   0 "xxx.x"
+                             ,Instruction opSetOpen      0 0 ""
+                             -- select from yyy and write result to set
+                             ,Instruction opOpen         0   0 "yyy"
+                             ,Instruction opVerifyCookie 234 0 ""
+                             ,Instruction opRewind       0   0 ""
+                             ,Instruction opNoop         0   4 ""
+                             -- where-cond
+                             ,Instruction opInteger      1   0 ""
+                             ,Instruction opJIf          1   5 ""
+                             -- select result
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opSetInsert    0   0 ""
+                             ,Instruction opNoop         0   5 ""
+                             ,Instruction opNext         0   3 ""
+                             ,Instruction opGoto         0   4 ""
+                             ,Instruction opNoop         0   3 ""
+                             ,Instruction opClose        0   0 ""
+                             -- select from xxx
+                             ,Instruction opOpen         0   0 "xxx"
+                             ,Instruction opVerifyCookie 234 0 ""
+                             ,Instruction opRewind       0   0 ""
+                             ,Instruction opNoop         0   1 ""
+                             -- where-cond
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opSetSetFound  0   1 ""
+                             ,Instruction opJIf          1   2 ""
+                             -- select result
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opColumn       0   1 ""
+                             ,Instruction opColumn       0   2 ""
+                             ,Instruction opColumn       0   3 ""
+                             ,Instruction opCallback     4   0 ""
+                             --
+                             ,Instruction opNoop         0   2 ""
+                             ,Instruction opNext         0   0 ""
+                             ,Instruction opGoto         0   1 ""
+                             ,Instruction opNoop         0   0 ""
+                             ,Instruction opClose        0   0 ""]
 ----------------------------------------------------------
 -- Test code generator: create table / drop table
 ----------------------------------------------------------

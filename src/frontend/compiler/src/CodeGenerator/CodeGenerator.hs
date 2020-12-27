@@ -174,7 +174,11 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                     inIndex _ = False
 
 cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
-cSelectWrapper a b = cSelect a b >> removeTemp
+cSelectWrapper a b = getMetadata >>= \mds
+    -> resetMetadata
+    >> cSelect a b
+    >> putMetadata mds
+    >> removeTemp
 
 
 cIndexActionWrapper :: IndexAction -> CodeGenEnv

@@ -17,10 +17,13 @@ import Control.Monad.Except
 
 type CGTestCase = (CodeGenEnv, CodeGenRes)
 
+tbMd :: [TableMetadata]
+tbMd = [TableMetadata "xxx" [("idx_xxx_a", ["a"]), ("idx_xxx_a_b", ["a", "b"])] ["a", "b", "c", "x"] 234
+       ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 234]
+
 testEnv :: CodeGenState
 testEnv = (
-    ([TableMetadata "xxx" [("idx_xxx_a", ["a"]), ("idx_xxx_a_b", ["a", "b"])] ["a", "b", "c", "x"] 234
-     ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 234]
+    ( (tbMd, tbMd)
     , [("max", 2), ("min", 2), ("substr", 3)])
     , ([], [], 0)
     , (CodeGenCnt 0 0 0 0 [] False))

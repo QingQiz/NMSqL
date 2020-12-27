@@ -47,7 +47,7 @@ compile sql_c = do
             let mds = mapM getTableMetadata tables
              in mds >>= \mds' -> return $ (,,)
                     ((,)
-                        mds'
+                        (mds', mds')
                         [("max", 2), ("min", 2), ("substr", 3)])
                     ([], [], 0)
                     (CodeGenCnt 0 0 0 0 [] False)

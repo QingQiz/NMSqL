@@ -22,12 +22,10 @@ cSelect :: Select -> SelectResultType -> CodeGenEnv
 cSelect select selType =
     let selRes       = selectResult select
         selWhere     = fromMaybe EmptyExpr (selectWhere select)
-        tableName    = selectTableName select
-        newMd        = filter (\md -> metadata_name md `elem` tableName)
-     in getMetadata >>= \mds -> putMetadata (newMd mds)
+     in filterMetadata (\md -> metadata_name md `elem` selectTableName select)
      >> cExprWrapper selWhere
      >> cSelRes selRes selType
-     >> putMetadata mds
+     >> resetMetadata
      >> getRes
 
 
