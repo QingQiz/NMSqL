@@ -13,6 +13,7 @@ import Generator.Select (cSelect)
 import Generator.Table (cTableAction)
 import Generator.Index (cIndexAction)
 import Generator.Delete (cDelete)
+import Generator.Insert (cInsert)
 
 import Data.List
 import Data.Maybe
@@ -186,3 +187,6 @@ cTableActionWrapper = cTableAction
 
 cDeleteWrapper :: Delete -> CodeGenEnv
 cDeleteWrapper d = cDelete d >> removeTemp
+
+cInsertWrapper :: Insert -> CodeGenEnv
+cInsertWrapper = cInsert

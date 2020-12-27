@@ -44,6 +44,9 @@ cTableActionStr s = cTableActionWrapper (runParser (createTable <|> dropTable) s
 cIndexActionStr :: String -> CodeGenEnv
 cIndexActionStr s = cIndexActionWrapper (runParser (createIndex <|> dropIndex) s)
 
+cInsertStr :: String -> CodeGenEnv
+cInsertStr s = cInsertWrapper (runParser insert s)
+
 cDeleteStr :: String -> CodeGenEnv
 cDeleteStr s = cDeleteWrapper (runParser delete s)
 

@@ -339,7 +339,8 @@ expr = pd1 where
 insert = matchTwoAndRet "insert" "into" Insert
     <*> ident
     <*> (surroundByBrackets (argsList ident) <|> return [])
-    <*> (matchAndRet "values" ValueList <*> surroundByBrackets (argsList expr) <|> SelectResult <$> maySurroundByBrackets select)
+    <*> (matchAndRet "values" (ValueList . map ConstValue) <*> surroundByBrackets (argsList value) <|>
+                               SelectResult <$> maySurroundByBrackets select)
 
 
 -- sql ::= UPDATE table-name SET assignment [, assignment]* [WHERE expression]

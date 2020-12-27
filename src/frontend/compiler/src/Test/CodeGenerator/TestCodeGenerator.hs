@@ -796,4 +796,55 @@ codeGeneratorTest = test [
                 +: insertTemp (appendInst opDelete 0 0 "")
                 +: removeTemp
                 >: Right [Instruction opCommit 0 0 ""]
+----------------------------------------------------------
+-- Test code generator: insert into
+----------------------------------------------------------
+    , "insert"  ~: "insert into asd values (1,2,3,4)"
+                ~: cInsertStr "insert into asd values (1,2,3,4)"
+                ?: Left "no such table: asd"
+
+    , "insert"  ~: "insert into xxx (asd, a, b) values (1, 2,3)"
+                ~: cInsertStr "insert into xxx (asd, a, b) values (1, 2,3)"
+                ?: Left "no such column: asd"
+
+    , "insert"  ~: "insert into xxx values (1, 2,3)"
+                ~: cInsertStr "insert into xxx values (1, 2,3)"
+                ?: Left "3 value(s) for 4 column(s)"
+
+    , "insert"  ~: "insert into xxx (a,b) values (1, 2,3)"
+                ~: cInsertStr "insert into xxx (a,b) values (1, 2,3)"
+                ?: Left "3 value(s) for 2 column(s)"
+
+    , "insert"  ~: "insert into xxx values (1,2,3,4)"
+                ~: cInsertStr "insert into xxx values (1,2,3,4)"
+                ?: Right
+                    [Instruction opTransaction 0 0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- insert into table
+                    ,Instruction opOpenWrite  0 0 "xxx"
+                    ,Instruction opDefaultKey 0 0 ""
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opInteger    3 0 ""
+                    ,Instruction opInteger    4 0 ""
+                    ,Instruction opMakeRecord 4 0 ""
+                    ,Instruction opPut        0 0 ""
+                    -- insert into idx_xxx_a
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opMakeKey    1 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- insert into idx_xxx_a_b
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opMakeKey    2 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a_b"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- close and commit
+                    ,Instruction opClose      0 0 ""
+                    ,Instruction opCommit     0 0 ""]
     ]
