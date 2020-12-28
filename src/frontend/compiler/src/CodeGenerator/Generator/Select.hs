@@ -69,14 +69,14 @@ cSelRes selRes selType = cSelRes' >> putSelRes >> configOutput where
                >> getAgg >>= (\case
                       0 -> insertTemp (appendInstructions
                                [Instruction opMakeRecord colNr 0 ""
-                               ,Instruction opDefaultKey 0     0 ""
+                               ,Instruction opDefaultKey cr    0 ""
                                ,Instruction opDup        1     0 ""
                                ,Instruction opPut        cr    0 ""
                                ,Instruction opPop        1     0 ""])
                       a -> prependEnv (appendInst opAggReset 0 a "")
                         >> appendInstructions
                                [Instruction opMakeRecord colNr 0 ""
-                               ,Instruction opDefaultKey 0     0 ""
+                               ,Instruction opDefaultKey cr    0 ""
                                ,Instruction opDup        1     0 ""
                                ,Instruction opPut        cr    0 ""
                                ,Instruction opPop        1     0 ""])

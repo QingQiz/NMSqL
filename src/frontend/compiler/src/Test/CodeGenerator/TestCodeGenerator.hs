@@ -863,7 +863,7 @@ codeGeneratorTest = test [
     , "insert"  ~: "insert into xxx values (1,2,3,4)"
                 ~: cInsertStr "insert into xxx values (1,2,3,4)"
                 ?: Right
-                    [Instruction opTransaction 0 0 ""
+                    [Instruction opTransaction  0   0 ""
                     ,Instruction opVerifyCookie 234 0 ""
                     -- insert into table
                     ,Instruction opOpenWrite  0 0 "xxx"
@@ -892,4 +892,129 @@ codeGeneratorTest = test [
                     -- close and commit
                     ,Instruction opClose      0 0 ""
                     ,Instruction opCommit     0 0 ""]
+
+    , "insert"  ~: "insert into xxx (c,b) values (1,2)"
+                ~: cInsertStr "insert into xxx (c,b) values (1,2)"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- insert into table
+                    ,Instruction opOpenWrite  0 0 "xxx"
+                    ,Instruction opDefaultKey 0 0 ""
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opMakeRecord 4 0 ""
+                    ,Instruction opPut        0 0 ""
+                    -- insert into idx_xxx_a
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opMakeKey    1 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- insert into idx_xxx_a_b
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opMakeKey    2 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a_b"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- close and commit
+                    ,Instruction opClose      0 0 ""
+                    ,Instruction opCommit     0 0 ""]
+
+    , "insert"  ~: "insert into xxx (a, b) select * from yyy"
+                ~: cInsertStr "insert into xxx (a, b) select * from yyy"
+                ?: Left "4 value(s) for 2 column(s)"
+
+    , "insert"  ~: "insert into xxx (b, a) select a,b from yyy"
+                ~: cInsertStr "insert into xxx (b,a) select a,b from yyy"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- open Temp Table
+                    ,Instruction opOpenTemp     1 0 ""
+                    ---------------------------------------
+                    -- select from yyy
+                    ,Instruction opOpen         0   0 "yyy"
+                    ,Instruction opVerifyCookie 234 0 ""
+                    --
+                    ,Instruction opRewind       0   0 ""
+                    ,Instruction opNoop         0   1 ""
+                    -- where-cond
+                    ,Instruction opInteger      1   0 ""
+                    ,Instruction opJIf          1   2 ""
+                    -- select result
+                    -- record
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opColumn       0   1 ""
+                    ,Instruction opMakeRecord   2   0 ""
+                    -- key
+                    ,Instruction opDefaultKey   1   0 ""
+                    -- swap top 2 entity in stack. stack: record,key -> record,key,record
+                    ,Instruction opDup          1   0 ""
+                    -- save result to temp table.  stack: record,key,record -> record
+                    ,Instruction opPut          1   0 ""
+                    -- pop useless item
+                    ,Instruction opPop          1   0 ""
+                    --
+                    ,Instruction opNoop         0   2 ""
+                    ,Instruction opNext         0   0 ""
+                    ,Instruction opGoto         0   1 ""
+                    ,Instruction opNoop         0   0 ""
+                    -- close table yyy
+                    ,Instruction opClose        0   0 ""
+                    ---------------------------------------
+                    -- select form temp table
+                    ,Instruction opRewind       1   0 ""
+                    ,Instruction opNoop         0   4 ""
+
+                    -- insert into table
+                    ,Instruction opOpenWrite    0   0 "xxx"
+                    ,Instruction opDefaultKey   0   0 ""
+                    -- record
+                    ,Instruction opColumn       1   1 ""
+                    ,Instruction opColumn       1   0 ""
+                    ,Instruction opNull         0   0 ""
+                    ,Instruction opNull         0   0 ""
+                    ,Instruction opMakeRecord   4   0 ""
+                    -- insert
+                    ,Instruction opPut          0   0 ""
+
+                    -- insert into idx_xxx_a
+                    -- key (from table xxx but temp table)
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opMakeKey      1   0 ""
+                    -- val
+                    ,Instruction opAddress      0   0 ""
+                    -- insert
+                    ,Instruction opOpenWrite    2   0 "idx_xxx_a"
+                    ,Instruction opPut          2   0 ""
+                    ,Instruction opClose        2   0 ""
+
+                    -- insert into idx_xxx_a_b
+                    -- key (from table xxx but temp table)
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opColumn       0   1 ""
+                    ,Instruction opMakeKey      2   0 ""
+                    -- val
+                    ,Instruction opAddress      0   0 ""
+                    -- insert
+                    ,Instruction opOpenWrite    2   0 "idx_xxx_a_b"
+                    ,Instruction opPut          2   0 ""
+                    ,Instruction opClose        2   0 ""
+
+                    -- close table xxx
+                    ,Instruction opClose        0   0 ""
+                    --
+                    ,Instruction opNext         1   3 ""
+                    ,Instruction opGoto         0   4 ""
+                    ,Instruction opNoop         0   3 ""
+                    -- close temp table
+                    ,Instruction opClose        1   0 ""
+                    --
+                    ,Instruction opCommit       0   0 ""]
     ]

@@ -147,6 +147,11 @@ prependEnv env = do
     newRes <- putRes [] >> env
     putRes $ newRes ++ oldRes
 
+appendEnv :: CodeGenEnv -> CodeGenEnv
+appendEnv env = do
+    oldRes <- getRes
+    newRes <- putRes [] >> env
+    putRes $ oldRes ++ newRes
 
 -- insert env before tempInstruction
 insertTemp :: CodeGenEnv -> CodeGenEnv
