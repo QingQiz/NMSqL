@@ -954,12 +954,10 @@ codeGeneratorTest = test [
                     ,Instruction opMakeRecord   2   0 ""
                     -- key
                     ,Instruction opDefaultKey   1   0 ""
-                    -- swap top 2 entity in stack. stack: record,key -> record,key,record
-                    ,Instruction opDup          1   0 ""
-                    -- save result to temp table.  stack: record,key,record -> record
+                    -- swap top 2 entity in stack
+                    ,Instruction opPull         1   0 ""
+                    -- save result to temp table
                     ,Instruction opPut          1   0 ""
-                    -- pop useless item
-                    ,Instruction opPop          1   0 ""
                     --
                     ,Instruction opNoop         0   2 ""
                     ,Instruction opNext         0   0 ""
