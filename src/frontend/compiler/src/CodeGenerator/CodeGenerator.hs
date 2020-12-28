@@ -13,6 +13,7 @@ import Generator.Select (cSelect)
 import Generator.Table (cTableAction)
 import Generator.Index (cIndexAction)
 import Generator.Delete (cDelete)
+import Generator.Insert (cInsert)
 
 import Data.List
 import Data.Maybe
@@ -173,7 +174,11 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                     inIndex _ = False
 
 cSelectWrapper :: Select -> SelectResultType -> CodeGenEnv
-cSelectWrapper a b = cSelect a b >> removeTemp
+cSelectWrapper a b = getMetadata >>= \mds
+    -> resetMetadata
+    >> cSelect a b
+    >> putMetadata mds
+    >> removeTemp
 
 
 cIndexActionWrapper :: IndexAction -> CodeGenEnv
@@ -186,3 +191,6 @@ cTableActionWrapper = cTableAction
 
 cDeleteWrapper :: Delete -> CodeGenEnv
 cDeleteWrapper d = cDelete d >> removeTemp
+
+cInsertWrapper :: Insert -> CodeGenEnv
+cInsertWrapper = cInsert

@@ -22,12 +22,10 @@ cSelect :: Select -> SelectResultType -> CodeGenEnv
 cSelect select selType =
     let selRes       = selectResult select
         selWhere     = fromMaybe EmptyExpr (selectWhere select)
-        tableName    = selectTableName select
-        newMd        = filter (\md -> metadata_name md `elem` tableName)
-     in getMetadata >>= \mds -> putMetadata (newMd mds)
+     in filterMetadata (\md -> metadata_name md `elem` selectTableName select)
      >> cExprWrapper selWhere
      >> cSelRes selRes selType
-     >> putMetadata mds
+     >> resetMetadata
      >> getRes
 
 
@@ -65,6 +63,22 @@ cSelRes selRes selType = cSelRes' >> putSelRes >> configOutput where
             0 -> insertTemp (appendInst opCallback  colNr 0 "")
             a -> prependEnv (appendInst opAggReset 0 a "")
               >> appendInst opCallback colNr 0 ""
+        -- same as Normal but replace opCallback with opMakeRecord and opPut
+        ToTemp -> getCursor >>= \cr -> putCursor (cr + 1)
+               >> prependEnv (appendInst opOpenTemp cr 0 "")
+               >> getAgg >>= (\case
+                      0 -> insertTemp (appendInstructions
+                               [Instruction opMakeRecord colNr 0 ""
+                               ,Instruction opDefaultKey cr    0 ""
+                               ,Instruction opPull       1     0 ""
+                               ,Instruction opPut        cr    0 ""])
+                      a -> prependEnv (appendInst opAggReset 0 a "")
+                        >> appendInstructions
+                               [Instruction opMakeRecord colNr 0 ""
+                               ,Instruction opDefaultKey cr    0 ""
+                               ,Instruction opPull       1     0 ""
+                               ,Instruction opPut        cr    0 ""])
+
         ToSorter  -> throwError "TODO Not implemented"
         UnionSel _ _  -> throwError "TODO Not implemented"
 

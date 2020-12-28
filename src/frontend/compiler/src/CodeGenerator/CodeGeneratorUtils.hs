@@ -30,7 +30,7 @@ type FunctionDef  = (String, Int) -- (func-name, func-param-cnt)
 
 type CodeGenCache = ([Instruction], [Instruction], Int)
 
-type CodeGenState = (([TableMetadata], [FunctionDef]), CodeGenCache, CodeGenCnt)
+type CodeGenState = ((([TableMetadata], [TableMetadata]), [FunctionDef]), CodeGenCache, CodeGenCnt)
 
 type ExceptTEnv a = ExceptT String (State CodeGenState) a
 
@@ -38,7 +38,7 @@ type CodeGenEnv   = ExceptTEnv [Instruction]
 
 type CodeGenRes   = Either String [Instruction]
 
-data SelectResultType = ToSet Int | ToSorter | Normal | UnionSel CompoundOp Int
+data SelectResultType = ToSet Int | ToSorter | Normal | UnionSel CompoundOp Int | ToTemp
 
 ----------------------------------------------------------
 -- some help functions
@@ -147,6 +147,11 @@ prependEnv env = do
     newRes <- putRes [] >> env
     putRes $ newRes ++ oldRes
 
+appendEnv :: CodeGenEnv -> CodeGenEnv
+appendEnv env = do
+    oldRes <- getRes
+    newRes <- putRes [] >> env
+    putRes $ oldRes ++ newRes
 
 -- insert env before tempInstruction
 insertTemp :: CodeGenEnv -> CodeGenEnv
@@ -173,11 +178,20 @@ trd3 (_, _, a) = a
 
 -- get table metadata from env
 getMetadata :: ExceptTEnv [TableMetadata]
-getMetadata = fst . fst3 <$> lift get
+getMetadata = fst . fst . fst3 <$> lift get
 
--- put table metadata to env
+-- alter metadata
 putMetadata :: [TableMetadata] -> CodeGenEnv
-putMetadata mds = get >>= (\((_, b), c, d) -> put ((mds, b), c, d)) >> doNothing
+putMetadata md = get >>= (\(((_, md2), b), c, d)
+    -> put (((md, md2), b), c, d)) >> doNothing
+
+filterMetadata :: (TableMetadata -> Bool) -> CodeGenEnv
+filterMetadata cond = get >>= (\(((_, md2), b), c, d)
+    -> put (((filter cond md2, md2), b), c, d)) >> doNothing
+
+resetMetadata :: CodeGenEnv
+resetMetadata = get >>= (\(((_, md2), b), c, d)
+    -> put (((md2, md2), b), c, d)) >> doNothing
 
 -- get function definations
 getFuncDef :: ExceptTEnv [FunctionDef]

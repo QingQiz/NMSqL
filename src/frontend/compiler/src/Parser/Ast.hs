@@ -116,7 +116,6 @@ data Update = Update TableName [(ColumnName, Expr)] (Maybe Expr)
 -- Insert Stmt
 ----------------------------------------------------------
 data Insert = Insert TableName [ColumnName] ValueList
-            deriving (Show)
 
 ----------------------------------------------------------
 -- Delete Stmt

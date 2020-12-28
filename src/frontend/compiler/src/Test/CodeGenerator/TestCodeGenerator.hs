@@ -520,6 +520,51 @@ codeGeneratorTest = test [
                         ,Instruction opCallback 2 0 ""]
                     +: removeTemp
                     >: Right []
+    , "select"      ~: "select * from xxx where a in (select a from yyy)"
+                    ~: cSelectStr "select * from xxx where a in (select a from yyy)" Normal
+                    ?: Right [Instruction opColumnCount  4   0 ""
+                             ,Instruction opColumnName   0   0 "xxx.a"
+                             ,Instruction opColumnName   1   0 "xxx.b"
+                             ,Instruction opColumnName   2   0 "xxx.c"
+                             ,Instruction opColumnName   3   0 "xxx.x"
+                             ,Instruction opSetOpen      0 0 ""
+                             -- select from yyy and write result to set
+                             ,Instruction opOpen         0   0 "yyy"
+                             ,Instruction opVerifyCookie 234 0 ""
+                             ,Instruction opRewind       0   0 ""
+                             ,Instruction opNoop         0   4 ""
+                             -- where-cond
+                             ,Instruction opInteger      1   0 ""
+                             ,Instruction opJIf          1   5 ""
+                             -- select result
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opSetInsert    0   0 ""
+                             ,Instruction opNoop         0   5 ""
+                             ,Instruction opNext         0   3 ""
+                             ,Instruction opGoto         0   4 ""
+                             ,Instruction opNoop         0   3 ""
+                             ,Instruction opClose        0   0 ""
+                             -- select from xxx
+                             ,Instruction opOpen         0   0 "xxx"
+                             ,Instruction opVerifyCookie 234 0 ""
+                             ,Instruction opRewind       0   0 ""
+                             ,Instruction opNoop         0   1 ""
+                             -- where-cond
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opSetSetFound  0   1 ""
+                             ,Instruction opJIf          1   2 ""
+                             -- select result
+                             ,Instruction opColumn       0   0 ""
+                             ,Instruction opColumn       0   1 ""
+                             ,Instruction opColumn       0   2 ""
+                             ,Instruction opColumn       0   3 ""
+                             ,Instruction opCallback     4   0 ""
+                             --
+                             ,Instruction opNoop         0   2 ""
+                             ,Instruction opNext         0   0 ""
+                             ,Instruction opGoto         0   1 ""
+                             ,Instruction opNoop         0   0 ""
+                             ,Instruction opClose        0   0 ""]
 ----------------------------------------------------------
 -- Test code generator: create table / drop table
 ----------------------------------------------------------
@@ -796,4 +841,178 @@ codeGeneratorTest = test [
                 +: insertTemp (appendInst opDelete 0 0 "")
                 +: removeTemp
                 >: Right [Instruction opCommit 0 0 ""]
+----------------------------------------------------------
+-- Test code generator: insert into
+----------------------------------------------------------
+    , "insert"  ~: "insert into asd values (1,2,3,4)"
+                ~: cInsertStr "insert into asd values (1,2,3,4)"
+                ?: Left "no such table: asd"
+
+    , "insert"  ~: "insert into xxx (asd, a, b) values (1, 2,3)"
+                ~: cInsertStr "insert into xxx (asd, a, b) values (1, 2,3)"
+                ?: Left "no such column: asd"
+
+    , "insert"  ~: "insert into xxx values (1, 2,3)"
+                ~: cInsertStr "insert into xxx values (1, 2,3)"
+                ?: Left "3 value(s) for 4 column(s)"
+
+    , "insert"  ~: "insert into xxx (a,b) values (1, 2,3)"
+                ~: cInsertStr "insert into xxx (a,b) values (1, 2,3)"
+                ?: Left "3 value(s) for 2 column(s)"
+
+    , "insert"  ~: "insert into xxx values (1,2,3,4)"
+                ~: cInsertStr "insert into xxx values (1,2,3,4)"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- insert into table
+                    ,Instruction opOpenWrite  0 0 "xxx"
+                    ,Instruction opDefaultKey 0 0 ""
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opInteger    3 0 ""
+                    ,Instruction opInteger    4 0 ""
+                    ,Instruction opMakeRecord 4 0 ""
+                    ,Instruction opPut        0 0 ""
+                    -- insert into idx_xxx_a
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opMakeKey    1 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- insert into idx_xxx_a_b
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opMakeKey    2 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a_b"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- close and commit
+                    ,Instruction opClose      0 0 ""
+                    ,Instruction opCommit     0 0 ""]
+
+    , "insert"  ~: "insert into xxx (c,b) values (1,2)"
+                ~: cInsertStr "insert into xxx (c,b) values (1,2)"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- insert into table
+                    ,Instruction opOpenWrite  0 0 "xxx"
+                    ,Instruction opDefaultKey 0 0 ""
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opInteger    1 0 ""
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opMakeRecord 4 0 ""
+                    ,Instruction opPut        0 0 ""
+                    -- insert into idx_xxx_a
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opMakeKey    1 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- insert into idx_xxx_a_b
+                    ,Instruction opNull       0 0 ""
+                    ,Instruction opInteger    2 0 ""
+                    ,Instruction opMakeKey    2 0 ""
+                    ,Instruction opOpenWrite  1 0 "idx_xxx_a_b"
+                    ,Instruction opAddress    0 0 ""
+                    ,Instruction opPut        1 0 ""
+                    ,Instruction opClose      1 0 ""
+                    -- close and commit
+                    ,Instruction opClose      0 0 ""
+                    ,Instruction opCommit     0 0 ""]
+
+    , "insert"  ~: "insert into xxx (a, b) select * from yyy"
+                ~: cInsertStr "insert into xxx (a, b) select * from yyy"
+                ?: Left "4 value(s) for 2 column(s)"
+
+    , "insert"  ~: "insert into xxx (b, a) select a,b from yyy"
+                ~: cInsertStr "insert into xxx (b,a) select a,b from yyy"
+                ?: Right
+                    [Instruction opTransaction  0   0 ""
+                    ,Instruction opVerifyCookie 234 0 ""
+                    -- open Temp Table
+                    ,Instruction opOpenTemp     1 0 ""
+                    ---------------------------------------
+                    -- select from yyy
+                    ,Instruction opOpen         0   0 "yyy"
+                    ,Instruction opVerifyCookie 234 0 ""
+                    --
+                    ,Instruction opRewind       0   0 ""
+                    ,Instruction opNoop         0   1 ""
+                    -- where-cond
+                    ,Instruction opInteger      1   0 ""
+                    ,Instruction opJIf          1   2 ""
+                    -- select result
+                    -- record
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opColumn       0   1 ""
+                    ,Instruction opMakeRecord   2   0 ""
+                    -- key
+                    ,Instruction opDefaultKey   1   0 ""
+                    -- swap top 2 entity in stack
+                    ,Instruction opPull         1   0 ""
+                    -- save result to temp table
+                    ,Instruction opPut          1   0 ""
+                    --
+                    ,Instruction opNoop         0   2 ""
+                    ,Instruction opNext         0   0 ""
+                    ,Instruction opGoto         0   1 ""
+                    ,Instruction opNoop         0   0 ""
+                    -- close table yyy
+                    ,Instruction opClose        0   0 ""
+                    ---------------------------------------
+                    -- select form temp table
+                    ,Instruction opRewind       1   0 ""
+                    ,Instruction opNoop         0   4 ""
+
+                    -- insert into table
+                    ,Instruction opOpenWrite    0   0 "xxx"
+                    ,Instruction opDefaultKey   0   0 ""
+                    -- record
+                    ,Instruction opColumn       1   1 ""
+                    ,Instruction opColumn       1   0 ""
+                    ,Instruction opNull         0   0 ""
+                    ,Instruction opNull         0   0 ""
+                    ,Instruction opMakeRecord   4   0 ""
+                    -- insert
+                    ,Instruction opPut          0   0 ""
+
+                    -- insert into idx_xxx_a
+                    -- key (from table xxx but temp table)
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opMakeKey      1   0 ""
+                    -- val
+                    ,Instruction opAddress      0   0 ""
+                    -- insert
+                    ,Instruction opOpenWrite    2   0 "idx_xxx_a"
+                    ,Instruction opPut          2   0 ""
+                    ,Instruction opClose        2   0 ""
+
+                    -- insert into idx_xxx_a_b
+                    -- key (from table xxx but temp table)
+                    ,Instruction opColumn       0   0 ""
+                    ,Instruction opColumn       0   1 ""
+                    ,Instruction opMakeKey      2   0 ""
+                    -- val
+                    ,Instruction opAddress      0   0 ""
+                    -- insert
+                    ,Instruction opOpenWrite    2   0 "idx_xxx_a_b"
+                    ,Instruction opPut          2   0 ""
+                    ,Instruction opClose        2   0 ""
+
+                    -- close table xxx
+                    ,Instruction opClose        0   0 ""
+                    --
+                    ,Instruction opNext         1   3 ""
+                    ,Instruction opGoto         0   4 ""
+                    ,Instruction opNoop         0   3 ""
+                    -- close temp table
+                    ,Instruction opClose        1   0 ""
+                    --
+                    ,Instruction opCommit       0   0 ""]
     ]

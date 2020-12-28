@@ -13,7 +13,7 @@ import Control.Monad.Except
 cDelete :: Delete -> CodeGenEnv
 cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
     -> if not $ tbExists tbName mds' then throwError $ "no such table: " ++ tbName else doNothing
-    >> putMetadata [head . dropWhile ((/=tbName) . metadata_name) $ mds']
+    >> filterMetadata ((==tbName) . metadata_name)
     >> getMetadata >>= \mds
     -> appendInstructions [Instruction opTransaction  0            0 ""
                           ,Instruction opVerifyCookie (cookie mds) 0 ""]
