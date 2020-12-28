@@ -17,7 +17,14 @@ import Debug.Trace
 ----------------------------------------------------------
 -- some data structure
 ----------------------------------------------------------
-type CodeGenCnt   = (Int, Int, Int) -- (label-cnt, set-cnt, AggCnt)
+data CodeGenCnt = CodeGenCnt {
+    labelCNT     :: Int,
+    setCNT       :: Int,
+    aggCNT       :: Int,
+    cursorCNT    :: Int,
+    cursorOPENED :: [String],
+    openWRITE    :: Bool
+} -- (label-cnt, set-cnt, AggCnt)
 
 type FunctionDef  = (String, Int) -- (func-name, func-param-cnt)
 
@@ -55,10 +62,10 @@ doNothing = return []
 
 -- functions to operate label
 getLabel :: ExceptTEnv Int
-getLabel = fst3 . trd3 <$> lift get
+getLabel = labelCNT . trd3 <$> lift get
 
 putLabel :: Int -> CodeGenEnv
-putLabel l = get >>= (\(a, b, (_, d, e)) -> put (a, b, (l, d, e))) >> getRes
+putLabel l = get >>= (\(a, b, cnt) -> put (a, b, cnt {labelCNT = l})) >> getRes
 
 updateLabel :: CodeGenEnv
 updateLabel = getLabel >>= (\x -> putLabel $ x + 1)
@@ -72,23 +79,43 @@ mkCurrentLabel = getLabel >>= mkLabel >> updateLabel
 
 -- functions to operate set
 getSet :: ExceptTEnv Int
-getSet = snd3 . trd3 <$> lift get
+getSet = setCNT . trd3 <$> lift get
 
 putSet :: Int -> CodeGenEnv
-putSet s = get >>= (\(a, b, (c, _, d)) -> put (a, b, (c, s, d))) >> getRes
+putSet s = get >>= (\(a, b, cnt) -> put (a, b, cnt {setCNT = s})) >> getRes
 
 updateSet :: CodeGenEnv
 updateSet = getSet >>= \x -> putSet $ x + 1
 
 -- functions to operate agg
 getAgg :: ExceptTEnv Int
-getAgg = trd3 . trd3 <$> lift get
+getAgg = aggCNT . trd3 <$> lift get
 
 putAgg :: Int -> CodeGenEnv
-putAgg agg = get >>= (\(a, b, (c, d, _)) -> put (a, b, (c, d, agg))) >> getRes
+putAgg agg = get >>= (\(a, b, cnt) -> put (a, b, cnt {aggCNT = agg})) >> getRes
 
 updateAgg :: CodeGenEnv
 updateAgg = getAgg >>= \x -> putAgg $ x + 1
+
+-- cursor
+getCursor :: ExceptTEnv Int
+getCursor = cursorCNT . trd3 <$> lift get
+
+putCursor :: Int -> CodeGenEnv
+putCursor x = get >>= (\(a, b, cnt) -> put (a, b, cnt {cursorCNT = x})) >> getRes
+
+getCursorOpened :: ExceptTEnv [String]
+getCursorOpened = cursorOPENED . trd3 <$> lift get
+
+putCursorOpened :: [String] -> CodeGenEnv
+putCursorOpened x = get >>= (\(a, b, cnt) -> put (a, b, cnt {cursorOPENED = x})) >> getRes
+
+-- open flag
+getWriteFlag :: ExceptTEnv Bool
+getWriteFlag = openWRITE . trd3 <$> lift get
+
+putWriteFlag :: Bool -> CodeGenEnv
+putWriteFlag x = get >>= (\(a, b, cnt) -> put (a, b, cnt {openWRITE = x})) >> getRes
 
 -- toggle cache
 getCacheState :: ExceptTEnv Int
@@ -200,3 +227,15 @@ dbgShowRes = getRes >>= \res -> dbgShow res getRes
 -- random number generator, see `https://en.wikipedia.org/wiki/Linear_congruential_generator`
 nextCookie :: Integral a => a -> a
 nextCookie n = (7368787 * n + 1299709) `mod` 2147483647
+
+
+tbExists :: String -> [TableMetadata] -> Bool
+tbExists _ [] = False
+tbExists tbName (md:mds) = (metadata_name md == tbName) || tbExists tbName mds
+
+
+cookie :: [TableMetadata] -> Int
+cookie = metadata_cookie . head
+
+newCookie :: [TableMetadata] -> Int
+newCookie = nextCookie . cookie

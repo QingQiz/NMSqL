@@ -12,15 +12,15 @@ import Control.Monad.Except
 
 cTableAction :: TableActon -> CodeGenEnv
 cTableAction = \case
-    ast@(CreateTable name colDef tbCtt) -> getMetadata >>= (\cookie
-        -> appendInstructions [Instruction opTransaction  0      0 ""
-                              ,Instruction opVerifyCookie cookie 0 ""
-                              ,Instruction opOpenWrite    0      0 "NMSqL_Master"]
+    ast@(CreateTable name colDef tbCtt) -> getMetadata >>= (\c
+        -> appendInstructions [Instruction opTransaction  0 0 ""
+                              ,Instruction opVerifyCookie c 0 ""
+                              ,Instruction opOpenWrite    0 0 "NMSqL_Master"]
         >> connectCodeGenEnv (map (\i -> createIdx (mkIdxName i) name) [1..idxNum])
         >> createTable name (show ast)
-        >> appendInstructions [Instruction opSetCookie (nextCookie cookie) 0 ""
-                              ,Instruction opClose     0                   0 ""
-                              ,Instruction opCommit    0                   0 ""]
+        >> appendInstructions [Instruction opSetCookie (nextCookie c) 0 ""
+                              ,Instruction opClose     0              0 ""
+                              ,Instruction opCommit    0              0 ""]
         ) . metadata_cookie . head
         where
             idxNum =
@@ -35,7 +35,6 @@ cTableAction = \case
            then appendInstructions
                 [Instruction opTransaction  0                         0 ""
                 ,Instruction opVerifyCookie (cookie mds)              0 ""
-                ,Instruction opSetCookie    (nextCookie $ cookie mds) 0 ""
                 ,Instruction opOpenWrite    0                         0 "NMSqL_Master"
                 ,Instruction opRewind       0                         0 ""
                 ,Instruction opNoop         0                         1 ""
@@ -43,16 +42,23 @@ cTableAction = \case
                 ,Instruction opColumn       0                         2 ""
                 ,Instruction opJNe          0                         2 ""
                 ,Instruction opColumn       0                         3 ""
+                ,Instruction opDelete       0                         0 ""
                 ,Instruction opDestroy      0                         0 ""
                 ,Instruction opNoop         0                         2 ""
                 ,Instruction opNext         0                         0 ""
                 ,Instruction opGoto         0                         1 ""
                 ,Instruction opNoop         0                         0 ""
+                ,Instruction opSetCookie    (nextCookie $ cookie mds) 0 ""
                 ,Instruction opClose        0                         0 ""
                 ,Instruction opCommit       0                         0 ""]
            else throwError $ "no such table: " ++ tbName
-           where cookie = metadata_cookie . head
 
+
+-- -----------------------------------------
+-- | NMSqL_Master                          |
+-- -----------------------------------------
+-- | type | key | tableName | page | value |
+-- -----------------------------------------
 
 createIdx :: String -> String -> CodeGenEnv
 createIdx idxName tableName = appendInstructions
@@ -79,8 +85,3 @@ createTable tbName sql = getMetadata >>= \mds
             ,Instruction opString      0 0 sql
             ,Instruction opMakeRecord  5 0 ""
             ,Instruction opPut         0 0 ""]
-
-
-tbExists :: String -> [TableMetadata] -> Bool
-tbExists _ [] = False
-tbExists tbName (md:mds) = (metadata_name md == tbName) || tbExists tbName mds

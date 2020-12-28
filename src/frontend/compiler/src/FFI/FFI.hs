@@ -50,7 +50,7 @@ compile sql_c = do
                         mds'
                         [("max", 2), ("min", 2), ("substr", 3)])
                     ([], [], 0)
-                    (0, 0, 0)
+                    (CodeGenCnt 0 0 0 0 [] False)
 
         runCodeGeneratorWrapper :: SQL -> IO String
         runCodeGeneratorWrapper = \case

@@ -7,7 +7,6 @@ import CodeGenerator
 import CodeGeneratorUtils
 
 import Generator.Expr
-import Generator.Table
 
 import Test.HUnit
 import Control.Applicative
@@ -24,7 +23,7 @@ testEnv = (
      ,TableMetadata "yyy" [("idx_yyy_d", ["d"]), ("idx_yyy_a_b", ["a", "b"])] ["a", "b", "d", "y"] 234]
     , [("max", 2), ("min", 2), ("substr", 3)])
     , ([], [], 0)
-    , (0, 0, 0))
+    , (CodeGenCnt 0 0 0 0 [] False))
 
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
@@ -40,7 +39,13 @@ cSelectStr :: String -> SelectResultType -> CodeGenEnv
 cSelectStr s = cSelectWrapper (runParser select s)
 
 cTableActionStr :: String -> CodeGenEnv
-cTableActionStr s = cTableAction (runParser (createTable <|> dropTable) s)
+cTableActionStr s = cTableActionWrapper (runParser (createTable <|> dropTable) s)
+
+cIndexActionStr :: String -> CodeGenEnv
+cIndexActionStr s = cIndexActionWrapper (runParser (createIndex <|> dropIndex) s)
+
+cDeleteStr :: String -> CodeGenEnv
+cDeleteStr s = cDeleteWrapper (runParser delete s)
 
 runParser :: Parser a -> String -> a
 runParser p s = case parse p s of
