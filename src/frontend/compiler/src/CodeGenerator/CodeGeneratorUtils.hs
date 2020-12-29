@@ -153,18 +153,36 @@ appendEnv env = do
     newRes <- putRes [] >> env
     putRes $ oldRes ++ newRes
 
--- insert env before tempInstruction
+insertEnvWhere :: CodeGenEnv -> (Instruction -> Bool) -> CodeGenEnv
+insertEnvWhere env cond = do
+    oldRes <- break cond <$> getRes
+    newRes <- putRes [] >> env >> getRes
+    putRes (fst oldRes ++ newRes ++ snd oldRes)
+
+insertEnvWhere2 :: CodeGenEnv -> (Instruction -> Instruction -> Bool) -> CodeGenEnv
+insertEnvWhere2 env cond = do
+    oldRes <- break' cond <$> getRes
+    newRes <- putRes [] >> env >> getRes
+    putRes (fst oldRes ++ newRes ++ snd oldRes)
+    where
+        break' _ []  = ([ ], [])
+        break' _ [a] = ([a], [])
+        break' x l   =
+            let res = zipWith x l (tail l)
+             in case elemIndex True res of
+                     Nothing -> (l, [])
+                     Just  i -> splitAt (i + 1) l
+
 insertTemp :: CodeGenEnv -> CodeGenEnv
-insertTemp env = do
-    res <- break (==Instruction opTempInst 0 0 "") <$> getRes
-    putRes (fst res) >> env >> appendInstructions (snd res)
+insertTemp = flip insertEnvWhere (==Instruction opTempInst 0 0 "")
+
+filterEnv :: (Instruction -> Bool) -> CodeGenEnv
+filterEnv cond = do
+    res <- filter cond <$> getRes
+    putRes res
 
 removeTemp :: CodeGenEnv
-removeTemp = do
-    res <- break (==Instruction opTempInst 0 0 "") <$> getRes
-    case res of
-        (a, [])  -> putRes a
-        (a, _:b) -> putRes $ a ++ b
+removeTemp = filterEnv ((/=opTempInst) . iOpCode)
 
 -- fst, snd, trd for (,,)
 fst3 :: (a, b, c) -> a

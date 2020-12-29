@@ -58,11 +58,11 @@ cSelRes selRes selType = cSelRes' >> putSelRes >> configOutput where
 
     putSelRes = case selType of
         ToSet set -> prependEnv (appendInst opSetOpen   set   0 "")
-                  >> insertTemp (appendInst opSetInsert set   0 "")
-        Normal    -> getAgg >>= \case
-            0 -> insertTemp (appendInst opCallback  colNr 0 "")
-            a -> prependEnv (appendInst opAggReset 0 a "")
-              >> appendInst opCallback colNr 0 ""
+                  >> insertTemp (appendInst opSetInsert set   0 "") >> putCursor 0
+        Normal -> putCursor 0 >> getAgg >>= \case
+            0  -> insertTemp (appendInst opCallback  colNr 0 "")
+            a  -> prependEnv (appendInst opAggReset 0 a "")
+               >> appendInst opCallback colNr 0 ""
         -- same as Normal but replace opCallback with opMakeRecord and opPut
         ToTemp -> getCursor >>= \cr -> putCursor (cr + 1)
                >> prependEnv (appendInst opOpenTemp cr 0 "")

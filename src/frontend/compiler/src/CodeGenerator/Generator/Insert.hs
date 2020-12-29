@@ -18,12 +18,11 @@ cInsert (Insert tbName cols (ValueList values)) = getMetadata >>= \mds
     >> appendInstructions [Instruction opTransaction  0            0 ""
                           ,Instruction opVerifyCookie (cookie mds) 0 ""]
     >> let md = head $ dropWhile ((/=tbName) . metadata_name) mds
+           cols'   = if null cols then metadata_column md else cols
            valLen  = length values
-           colLen  = length cols
-           colLen' = length (metadata_column md)
-        in if   (colLen == 0 && colLen' /= valLen) || (colLen /= 0 && colLen /= valLen)
-           then throwError $ show valLen ++ " value(s) for "
-                          ++ show (if colLen == 0 then colLen' else colLen) ++ " column(s)"
+           colLen  = length cols'
+        in if   colLen /= valLen
+           then throwError $ show valLen ++ " value(s) for " ++ show colLen ++ " column(s)"
            else let values' = case cols of
                         [] -> zip (metadata_column md) $ map (\(ConstValue v) -> v) values
                         _  -> let buildValList (x:xs) res = case elemIndex x cols of
@@ -79,11 +78,11 @@ cInsert (Insert tbName cols (SelectResult select)) = getMetadata >>= \mds
                                  $ concatMap metadata_column
                                  $ filter ((`elem` selectTableName select) . metadata_name) mds
                other            -> length other
-           colLen  = length cols
+           cols'   = if null cols then metadata_column md else cols
+           colLen  = length cols'
            colLen' = length (metadata_column md)
-        in if   (colLen == 0 && colLen' /= selResLen) || (colLen /= 0 && colLen /= selResLen)
-           then throwError $ show selResLen ++ " value(s) for "
-                          ++ show (if colLen == 0 then colLen' else colLen) ++ " column(s)"
+        in if   colLen /= selResLen
+           then throwError $ show selResLen ++ " value(s) for " ++ show colLen ++ " column(s)"
            else let getColVal colNames values cr=
                         let getInst colName = case dropWhile ((/=colName) . fst) values of
                                 []  -> appendInst opNull   0   0       ""
@@ -102,7 +101,7 @@ cInsert (Insert tbName cols (SelectResult select)) = getMetadata >>= \mds
                     insertIntoIndex [] _ = doNothing
 
                     insertIntoTable tmpCr =
-                        let values = zip cols [0..]
+                        let values = zip cols' [0..]
                          -- tmpCr can not be 0, so we use 0 to open table
                          in appendInstructions [Instruction opOpenWrite  0 0 tbName
                                                ,Instruction opDefaultKey 0 0 ""]
@@ -128,4 +127,5 @@ cInsert (Insert tbName cols (SelectResult select)) = getMetadata >>= \mds
                         ,Instruction opNoop    0   lab       ""
                         ,Instruction opClose   cr  0         ""]
                  >> putLabel (lab + 2)
+                 >> putCursor (cr + 2)
     >> appendInst opCommit 0 0 ""
