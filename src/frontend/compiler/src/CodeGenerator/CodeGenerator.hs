@@ -14,6 +14,7 @@ import Generator.Table (cTableAction)
 import Generator.Index (cIndexAction)
 import Generator.Delete (cDelete)
 import Generator.Insert (cInsert)
+import Generator.Update (cUpdate)
 
 import Data.List
 import Data.Maybe
@@ -34,35 +35,39 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
 
         openTbAndIdx =
             let listToOpen = collectTbOrIdx allTbNames tbNames idxNames
-             in connectCodeGenEnv (zipWith (\name idx -> getWriteFlag >>= \wf
-                                                      -> appendInst (if wf then opOpenWrite else opOpen) idx 0 name
-                                                      >> getCursorOpened >>= \co
-                                                      -> putCursorOpened (name : co)) listToOpen [0 .. len - 1])
-             >> putCursor len
+             in getCursor >>= \cr
+             -> connectCodeGenEnv (zipWith(\name idx -> getWriteFlag >>= \wf
+                                                     -> appendInst (if wf then opOpenWrite else opOpen) idx 0 name
+                                                     >> getCursorOpened >>= \co
+                                                     -> putCursorOpened (name : co)) listToOpen [cr .. len - 1 + cr])
             where
                 collectTbOrIdx (tn:tns) tbs idxes
                     | tn `elem` tbs = head idxes : collectTbOrIdx tns (tail tbs) (tail idxes)
                     | otherwise     = tn         : collectTbOrIdx tns tbs idxes
                 collectTbOrIdx _ _ _ = []
 
-        closeTbAndIdx = connectCodeGenEnv [appendInst opClose i 0 "" | i <- [0 .. len - 1]]
+        closeTbAndIdx = getCursor >>= \cr
+            -> connectCodeGenEnv [appendInst opClose i 0 "" | i <- [cr .. len - 1 + cr]]
+            >> putCursor (cr + len)
 
         wrapperIdx :: [String] -> [[Expr]] -> Int -> CodeGenEnv
         wrapperIdx (idx:idxes) (key:keys) labEnd =
             let idxCursor = fromMaybe (-1)
+                          -- find the index of the table who has index named idx
                           $ findIndex (elem idx . map fst . metadata_index) mds
                 keyLength = length key
-                mkKey = connectCodeGenEnv (map cExpr key)
-                     >> appendInst opMakeKey  keyLength 0 ""
-                     >> appendInst opBeginIdx idxCursor 0 ""
-             in getLabel >>= \lab  -> updateLabel
+                mkKey = getCursor >>= \cr -> connectCodeGenEnv (map cExpr key)
+                     >> appendInst opMakeKey  keyLength        0 ""
+                     >> appendInst opBeginIdx (idxCursor + cr) 0 ""
+             in getCursor >>= \cr
+             -> getLabel >>= \lab  -> updateLabel
              >> getLabel >>= \lab' -> updateLabel
              >> mkKey
              >> mkLabel lab
              >> wrapperIdx idxes keys lab'
              >> mkLabel lab'
-             >> appendInst opNextIdx idxCursor labEnd ""
-             >> appendInst opGoto 0 lab ""
+             >> appendInstructions [Instruction opNextIdx (idxCursor + cr) labEnd ""
+                                   ,Instruction opGoto    0                lab    ""]
 
         wrapperIdx _ _ labEnd = wrapperTb tbNotUseIdx labEnd where
             tbNotUseIdx = filter (`notElem` tbNames) allTbNames
@@ -194,3 +199,6 @@ cDeleteWrapper d = cDelete d >> removeTemp
 
 cInsertWrapper :: Insert -> CodeGenEnv
 cInsertWrapper = cInsert
+
+cUpdateWrapper :: Update -> CodeGenEnv
+cUpdateWrapper = cUpdate

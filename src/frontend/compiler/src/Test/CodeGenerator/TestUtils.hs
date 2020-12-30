@@ -53,6 +53,9 @@ cInsertStr s = cInsertWrapper (runParser insert s)
 cDeleteStr :: String -> CodeGenEnv
 cDeleteStr s = cDeleteWrapper (runParser delete s)
 
+cUpdateStr :: String -> CodeGenEnv
+cUpdateStr s = cUpdateWrapper (runParser update s)
+
 runParser :: Parser a -> String -> a
 runParser p s = case parse p s of
     Just (a, _) -> a

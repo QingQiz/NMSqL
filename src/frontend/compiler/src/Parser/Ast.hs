@@ -109,7 +109,6 @@ data Select = Select {
 -- Update Stmt
 ----------------------------------------------------------
 data Update = Update TableName [(ColumnName, Expr)] (Maybe Expr)
-            deriving (Show)
 
 
 ----------------------------------------------------------
