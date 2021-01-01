@@ -134,6 +134,10 @@ Cursor是有状态的
 
 获取当前cursor指向数据的地址，如果当前cursor存储数据，则返回数据地址，否则返回指向数据的地址
 
+### getValueByAddress(address)
+
+通过地址获取数据
+
 #### getRecordNumber(cursor)
 
 当前cursor指向位置的recordNumber值，若是Null，则返回Null

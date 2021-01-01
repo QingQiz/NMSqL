@@ -39,6 +39,8 @@ int erase(int transactionId, Cursor *cursor);
 int next(int transactionId, Cursor *cursor);
 int reset(int transactionId, Cursor *cursor);
 
+void *getValueByAddress(int transactionId, int address);
+
 pgno_t createTable();
 pgno_t createIndex();
 int clear(pgno_t page);
