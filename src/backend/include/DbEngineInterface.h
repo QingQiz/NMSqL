@@ -31,12 +31,15 @@ int create(const char *dbTable, const char *indexName, CursorType indexType,
 int find(int transactionId, Cursor *cursor, const void *key);
 void *getKey(int transactionId, Cursor *cursor);
 void *getValue(int transactionId, Cursor *cursor);
+int getAddress(int transactionId, Cursor *cursor);
 // void* getRecordNumber(Cursor* cursor);
 int insert(int transactionId, Cursor *cursor, const void *key,
            const void *value);
 int erase(int transactionId, Cursor *cursor);
 int next(int transactionId, Cursor *cursor);
 int reset(int transactionId, Cursor *cursor);
+
+void *getValueByAddress(int transactionId, int address);
 
 pgno_t createTable();
 pgno_t createIndex();
