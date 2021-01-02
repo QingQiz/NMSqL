@@ -5,7 +5,7 @@ test: ffi-export.test.out ffi-import.test.out
 	@./ffi-import.test.out || (echo -e "\ncompiler> Test test-ffi-import failed" && exit 1)
 	@echo "compiler> Test test-ffi-import pass"
 	@echo -e "\ncompiler> Test test-ffi-export"
-	@(export LD_LIBRARY_PATH=`pwd` && ./ffi-export.test.out &> /dev/null) || (echo -e "\ncompiler> Test test-ffi-export failed" && exit 1)
+	@(LD_LIBRARY_PATH=`pwd` ./ffi-export.test.out &> /dev/null) || (echo -e "\ncompiler> Test test-ffi-export failed" && exit 1)
 	@echo "compiler> Test test-ffi-export pass"
 
 
