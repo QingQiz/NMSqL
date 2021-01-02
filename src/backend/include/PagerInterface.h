@@ -16,6 +16,6 @@ int WritePage(Pgno_t, Page_t *);
 Pgno_t CreatePage();
 
 // return 0 if success
-int DeletePage(Pgno_t)
+int DeletePage(Pgno_t);
 
 #endif
