@@ -96,6 +96,7 @@ impl VmCursor {
     Ok(())
   }
   pub fn erase(self: &mut Self) -> Result<(), String> {
+    self.idleNext = true;
     DbWrapper::erase(self.transactionId, self.getCursor()?);
     Ok(())
   }
