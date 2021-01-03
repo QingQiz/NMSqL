@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct TabeMetadata {
     int32_t indexCnt;
@@ -28,4 +29,11 @@ struct TabeMetadata* getTableMetadata(char* tableName) {
     metadata.cookie = 281;
 
     return &metadata;
+}
+
+char** getAllTableNames() {
+    char **a= malloc(2*sizeof(char*));
+    a[0] = "xxx";
+    a[1] = NULL;
+    return a;
 }
