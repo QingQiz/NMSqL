@@ -24,44 +24,41 @@ typedef int pgno_t;
  */
 #define CURSOR_READ_ONLY 1
 #define CURSOR_WRITE 2
-Cursor *open(const void *dbEngine, int transactionId, const char *indexName,
-             int flag);
-int close(const void *dbEngine, int transactionId, Cursor *cursor);
-int create(const void *dbEngine, const char *dbTable, const char *indexName,
-           CursorType indexType, const int indexColumnCnt,
-           const char **indexColumns);
-int find(const void *dbEngine, int transactionId, Cursor *cursor,
-         const void *key);
-void *getKey(const void *dbEngine, int transactionId, Cursor *cursor);
-void *getValue(const void *dbEngine, int transactionId, Cursor *cursor);
-int getAddress(const void *dbEngine, int transactionId, Cursor *cursor);
-// void* getRecordNumber(const void *dbEngine,Cursor* cursor);
-int insert(const void *dbEngine, int transactionId, Cursor *cursor,
-           const void *key, const void *value);
-int erase(const void *dbEngine, int transactionId, Cursor *cursor);
-int next(const void *dbEngine, int transactionId, Cursor *cursor);
-int reset(const void *dbEngine, int transactionId, Cursor *cursor);
+Cursor *open(int transactionId, const char *indexName, int flag);
+int close(int transactionId, Cursor *cursor);
+int create(const char *dbTable, const char *indexName, CursorType indexType,
+           const int indexColumnCnt, const char **indexColumns);
+int find(int transactionId, Cursor *cursor, const void *key);
+void *getKey(int transactionId, Cursor *cursor);
+void *getValue(int transactionId, Cursor *cursor);
+int getAddress(int transactionId, Cursor *cursor);
+// void* getRecordNumber(Cursor* cursor);
+int insert(int transactionId, Cursor *cursor, const void *key,
+           const void *value);
+int erase(int transactionId, Cursor *cursor);
+int next(int transactionId, Cursor *cursor);
+int reset(int transactionId, Cursor *cursor);
 
-void *getValueByAddress(const void *dbEngine, int transactionId, int address);
+void *getValueByAddress(int transactionId, int address);
 
-pgno_t createTable(const void *dbEngine);
-pgno_t createIndex(const void *dbEngine);
-int clear(const void *dbEngine, pgno_t page);
-int destroy(const void *dbEngine, pgno_t page);
+pgno_t createTable();
+pgno_t createIndex();
+int clear(pgno_t page);
+int destroy(pgno_t page);
 
-int reorganize(const void *dbEngine);
-void *getMetaData(const void *dbEngine, const char *tableName);
-int getCookies(const void *dbEngine);
-int setCookies(const void *dbEngine, int cookies);
-char **getTableColumns(const void *dbEngine, const char *tableName);
+int reorganize();
+void *getMetaData(const char *tableName);
+int getCookies();
+int setCookies(int cookies);
+char **getTableColumns(const char *tableName);
 
 /*
  * 事务相关
  */
 
-int transaction(const void *dbEngine, int *transactionId);
-int commit(const void *dbEngine, int transactionId);
-int rollback(const void *dbEngine, int transactionId);
+int transaction(int *transactionId);
+int commit(int transactionId);
+int rollback(int transactionId);
 
 /***********************************
  * for compiler
@@ -80,6 +77,6 @@ struct TableMetadata {
   int32_t cookie; // 表 Cookie
 };
 
-struct TableMetadata *getTableMetadata(const void *dbEngine, char *tableName);
+struct TableMetadata *getTableMetadata(char *tableName);
 }
 #endif
