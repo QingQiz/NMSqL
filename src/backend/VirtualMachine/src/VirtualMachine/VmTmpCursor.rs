@@ -12,6 +12,8 @@ impl VmTmpCursor {
     Self::default()
   }
   pub fn put(&mut self, key: &VmMemString, value: &VmMemString) {
+    let key = VmMemString::new(key[4..].to_vec());
+    let value = VmMemString::new(value[4..].to_vec());
     self.keys.push(
       key
         .iter()
