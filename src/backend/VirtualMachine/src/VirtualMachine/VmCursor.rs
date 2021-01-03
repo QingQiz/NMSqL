@@ -61,6 +61,9 @@ impl VmCursor {
   pub fn getValue(self: &Self) -> &VmMemString {
     &self.valueCache
   }
+  pub fn getAddress(self: &Self) -> i32 {
+    DbWrapper::getAddress(self.transactionId, self.cursor)
+  }
   /// return false if it's the end of cursor
   pub fn next(self: &mut Self) -> Result<(), String> {
     if self.idleNext {
