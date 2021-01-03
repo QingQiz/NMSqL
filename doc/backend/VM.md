@@ -144,7 +144,7 @@ Cursor是有状态的
 
 #### insert(cursor,key,value)
 
-向cursor指向的表插入key/value对
+向cursor指向的表插入key/value对，并将cursor移向插入数据的位置
 
 #### erase(cursor)
 
