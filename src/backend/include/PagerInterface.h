@@ -1,20 +1,21 @@
 #ifndef _PAGERINTERFACE_H
 #define _PAGERINTERFACE_H
-#include <string>
 
-void* getPhyAddr(int virtualAddr);
+#include "BTreeInterface.h"
 
-// 分配 size 大小的空闲存储
-void* pageMalloc(int size);
+BPTreeMeta_t *GetBPTreeMetaFromPage(Pgno_t);
 
-// TODO 可变指针，不可变指针
-template<typename T>
-class Pointer { };
+// return 0 if success
+int WriteBPTreeMetaToPage(Pgno_t, BPTreeMeta_t *);
 
-class Pager {
-public:
-    Pager(std::string filename);
-    ~Pager();
-};
+Page_t *GetMemPage(Pgno_t);
+
+// return 0 if success
+int WritePage(Pgno_t, Page_t *);
+
+Pgno_t CreatePage();
+
+// return 0 if success
+int DeletePage(Pgno_t);
 
 #endif
