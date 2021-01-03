@@ -7,6 +7,9 @@
  ***********************************/
 
 extern "C" {
+
+struct DbEngine {};
+
 enum CursorType { CURSOR_BTREE, CURSOR_LIST };
 
 typedef enum CursorType CursorType;
