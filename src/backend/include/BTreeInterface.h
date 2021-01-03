@@ -1,134 +1,64 @@
 #ifndef _BTREEINTERFACE_H
 #define _BTREEINTERFACE_H
 
-#include <string.h>
-
-typedef int pgno_t;
-typedef int offset_t;
-typedef struct address_t{
-    pgno_t pgno;
-    offset_t offset;
-    address_t(pgno_t no, offset_t offset){
-        this->pgno = no;
-        this->offset = offset;
-    }
-    bool operator==(const address_t b){
-        return this->pgno == b.pgno && this->offset == b.offset;
-    }
-};
-
-const address_t NULLAddress = address_t(0, 0); // 这是一个不该出现的地址
-
-struct key_t{
-    char data[16];
-    key_t(const char *str = ""){
-        strcpy(data, str);
-    }
-};
-
-inline int keycmp(const key_t &a, const key_t &b) {
-    int x = strlen(a.data) - strlen(b.data);
-    return x == 0 ? strcmp(a.data, b.data) : x;
-}
-
-bool operator<(const key_t &l, const key_t &r){
-    return keycmp(l, r) < 0;
-}
-
-bool operator>(const key_t &l, const key_t &r){
-    return keycmp(l, r) > 0;
-}
-
-bool operator==(const key_t &l, const key_t &r){
-    return keycmp(l, r) == 0;
-}
-
-bool operator<=(const key_t &l, const key_t &r){
-    return keycmp(l, r) <= 0;
-}
-
-
-/* meta information of B+ tree */
-struct meta_t{
-    int capacity; // capacity of the node
-    int value_size; // size of the value
-    int key_size; // size of the key
-    int internal_node_num;
-    int leaf_node_num;
-    int height;
-    address_t slot; // where is the place to insert data
-    address_t root; // where is the root of B+Tree
-    address_t first; // where is the first of leaf
-};
-
-struct index_t {
-    key_t key;
-    address_t child; // offset of child's node
-    int size;
-};
-
-struct internal_node_t{
-    bool isLeaf;
-    address_t parent;
-    address_t next;
-    address_t prev;
-    size_t child_num; 
-    index_t *children; // children array, dynamic memory allocation
-};
-
-struct record_t{
-    key_t key;
-    address_t data; // offset of the data
-    int size;
-};
-
-struct leaf_node_t {
-    bool isLeaf;
-    address_t parent; // parent node offset
-    address_t next;
-    address_t prev;
-    size_t record_num;
-    record_t *records; // records array, dynamic memory allocation
-};
-
-struct btCursor{
-    address_t address;
-    pgno_t rootPage;
-
-};
-
-/*
- * 
- */
-struct MemPage{
-    bool isLeaf; //True if is leaf node
-
-};
-
-
+typedef int Pgno_t;
+typedef int Offset_t;
+typedef unsigned int Size_t;
 typedef int ReturnCode;
 
-class BPTree {
-public:
-BPTree();
-~BPTree();
+typedef struct {
+    Pgno_t pgno;
+    Offset_t offset;
+} Address_t;
 
-ReturnCode create(char* fileName);
-ReturnCode drop();
-ReturnCode clear();
+typedef struct {
+    char data[16];
+} Key_t;
 
-ReturnCode open(btCursor*, pgno_t root_page);
-ReturnCode close();
+/* meta information of B+ tree */
+typedef struct {
+    int maxDegree;            // maximun capacity of the node
+    Size_t page_header_size;  // size of page header
+    Size_t cell_size;         // size of the cell
+    Size_t page_size;
+    Size_t cellPointer_size;  //
+    Size_t internal_node_num;
+    Size_t leaf_node_num;
+    Size_t height;
+    // Address_t slot; // where is the place to insert data
+    Pgno_t root;      // where is the root of B+Tree
+    Address_t first;  // where is the first of data row。
+} BPTreeMeta_t;
 
-ReturnCode search(btCursor*, key_t key);
-ReturnCode insert(btCursor*, key_t key, void* data);
-ReturnCode remove(btCursor*); // erase one row the cursor pointing to
+typedef union {            // data stored in the cell
+    void *pData;          // used in leaf node
+    Pgno_t childAddress;  // used in internal node
+} Data_t;
 
-ReturnCode first(btCursor*); // move cursor to the first row
-ReturnCode root(btCursor*); // move cursor to the root page
-ReturnCode next(btCursor*); // move cursor to the next row
+typedef struct {
+    Key_t key;
+    unsigned char isDelete;
+    Address_t address;  // if leaf node offset of the cell pointer
+                        // if internal node offset of the leaf node
+    Offset_t offset;    // offset of the data
+    Size_t nData;       // size of the data
+    Data_t data;
+} Record_t;
 
+typedef struct {
+    unsigned char isLeaf;
+    Address_t parent;  // parent index offset
+    Pgno_t address;
+    Pgno_t next;
+    Pgno_t prev;
+    Size_t record_size;
+    Record_t *records;  // records array
+} Page_t;
 
-};
+typedef struct {
+    Address_t address;
+    Pgno_t rootPage;
+    int id;  //用于表示是cell pointer array中的第几个。从0开始。
+} BtCursor;
 
 #endif
