@@ -11,6 +11,7 @@ pub struct VmCursor {
   keyCache: VmMemString,
   valueCache: VmMemString,
   transactionId: i32,
+  idleNext: bool,
 }
 impl Default for VmCursor {
   fn default() -> Self {
@@ -22,6 +23,7 @@ impl Default for VmCursor {
       keyCache: VmMemString::default(),
       valueCache: VmMemString::default(),
       transactionId: -1,
+      idleNext: false,
     }
   }
 }
@@ -35,6 +37,7 @@ impl VmCursor {
       keyCache: VmMemString::default(),
       valueCache: VmMemString::default(),
       transactionId,
+      idleNext: false,
     }
   }
   fn getCursor(self: &Self) -> Result<*mut Cursor, String> {
@@ -58,8 +61,15 @@ impl VmCursor {
   pub fn getValue(self: &Self) -> &VmMemString {
     &self.valueCache
   }
+  pub fn getAddress(self: &Self) -> i32 {
+    DbWrapper::getAddress(self.transactionId, self.cursor)
+  }
   /// return false if it's the end of cursor
   pub fn next(self: &mut Self) -> Result<(), String> {
+    if self.idleNext {
+      self.idleNext = false;
+      return Ok(());
+    }
     DbWrapper::next(self.transactionId, self.getCursor()?);
     self.keyCache = VmMemString::new(DbWrapper::getKey(self.transactionId, self.cursor));
     self.valueCache = VmMemString::new(DbWrapper::getValue(self.transactionId, self.cursor));
@@ -86,6 +96,7 @@ impl VmCursor {
     Ok(())
   }
   pub fn erase(self: &mut Self) -> Result<(), String> {
+    self.idleNext = true;
     DbWrapper::erase(self.transactionId, self.getCursor()?);
     Ok(())
   }

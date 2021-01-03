@@ -34,28 +34,6 @@ pub mod rustLayer {
   pub fn close(transactionId: i32, cursor: *mut Cursor) -> i32 {
     unsafe { cLayer::close(transactionId, cursor) }
   }
-  // create dbTable with indexName indexType indexColumnCnt and indexColumns
-  pub fn create(
-    dbTable: &Vec<u8>,
-    indexName: &Vec<u8>,
-    indexType: CursorType,
-    indexColumnCnt: i32,
-    indexColumns: &[&Vec<u8>],
-  ) -> i32 {
-    unsafe {
-      cLayer::create(
-        dbTable.as_ptr() as *const i8,
-        indexName.as_ptr() as *const i8,
-        indexType,
-        indexColumnCnt,
-        indexColumns
-          .iter()
-          .map(|x| x.as_ptr() as *const i8)
-          .collect::<Vec<*const i8>>()
-          .as_mut_ptr(),
-      )
-    }
-  }
   pub fn find(transactionId: i32, cursor: *mut Cursor, key: &Vec<u8>) -> i32 {
     unsafe { cLayer::find(transactionId, cursor, key.as_ptr() as *const ffi::c_void) }
   }
@@ -89,6 +67,9 @@ pub mod rustLayer {
   // reset the cursor to the first
   pub fn reset(transactionId: i32, cursor: *mut Cursor) -> i32 {
     unsafe { cLayer::reset(transactionId, cursor) }
+  }
+  pub fn getAddress(transactionId: i32, cursor: *mut Cursor) -> i32 {
+    unsafe { cLayer::getAddress(transactionId, cursor) }
   }
   pub fn createTable() -> i32 {
     unsafe { cLayer::createTable() }
@@ -216,6 +197,10 @@ pub mod cLayer {
     pub fn next(transactionId: ::std::os::raw::c_int, cursor: *mut Cursor)
       -> ::std::os::raw::c_int;
     pub fn reset(
+      transactionId: ::std::os::raw::c_int,
+      cursor: *mut Cursor,
+    ) -> ::std::os::raw::c_int;
+    pub fn getAddress(
       transactionId: ::std::os::raw::c_int,
       cursor: *mut Cursor,
     ) -> ::std::os::raw::c_int;

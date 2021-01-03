@@ -6,12 +6,15 @@ use super::VmMem::VmMemString;
 use super::VmOp::VmOp;
 use super::VmSet::VmSet;
 use super::VmSorter::VmSorter;
+use super::VmTmpCursor::VmTmpCursor;
 use crate::wrapper::rustLayer as DbWrapper;
 
 #[derive(Default)]
 pub struct VirtualMachine {
   pub vmOps: Vec<VmOp>,
   pub vmCursors: Vec<VmCursor>,
+  pub vmTmpCursors: Vec<VmTmpCursor>,
+  pub cursorIsTmp: Vec<bool>,
   pub stack: Vec<VmMem>,
   pub resultColumnNames: Vec<Vec<u8>>,
   pub resultColumnNamePtrs: Option<Vec<*const u8>>,
@@ -71,7 +74,11 @@ impl VirtualMachine {
     }
   }
   pub fn closeCursor(self: &mut Self, num: usize) -> Result<(), String> {
-    Ok(self.getCursor(num)?.close()?)
+    if num < self.cursorIsTmp.len() && self.cursorIsTmp[num] {
+      Ok(())
+    } else {
+      Ok(self.getCursor(num)?.close()?)
+    }
   }
   pub fn cursorInsert(
     self: &mut Self,
@@ -79,14 +86,20 @@ impl VirtualMachine {
     key: &VmMemString,
     value: &VmMemString,
   ) -> Result<(), String> {
-    self.getCursor(num)?.insert(key, value)?;
-    Ok(())
+    if num < self.cursorIsTmp.len() && self.cursorIsTmp[num] {
+      self.putTmpCursor(num, key, value)
+    } else {
+      self.getCursor(num)?.insert(key, value)
+    }
   }
   pub fn cursorGetKey(self: &mut Self, num: usize) -> Result<&VmMemString, String> {
     Ok(self.getCursor(num)?.getKey())
   }
   pub fn cursorGetValue(self: &mut Self, num: usize) -> Result<&VmMemString, String> {
     Ok(self.getCursor(num)?.getValue())
+  }
+  pub fn cursorGetAddress(self: &mut Self, num: usize) -> Result<i32, String> {
+    Ok(self.getCursor(num)?.getAddress())
   }
   pub fn cursorFindKey(self: &mut Self, num: usize, key: &VmMemString) -> Result<(), String> {
     self.getCursor(num)?.find(key)?;
@@ -104,12 +117,18 @@ impl VirtualMachine {
     Ok(())
   }
   pub fn cursorRewind(self: &mut Self, num: usize) -> Result<(), String> {
-    self.getCursor(num)?.rewind()?;
-    Ok(())
+    if num < self.cursorIsTmp.len() && self.cursorIsTmp[num] {
+      self.rewindTmpCursor(num)
+    } else {
+      self.getCursor(num)?.rewind()
+    }
   }
   pub fn cursorNext(self: &mut Self, num: usize) -> Result<(), String> {
-    self.getCursor(num)?.next()?;
-    Ok(())
+    if num < self.cursorIsTmp.len() && self.cursorIsTmp[num] {
+      self.nextTmpCursor(num)
+    } else {
+      self.getCursor(num)?.next()
+    }
   }
   pub fn cursorIsEnd(self: &mut Self, num: usize) -> Result<bool, String> {
     Ok(self.getCursor(num)?.isEnd())
@@ -117,6 +136,52 @@ impl VirtualMachine {
   pub fn cursorSetIdx(self: &mut Self, num: usize, key: &VmMemString) -> Result<(), String> {
     self.getCursor(num)?.setIdx(key);
     Ok(())
+  }
+}
+
+impl VirtualMachine {
+  pub fn isTmp(&mut self, num: usize) -> bool {
+    num < self.cursorIsTmp.len() && self.cursorIsTmp[num]
+  }
+  pub fn openTmpCursor(&mut self, num: usize) {
+    if self.cursorIsTmp.len() <= num {
+      self.cursorIsTmp.resize(num + 1, false);
+      self.vmTmpCursors.resize(num + 1, VmTmpCursor::default());
+    }
+    self.vmTmpCursors[num] = VmTmpCursor::default();
+  }
+  fn getTmpCursor(&mut self, num: usize) -> Result<&mut VmTmpCursor, String> {
+    if num < self.vmTmpCursors.len() {
+      Err(format!(
+        "VmTmpCursor index out of bounds: len={} index={}",
+        self.vmTmpCursors.len(),
+        num
+      ))
+    } else if !self.cursorIsTmp[num] {
+      Err(format!("this is not tmp cursor"))
+    } else {
+      Ok(&mut self.vmTmpCursors[num])
+    }
+  }
+  pub fn putTmpCursor(
+    &mut self,
+    num: usize,
+    key: &VmMemString,
+    value: &VmMemString,
+  ) -> Result<(), String> {
+    Ok(self.getTmpCursor(num)?.put(key, value))
+  }
+  pub fn columnTmpCursor(&mut self, num: usize, idx: usize) -> Result<VmMem, String> {
+    self.getTmpCursor(num)?.columnValue(idx)
+  }
+  pub fn nextTmpCursor(&mut self, num: usize) -> Result<(), String> {
+    Ok(self.getTmpCursor(num)?.next())
+  }
+  pub fn rewindTmpCursor(&mut self, num: usize) -> Result<(), String> {
+    Ok(self.getTmpCursor(num)?.rewind())
+  }
+  pub fn isEndTmpCursor(&mut self, num: usize) -> Result<bool, String> {
+    Ok(self.getTmpCursor(num)?.isEnd())
   }
 }
 
