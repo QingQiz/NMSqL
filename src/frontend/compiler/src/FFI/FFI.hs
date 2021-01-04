@@ -63,7 +63,7 @@ compile sql_c = do
 
         runCodeGenerator :: CodeGenEnv -> CodeGenState -> String
         runCodeGenerator codeGenerator codeGenState =
-            case evalState (runExceptT codeGenerator) codeGenState of
+            case evalState (runExceptT (codeGenerator >> fixJmp)) codeGenState of
                 Right res -> show' res
                 Left  msg -> err msg
 
