@@ -1197,4 +1197,90 @@ codeGeneratorTest = test [
                     -- close temp table
                     ,Instruction opClose        1   0  ""
                     ,Instruction opCommit       0   0  ""]
+----------------------------------------------------------
+-- Test code generator: fixJmp
+----------------------------------------------------------
+    , "fixJmp"  ~: "fixJmp"
+                ~: putRes
+                    [Instruction opNoop         0 0 ""
+                    --
+                    ,Instruction opNext         0 0 ""
+                    ,Instruction opNextIdx      0 0 ""
+                    ,Instruction opJSetFound    0 0 ""
+                    ,Instruction opJIf          0 0 ""
+                    ,Instruction opJSetNotFound 0 0 ""
+                    ,Instruction opJLike        0 0 ""
+                    ,Instruction opJGlob        0 0 ""
+                    ,Instruction opJNe          0 0 ""
+                    ,Instruction opJEq          0 0 ""
+                    ,Instruction opJNe          0 0 ""
+                    ,Instruction opJLt          0 0 ""
+                    ,Instruction opJLe          0 0 ""
+                    ,Instruction opJGt          0 0 ""
+                    ,Instruction opJGe          0 0 ""
+                    ,Instruction opJIsNull      0 0 ""
+                    ,Instruction opJNotNull     0 0 ""
+                    ,Instruction opGoto         0 0 ""
+                    --
+                    ,Instruction opNext         0 1 ""
+                    ,Instruction opNextIdx      0 1 ""
+                    ,Instruction opJSetFound    0 1 ""
+                    ,Instruction opJIf          0 1 ""
+                    ,Instruction opJSetNotFound 0 1 ""
+                    ,Instruction opJLike        0 1 ""
+                    ,Instruction opJGlob        0 1 ""
+                    ,Instruction opJNe          0 1 ""
+                    ,Instruction opJEq          0 1 ""
+                    ,Instruction opJNe          0 1 ""
+                    ,Instruction opJLt          0 1 ""
+                    ,Instruction opJLe          0 1 ""
+                    ,Instruction opJGt          0 1 ""
+                    ,Instruction opJGe          0 1 ""
+                    ,Instruction opJIsNull      0 1 ""
+                    ,Instruction opJNotNull     0 1 ""
+                    ,Instruction opGoto         0 1 ""
+                    --
+                    ,Instruction opNoop         0 1 ""]
+                +: fixJmp
+                +: getRes
+                ?: Right
+                    [Instruction opNoop         0 0  ""
+                    --
+                    ,Instruction opNext         0 0  ""
+                    ,Instruction opNextIdx      0 0  ""
+                    ,Instruction opJSetFound    0 0  ""
+                    ,Instruction opJIf          0 0  ""
+                    ,Instruction opJSetNotFound 0 0  ""
+                    ,Instruction opJLike        0 0  ""
+                    ,Instruction opJGlob        0 0  ""
+                    ,Instruction opJNe          0 0  ""
+                    ,Instruction opJEq          0 0  ""
+                    ,Instruction opJNe          0 0  ""
+                    ,Instruction opJLt          0 0  ""
+                    ,Instruction opJLe          0 0  ""
+                    ,Instruction opJGt          0 0  ""
+                    ,Instruction opJGe          0 0  ""
+                    ,Instruction opJIsNull      0 0  ""
+                    ,Instruction opJNotNull     0 0  ""
+                    ,Instruction opGoto         0 0  ""
+                    --
+                    ,Instruction opNext         0 35 ""
+                    ,Instruction opNextIdx      0 35 ""
+                    ,Instruction opJSetFound    0 35 ""
+                    ,Instruction opJIf          0 35 ""
+                    ,Instruction opJSetNotFound 0 35 ""
+                    ,Instruction opJLike        0 35 ""
+                    ,Instruction opJGlob        0 35 ""
+                    ,Instruction opJNe          0 35 ""
+                    ,Instruction opJEq          0 35 ""
+                    ,Instruction opJNe          0 35 ""
+                    ,Instruction opJLt          0 35 ""
+                    ,Instruction opJLe          0 35 ""
+                    ,Instruction opJGt          0 35 ""
+                    ,Instruction opJGe          0 35 ""
+                    ,Instruction opJIsNull      0 35 ""
+                    ,Instruction opJNotNull     0 35 ""
+                    ,Instruction opGoto         0 35 ""
+                    --
+                    ,Instruction opNoop         0 1  ""]
                 ]

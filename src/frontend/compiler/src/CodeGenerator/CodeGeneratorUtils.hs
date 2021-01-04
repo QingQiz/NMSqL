@@ -8,6 +8,9 @@ import TableMetadata
 
 import Data.List
 import Data.Maybe
+import Data.Bifunctor (first)
+import qualified Data.Map as M
+
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -271,3 +274,15 @@ cookie = metadata_cookie . head
 
 newCookie :: [TableMetadata] -> Int
 newCookie = nextCookie . cookie
+
+fixJmp :: CodeGenEnv
+fixJmp = getRes >>= \res ->
+    let res' = M.fromList $ map (first iP2) $ filter ((==opNoop) . iOpCode . fst) $ zip res [0::Int ..]
+        insList = [opNext        ,opNextIdx     ,opJSetFound   ,opJIf         ,opJSetNotFound
+                  ,opJLike       ,opJGlob       ,opJNe         ,opJEq         ,opJNe
+                  ,opJLt         ,opJLe         ,opJGt         ,opJGe         ,opJIsNull
+                  ,opJNotNull    ,opGoto        ]
+        trans x = if iOpCode x `elem` insList
+                  then Instruction (iOpCode x) (iP1 x) (fromMaybe (-1) $ M.lookup (iP2 x) res') (iP3 x)
+                  else x
+     in putRes (map trans res)
