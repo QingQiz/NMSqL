@@ -24,22 +24,17 @@ typedef int pgno_t;
  */
 #define CURSOR_READ_ONLY 1
 #define CURSOR_WRITE 2
-Cursor *open(int transactionId, const char *indexName, int flag);
-int close(int transactionId, Cursor *cursor);
-int create(const char *dbTable, const char *indexName, CursorType indexType,
-           const int indexColumnCnt, const char **indexColumns);
+Cursor *cursorOpen(int transactionId, const char *indexName, int flag);
+int cursorClose(int transactionId, Cursor *cursor);
 int find(int transactionId, Cursor *cursor, const void *key);
 void *getKey(int transactionId, Cursor *cursor);
 void *getValue(int transactionId, Cursor *cursor);
 int getAddress(int transactionId, Cursor *cursor);
-// void* getRecordNumber(Cursor* cursor);
 int insert(int transactionId, Cursor *cursor, const void *key,
            const void *value);
 int erase(int transactionId, Cursor *cursor);
 int next(int transactionId, Cursor *cursor);
 int reset(int transactionId, Cursor *cursor);
-
-void *getValueByAddress(int transactionId, int address);
 
 pgno_t createTable();
 pgno_t createIndex();
@@ -47,10 +42,8 @@ int clear(pgno_t page);
 int destroy(pgno_t page);
 
 int reorganize();
-void *getMetaData(const char *tableName);
 int getCookies();
 int setCookies(int cookies);
-char **getTableColumns(const char *tableName);
 
 /*
  * 事务相关
@@ -79,4 +72,11 @@ struct TableMetadata {
 
 struct TableMetadata *getTableMetadata(char *tableName);
 }
+char **getAllTableNames();
+
+/*
+ * 对外接口
+ */
+void openDb(const char *dbName);
+void closeDb();
 #endif
