@@ -63,8 +63,8 @@ impl VirtualMachine {
     if (self.vmCursors.len() <= num) {
       self.vmCursors.resize(num + 1, VmCursor::default());
     }
-    self.closeCursor(num);
     self.vmCursors[num] = VmCursor::new(cursorName, flag, self.transactionId);
+    self.vmCursors[num].rewind();
   }
   fn getCursor(self: &mut Self, num: usize) -> Result<&mut VmCursor, String> {
     if num < self.vmCursors.len() {

@@ -146,6 +146,13 @@ pub fn runOperation(
       }
       VmOpType::OP_Rewind => {
         vm.cursorRewind(nowOp.p1 as usize)?;
+        if if vm.isTmp(nowOp.p1 as usize) {
+          vm.isEndTmpCursor(nowOp.p1 as usize)?
+        } else {
+          vm.cursorIsEnd(nowOp.p1 as usize)?
+        } {
+          pc = nowOp.p2 as usize - 1;
+        }
       }
       VmOpType::OP_Next => {
         if if vm.isTmp(nowOp.p1 as usize) {
@@ -182,6 +189,9 @@ pub fn runOperation(
         if let VmMem::MEM_STRING(key) = poped {
           vm.cursorFindKey(nowOp.p1 as usize, &key)?;
           vm.cursorSetIdx(nowOp.p1 as usize, &key)?;
+          if vm.cursorIsEnd(nowOp.p1 as usize)? {
+            pc = nowOp.p2 as usize - 1;
+          }
         } else {
           return Err(String::from("find should use a value made by IR MakeKey"));
         }

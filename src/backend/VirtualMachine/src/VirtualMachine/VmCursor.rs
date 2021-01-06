@@ -30,7 +30,15 @@ impl Default for VmCursor {
 impl VmCursor {
   pub fn new(cursorName: &String, flag: i32, transactionId: i32) -> Self {
     VmCursor {
-      cursor: DbWrapper::open(transactionId, &cursorName.as_bytes().to_vec(), flag),
+      cursor: DbWrapper::open(
+        transactionId,
+        &{
+          let mut ret = cursorName.as_bytes().to_vec();
+          ret.push(0);
+          ret
+        },
+        flag,
+      ),
       key: VmMemString::default(),
       isIdx: false,
       keyAsData: false,
@@ -41,11 +49,7 @@ impl VmCursor {
     }
   }
   fn getCursor(self: &Self) -> Result<*mut Cursor, String> {
-    if self.cursor as usize == 0 {
-      Err(String::from("cursor is not initialized"))
-    } else {
-      Ok(self.cursor)
-    }
+    Ok(self.cursor)
   }
   pub fn setIsIdx(self: &mut Self, flag: bool) {
     self.isIdx = flag;
@@ -53,6 +57,8 @@ impl VmCursor {
   pub fn rewind(self: &mut Self) -> Result<(), String> {
     DbWrapper::reset(self.transactionId, self.getCursor()?);
     self.clear();
+    self.keyCache = VmMemString::new(DbWrapper::getKey(self.transactionId, self.cursor));
+    self.valueCache = VmMemString::new(DbWrapper::getValue(self.transactionId, self.cursor));
     Ok(())
   }
   pub fn getKey(self: &Self) -> &VmMemString {
@@ -107,7 +113,7 @@ impl VmCursor {
     self.keyAsData = flag;
   }
   pub fn isEnd(self: &mut Self) -> bool {
-    if self.keyCache.len() == 0 || self.isIdx && self.keyCache != self.key {
+    if self.valueCache.len() == 0 || self.isIdx && self.keyCache != self.key {
       true
     } else {
       false
