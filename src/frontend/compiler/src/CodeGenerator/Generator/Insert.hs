@@ -36,7 +36,7 @@ cInsert (Insert tbName cols (ValueList values)) = getMetadata >>= \mds
                         let buildVal = \case
                                 Null        -> Instruction opNull    0 0 ""
                                 ValInt    a -> Instruction opInteger a 0 ""
-                                ValDouble a -> Instruction opString  0 0 $ show a
+                                ValDouble a -> Instruction opDouble  0 0 $ show a
                                 ValStr    a -> Instruction opString  0 0 a
 
                             getVal colName = case dropWhile ((/=colName) . fst) values' of
