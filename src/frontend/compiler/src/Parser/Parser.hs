@@ -167,12 +167,16 @@ strValue = many space >> char '\'' >> (concat <$> many tryTakeChar) <* char '\''
         transform c    = ['\\', c]
 
 -- parse a int value
-intValue = toInt <$> (some digit <* checkChar (/='.'))
+intValue = toInt <$> (intVal <* checkChar (/='.'))
     where toInt x = read x :: Int
+          intVal = (spcChar '-' >> ('-':) <$> some digit) <|> some digit
+
 
 -- parse a float value
-floatValue = toDouble <$> ((\a b -> a ++ "." ++ b) <$> some digit <*> ((char '.' >> some digit) <|> return "0"))
+floatValue = toDouble <$> doubleVal'
     where toDouble x = read x :: Double
+          doubleVal  = (\a b -> a ++ "." ++ b) <$> some digit <*> ((char '.' >> some digit) <|> return "0")
+          doubleVal' = (spcChar '-' >> ('-':) <$> doubleVal) <|> doubleVal
 
 ----------------------------------------------------------
 -- SQL parser implementation

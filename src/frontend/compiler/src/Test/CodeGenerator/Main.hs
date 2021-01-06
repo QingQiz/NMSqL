@@ -1,6 +1,7 @@
 module Main where
 
 
+import TestParser
 import TestCodeGenerator
 
 import Test.HUnit
@@ -8,4 +9,4 @@ import Control.Monad
 
 
 main :: IO ()
-main = void (runTestTT codeGeneratorTest)
+main = runTestTT codeGeneratorTest >> runTestTT parserTest >> return ()
