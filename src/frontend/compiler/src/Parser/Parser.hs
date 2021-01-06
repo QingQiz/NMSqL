@@ -149,9 +149,9 @@ maySurroundByBrackets p = surroundByBrackets p <|> p
 surroundByQm p = (many space >> char '"') >> p <* char '"'
 
 -- parse a string value
-strValue = many space >> char '"' >> (concat <$> many tryTakeChar) <* char '"'
+strValue = many space >> char '\'' >> (concat <$> many tryTakeChar) <* char '\''
     where
-        tryTakeChar = (transform <$> (char '\\' >> anyChar)) <|> (charExcept '"' >>= \x -> return [x])
+        tryTakeChar = (transform <$> (char '\\' >> anyChar)) <|> (charExcept '\'' >>= \x -> return [x])
         -- see `https://baike.baidu.com/item/转义字符#字符表`
         transform 'a'  = ['\a']
         transform 'b'  = ['\b']
@@ -162,7 +162,6 @@ strValue = many space >> char '"' >> (concat <$> many tryTakeChar) <* char '"'
         transform 'v'  = ['\v']
         transform '\\' = ['\\']
         transform '\'' = ['\'']
-        transform '"'  = ['"' ]
         transform '?'  = ['?' ]
         transform '0'  = ['\0']
         transform c    = ['\\', c]

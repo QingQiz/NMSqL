@@ -89,14 +89,14 @@ exprColumn :: String -> CodeGenEnv
 exprColumn cn = getMetadata >>= \mds -> case columnIdx cn mds of
     (-1,  0) -> throwError $ "Ambiguous column name: " ++ cn
     (-1, -1) -> throwError $ "No such column: " ++ cn
-    (i ,  j) -> appendInst opColumn i j ""
+    (i ,  j) -> getColCursor >>= \cr -> appendInst opColumn (cr + i) j ""
 
 
 -- code generator for table-column
 exprTableColumn :: String -> String -> CodeGenEnv
 exprTableColumn tn cn = getMetadata >>= \mds -> case tableColumnIdx tn cn mds of
     (-1, _) -> throwError $ "No such column: " ++ tn ++ "." ++ cn
-    (i , j) -> appendInst opColumn i j ""
+    (i , j) -> getColCursor >>= \cr -> appendInst opColumn (cr + i) j ""
 
 
 -- code generator for function-call-expr
@@ -147,7 +147,7 @@ exprConst :: Value -> CodeGenEnv
 exprConst val = case val of
     ValStr str       -> appendInst opString  0   0 str
     ValInt int       -> appendInst opInteger int 0 ""
-    ValDouble double -> appendInst opString  0   0 $ show double
+    ValDouble double -> appendInst opDouble  0   0 $ show double
     Null             -> appendInst opNull    0   0 ""
 
 

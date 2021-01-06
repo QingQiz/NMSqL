@@ -67,7 +67,7 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                 if   name `elem` co
                 then doNothing >> deleteFromIndex xs co
                 else let idx = map (snd . (`columnIdx` mds)) colNames
-                         key = appendInstructions (map (\i -> Instruction opColumn 0 i "") idx)
+                         key = appendInstructions (map (\i -> Instruction opColumn cr i "") idx)
                             >> appendInst opMakeKey  (length colNames) 0   ""
                             >> appendInst opBeginIdx cr'               lab ""
                       in appendInst opOpenWrite cr' 0 name >> key

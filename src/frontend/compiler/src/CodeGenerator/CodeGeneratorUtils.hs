@@ -26,7 +26,8 @@ data CodeGenCnt = CodeGenCnt {
     aggCNT       :: Int,
     cursorCNT    :: Int,
     cursorOPENED :: [String],
-    openWRITE    :: Bool
+    openWRITE    :: Bool,
+    colCursor    :: Int
 } -- (label-cnt, set-cnt, AggCnt)
 
 type FunctionDef  = (String, Int) -- (func-name, func-param-cnt)
@@ -63,6 +64,8 @@ doNothing :: CodeGenEnv
 doNothing = return []
 
 
+
+
 -- functions to operate label
 getLabel :: ExceptTEnv Int
 getLabel = labelCNT . trd3 <$> lift get
@@ -79,6 +82,12 @@ mkLabel label = appendInst opNoop 0 label ""
 
 mkCurrentLabel :: CodeGenEnv
 mkCurrentLabel = getLabel >>= mkLabel >> updateLabel
+
+getColCursor :: ExceptTEnv Int
+getColCursor = colCursor . trd3 <$> lift get
+
+putColCursor :: Int -> CodeGenEnv
+putColCursor x = get >>= (\(a, b, cnt) -> put (a, b, cnt {colCursor = x})) >> getRes
 
 -- functions to operate set
 getSet :: ExceptTEnv Int

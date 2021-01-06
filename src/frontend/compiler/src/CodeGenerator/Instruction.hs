@@ -123,6 +123,7 @@ opSetSetNotFound = 118 :: Integer
 opSetSetEmpty    = 119 :: Integer
 opDefaultKey     = 120 :: Integer
 opAddress        = 121 :: Integer
+opDouble         = 122 :: Integer
 
 instructions = ["opTempInst"     ,"opTransaction" ,"opCommit"       ,"opRollback"    ,"opReadCookie"     ,"opSetCookie"
                ,"opVerifyCookie" ,"opOpen"        ,"opOpenTemp"     ,"opOpenWrite"   ,"opClose"          ,"opMoveTo"
@@ -144,7 +145,7 @@ instructions = ["opTempInst"     ,"opTransaction" ,"opCommit"       ,"opRollback
                ,"opStrlen"       ,"opSubstr"      ,"opSetIf"        ,"opSetLike"     ,"opSetGlob"        ,"opSetEq"
                ,"opSetNe"        ,"opSetLt"       ,"opSetLe"        ,"opSetGt"       ,"opSetGe"          ,"opSetIsNull"
                ,"opSetNotNull"   ,"opSortSetDesc" ,"opSetOpen"      ,"opSetSetFound" ,"opSetSetNotFound" ,"opSetSetEmpty"
-               ,"opDefaultKey"   ,"opAddress"]
+               ,"opDefaultKey"   ,"opAddress"     ,"opDouble"]
 
 type OpCode = Integer
 
