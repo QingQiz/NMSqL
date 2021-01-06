@@ -34,14 +34,14 @@ IR大致可以分为以下几类：
 |19|Column|Y|Y|N|读取P1指向的数据 按照MakeRecord指令输出的形式取出第P2列的值并压栈 若开启了key-as-data模式 则处理的是P1的key (再研究一下)|
 |20|KeyAsData|Y|Y|N|将P1游标的key-as-data模式开启(P2==1)或关闭(P2==0)|
 |22|FullKey|Y|N|N|将游标P1指向的key作为字符串压栈|
-|23|Rewind|Y|N|N|将游标P1重置(指向数据库第一个值) cursor状态重置(例如keyasdata等)|
+|23|Rewind|Y|Y|N|将游标P1重置(指向数据库第一个值) cursor状态重置(例如keyasdata等) 若表为空 则跳转到P2|
 |24|Next|Y|Y|N|若有Next标记 则取消标记 否则将游标P1移向下一个位置 若已经是最后一个值 则跳转到P2|
 |25|Destroy|Y|N|N|删除一个根page为P1的表或索引，若P1为0，出栈一个元素作为P1|
 |26|Clear|Y|N|N|清空一个根page为P1的表或索引，若P1为0，出栈一个元素作为P1|
 |27|CreateIndex|N|N|Y|创建一个新索引 将此索引的页编号压栈 将新索引的根页写入数据库的根页中 将新索引的根页号写入P3指定的内存中|
 |28|CreateTable|N|N|Y|创建一个新表 将此表的页编号压栈 将新表的根页写入数据库的根页中 将新表的根页号写入P3指定的内存中|
 |29|Reorganize|Y|N|N|压缩 优化 根页编号为P1的表或索引|
-|30|BeginIdx|Y|N|N|出栈一个元素作为key 此key需要是由MakeKey产生的 将游标P1移到此记录的位置 此指令后续应不断使用NextIdx指定|
+|30|BeginIdx|Y|Y|N|出栈一个元素作为key 此key需要是由MakeKey产生的 将游标P1移到此记录的位置 此指令后续应不断使用NextIdx指定 若无此记录 则跳转到P2|
 |31|NextIdx|Y|Y|N|若有Next标记 则取消标记 否则将cursor指向下一条记录 此指令不断访问下一条与BeginIdx中key相同的记录 若记录已结束 则跳转到P2|
 |34|MemLoad|Y|N|N|将P1内存位置的元素压栈|
 |35|MemStore|Y|N|N|出栈一个元素 将其存至P1内存位置|
