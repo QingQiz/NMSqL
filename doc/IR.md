@@ -130,6 +130,7 @@ IR大致可以分为以下几类：
 |119|SetSetEmpty|Y|Y|N|若第P1个Set为空 则将P2压栈，否则将 `0` 压栈|
 |120|DefaultKey|Y|N|N|获取 cursor P1 的默认 Key 并压栈，默认 Key 暂时定为 **空字符串**|
 |121|Address|Y|N|N|将 cursor P1 指向的数据的地址 （pagenumber+offset）压栈|
+|122|Double|N|N|Y|将字符串P3(指针)转换为一个Double压栈|
 
 ### Removed IR
 
