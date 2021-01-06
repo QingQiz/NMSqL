@@ -72,9 +72,9 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
         wrapperIdx _ _ labEnd = wrapperTb tbNotUseIdx labEnd where
             tbNotUseIdx = filter (`notElem` tbNames) allTbNames
 
-            condExpr' lab = case condExpr of
+            condExpr' cr lab = case condExpr of
                 [] -> []
-                _  -> [cExpr $ foldl1 (flip $ BinExpr And) condExpr
+                _  -> [putColCursor cr >> cExpr (foldl1 (flip $ BinExpr And) condExpr) >> putColCursor 0
                       ,appendInst opJIf 1 lab ""]
 
             wrapperTb (tb:tbs) labE =
@@ -82,14 +82,16 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                              $ findIndex (\md -> metadata_name md == tb) mds
                  in getLabel >>= \lab  -> updateLabel
                  >> getLabel >>= \lab' -> updateLabel
-                 >> appendInst opRewind tbCursor labE ""
+                 >> getCursor >>= \cr
+                 -> appendInst opRewind (tbCursor + cr) labE ""
                  >> mkLabel lab
                  >> wrapperTb tbs lab'
                  >> mkLabel lab'
-                 >> appendInst opNext tbCursor labE ""
+                 >> appendInst opNext (tbCursor + cr) labE ""
                  >> appendInst opGoto 0 lab ""
 
-            wrapperTb _ labE = connectCodeGenEnv (condExpr' labE)
+            wrapperTb _ labE = getCursor >>= \cr
+                -> connectCodeGenEnv (condExpr' cr labE)
                 >> appendInst opTempInst 0 0    ""
 
         -- some help functions

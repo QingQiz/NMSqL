@@ -63,8 +63,12 @@ codeGeneratorTest = test [
                     ?: Right [Instruction opColumn 1 2 ""]
 ---------------------------------------------------------
     , "const value" ~: "string"
-                    ~: cExprStr "\"a\""
+                    ~: cExprStr "\'a\'"
                     ?: Right [Instruction opString 0 0 "a"]
+
+    , "const value" ~: "string"
+                    ~: cExprStr "\'a\\\'\'"
+                    ?: Right [Instruction opString 0 0 "a'"]
 
     , "const value" ~: "integer"
                     ~: cExprStr "123"
@@ -72,7 +76,7 @@ codeGeneratorTest = test [
 
     , "const value" ~: "double"
                     ~: cExprStr "12.3"
-                    ?: Right [Instruction opString 0 0 "12.3"]
+                    ?: Right [Instruction opDouble 0 0 "12.3"]
 
     , "const value" ~: "null"
                     ~: cExprStr "null"
@@ -265,7 +269,7 @@ codeGeneratorTest = test [
                     ?: Left "Right-hand side of IN operator must be constant"
 
     , "in expr"     ~: "right-hand side of IN is not a constant (like-expr)"
-                    ~: cExprStr "x in (x like \"a\")"
+                    ~: cExprStr "x in (x like 'a')"
                     ?: Left "Right-hand side of IN operator must be constant"
 
     , "in expr"     ~: "right-hand side of IN is not a constant (isnull-expr)"
@@ -1106,8 +1110,8 @@ codeGeneratorTest = test [
 
                     -- make key (a, b), begin index idx_xxx_a_b
                     ,Instruction opOpenWrite    4   0  "idx_xxx_a_b"
-                    ,Instruction opColumn       0   0  ""
-                    ,Instruction opColumn       0   1  ""
+                    ,Instruction opColumn       3   0  ""
+                    ,Instruction opColumn       3   1  ""
                     ,Instruction opMakeKey      2   0  ""
                     ,Instruction opBeginIdx     4   8  ""
                     --
@@ -1149,6 +1153,154 @@ codeGeneratorTest = test [
                     --
                     ,Instruction opNoop         0   7  ""
                     ,Instruction opNextIdx      3   5  ""
+                    ,Instruction opGoto         0   6  ""
+                    ,Instruction opNoop         0   5  ""
+                    ,Instruction opClose        3   0  ""
+
+                    ---------------------------------------
+                    -- insert the data select in step 1 to table
+                    -- rewind temp table
+                    ,Instruction opRewind       1   3  ""
+                    ,Instruction opNoop         0   4  ""
+                    --
+                    ,Instruction opOpenWrite    0   0  "xxx"
+                    -- insert into table
+                    ,Instruction opDefaultKey   0   0  ""
+                    ,Instruction opColumn       1   0  ""
+                    ,Instruction opColumn       1   1  ""
+                    ,Instruction opColumn       1   2  ""
+                    ,Instruction opColumn       1   3  ""
+                    ,Instruction opMakeRecord   4   0  ""
+                    ,Instruction opPut          0   0  ""
+
+                    -- insert into idx_xxx_a
+                    ,Instruction opColumn       0   0  ""
+                    ,Instruction opMakeKey      1   0  ""
+                    ,Instruction opAddress      0   0  ""
+                    --
+                    ,Instruction opOpenWrite    2   0  "idx_xxx_a"
+                    ,Instruction opPut          2   0  ""
+                    ,Instruction opClose        2   0  ""
+
+                    -- insert into idx_xxx_a_b
+                    ,Instruction opColumn       0   0  ""
+                    ,Instruction opColumn       0   1  ""
+                    ,Instruction opMakeKey      2   0  ""
+                    ,Instruction opAddress      0   0  ""
+                    --
+                    ,Instruction opOpenWrite    2   0  "idx_xxx_a_b"
+                    ,Instruction opPut          2   0  ""
+                    ,Instruction opClose        2   0  ""
+
+                    -- close table
+                    ,Instruction opClose        0   0  ""
+                    --
+                    ,Instruction opNext         1   3  ""
+                    ,Instruction opGoto         0   4  ""
+                    ,Instruction opNoop         0   3  ""
+                    -- close temp table
+                    ,Instruction opClose        1   0  ""
+                    ,Instruction opCommit       0   0  ""]
+    , "update"  ~: "update xxx set a=1, b = a + b where b = 1"
+                ~: cUpdateStr "update xxx set a=1,b = a + b where b = 1"
+                ?: Right
+                    [Instruction opTransaction  0   0  ""
+                    ,Instruction opVerifyCookie 234 0  ""
+                    ---------------------------------------
+                    -- select result into temp table
+                    ,Instruction opOpenTemp     1   0  ""
+                    ,Instruction opOpen         0   0  "xxx"
+                    ,Instruction opVerifyCookie 234 0  ""
+                    ,Instruction opRewind       0   0  ""
+                    --
+                    ,Instruction opNoop         0   1  ""
+                    -- cond: b = 1
+                    ,Instruction opColumn       0   1  ""
+                    ,Instruction opInteger      1   0  ""
+                    ,Instruction opSetEq        0   1  ""
+                    ,Instruction opJIf          1   2  ""
+                    -- a
+                    ,Instruction opInteger      1   0  ""
+                    -- a + b
+                    ,Instruction opColumn       0   0  ""
+                    ,Instruction opColumn       0   1  ""
+                    ,Instruction opAdd          0   0  ""
+                    -- c
+                    ,Instruction opColumn       0   2  ""
+                    -- d
+                    ,Instruction opColumn       0   3  ""
+                    -- insert into temp table
+                    ,Instruction opMakeRecord   4   0  ""
+                    ,Instruction opDefaultKey   1   0  ""
+                    ,Instruction opPull         1   0  ""
+                    ,Instruction opPut          1   0  ""
+                    --
+                    ,Instruction opNoop         0   2  ""
+                    ,Instruction opNext         0   0  ""
+                    ,Instruction opGoto         0   1  ""
+                    ,Instruction opNoop         0   0  ""
+                    ,Instruction opClose        0   0  ""
+                    ---------------------------------------
+                    -- delete from table where b = 1
+                    ,Instruction opOpenWrite    3   0  "xxx"
+                    -- rewind
+                    ,Instruction opRewind       3   5  ""
+                    --
+                    ,Instruction opNoop         0   6  ""
+                    -- cond: b = 1
+                    ,Instruction opColumn       3   1  ""
+                    ,Instruction opInteger      1   0  ""
+                    ,Instruction opSetEq        0   1  ""
+                    ,Instruction opJIf          1   7  ""
+
+                    -- make key (a, b), begin index idx_xxx_a
+                    ,Instruction opOpenWrite    4   0  "idx_xxx_a"
+                    ,Instruction opColumn       3   0  ""
+                    ,Instruction opMakeKey      1   0  ""
+                    ,Instruction opBeginIdx     4   8  ""
+                    --
+                    ,Instruction opNoop         0   9  ""
+                    -- where cond
+                    ,Instruction opAddress      3   0  ""
+                    ,Instruction opAddress      4   0  ""
+                    ,Instruction opJNe          0   10 ""
+                    -- delete and break
+                    ,Instruction opDelete       4   0  ""
+                    ,Instruction opGoto         0   8  ""
+                    --
+                    ,Instruction opNoop         0   10 ""
+                    ,Instruction opNextIdx      4   8  ""
+                    ,Instruction opGoto         0   9  ""
+                    ,Instruction opNoop         0   8  ""
+                    ,Instruction opClose        4   0  ""
+
+                    -- make key (a, b), begin index idx_xxx_a_b
+                    ,Instruction opOpenWrite    4   0  "idx_xxx_a_b"
+                    ,Instruction opColumn       3   0  ""
+                    ,Instruction opColumn       3   1  ""
+                    ,Instruction opMakeKey      2   0  ""
+                    ,Instruction opBeginIdx     4   11 ""
+                    --
+                    ,Instruction opNoop         0   12 ""
+                    -- where cond
+                    ,Instruction opAddress      3   0  ""
+                    ,Instruction opAddress      4   0  ""
+                    ,Instruction opJNe          0   13 ""
+                    -- delete and break
+                    ,Instruction opDelete       4   0  ""
+                    ,Instruction opGoto         0   11 ""
+                    --
+                    ,Instruction opNoop         0   13 ""
+                    ,Instruction opNextIdx      4   11 ""
+                    ,Instruction opGoto         0   12 ""
+                    ,Instruction opNoop         0   11 ""
+                    ,Instruction opClose        4   0  ""
+
+                    -- delete from xxx
+                    ,Instruction opDelete       3   0  ""
+                    --
+                    ,Instruction opNoop         0   7  ""
+                    ,Instruction opNext         3   5  ""
                     ,Instruction opGoto         0   6  ""
                     ,Instruction opNoop         0   5  ""
                     ,Instruction opClose        3   0  ""

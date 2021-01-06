@@ -26,7 +26,7 @@ testEnv = (
     ( (tbMd, tbMd)
     , [("max", 2), ("min", 2), ("substr", 3)])
     , ([], [], 0)
-    , (CodeGenCnt 0 0 0 0 [] False))
+    , (CodeGenCnt 0 0 0 0 [] False 0))
 
 
 runCodeGen :: CodeGenEnv -> CodeGenRes
