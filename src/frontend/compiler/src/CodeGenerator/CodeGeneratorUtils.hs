@@ -281,7 +281,7 @@ fixJmp = getRes >>= \res ->
         insList = [opNext        ,opNextIdx     ,opJSetFound   ,opJIf         ,opJSetNotFound
                   ,opJLike       ,opJGlob       ,opJNe         ,opJEq         ,opJNe
                   ,opJLt         ,opJLe         ,opJGt         ,opJGe         ,opJIsNull
-                  ,opJNotNull    ,opGoto        ]
+                  ,opJNotNull    ,opGoto        ,opRewind      ,opBeginIdx]
         trans x = if iOpCode x `elem` insList
                   then Instruction (iOpCode x) (iP1 x) (fromMaybe (-1) $ M.lookup (iP2 x) res') (iP3 x)
                   else x

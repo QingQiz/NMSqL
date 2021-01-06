@@ -113,7 +113,7 @@ cInsert (Insert tbName cols (SelectResult select)) = getMetadata >>= \mds
                  >> (subtract 1 <$> getCursor) >>= \cr -> getLabel >>= \lab
                  -> appendInstructions
                         -- rewind temp table
-                        [Instruction opRewind  cr  0         ""
+                        [Instruction opRewind  cr  lab       ""
                         ,Instruction opNoop    0   (lab + 1) ""]
                  -- insert into table
                  >> insertIntoTable cr

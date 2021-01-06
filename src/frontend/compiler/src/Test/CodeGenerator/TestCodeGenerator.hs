@@ -335,7 +335,7 @@ codeGeneratorTest = test [
                              ,Instruction opNoop     0 1 ""]
                     /: cExprStr "1+2"
                     >: Right [Instruction opMakeKey  1 0 ""
-                             ,Instruction opBeginIdx 1 0 ""
+                             ,Instruction opBeginIdx 1 2 ""
                              ,Instruction opNoop     0 3 ""]
                     /: (putLabel 5 >> cExprStr "yyy.b>10 and yyy.a = 1")
                     >: Right [Instruction opJIf      1 4 ""
@@ -359,7 +359,7 @@ codeGeneratorTest = test [
                              ,Instruction opMakeKey  1 0 ""
                              ,Instruction opBeginIdx 1 0 ""
                              ,Instruction opNoop     0 1 ""
-                             ,Instruction opRewind   0 0 ""
+                             ,Instruction opRewind   0 2 ""
                              ,Instruction opNoop     0 3 ""]
                     /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
@@ -380,7 +380,7 @@ codeGeneratorTest = test [
                              ,Instruction opVerifyCookie 234 0 ""
                              ,Instruction opRewind   0 0 ""
                              ,Instruction opNoop     0 1 ""
-                             ,Instruction opRewind   1 0 ""
+                             ,Instruction opRewind   1 2 ""
                              ,Instruction opNoop     0 3 ""]
                     /: (putLabel 5 >> cExprStr "xxx.b > 10 and yyy.a > 9")
                     >: Right [Instruction opJIf      1 4 ""
@@ -531,7 +531,7 @@ codeGeneratorTest = test [
                              -- select from yyy and write result to set
                              ,Instruction opOpen         0   0 "yyy"
                              ,Instruction opVerifyCookie 234 0 ""
-                             ,Instruction opRewind       0   0 ""
+                             ,Instruction opRewind       0   3 ""
                              ,Instruction opNoop         0   4 ""
                              -- where-cond
                              ,Instruction opInteger      1   0 ""
@@ -767,7 +767,7 @@ codeGeneratorTest = test [
                     ,Instruction opColumn       0 1 ""
                     ,Instruction opMakeKey      2 0 ""
                     -- begin index
-                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opBeginIdx     1 3 ""
                     ,Instruction opNoop         0 4 ""
                     -- compare address, jump when negative
                     ,Instruction opAddress      0 0 ""
@@ -787,7 +787,7 @@ codeGeneratorTest = test [
                 +: insertTemp (appendInstructions
                     [Instruction opOpenWrite    1 0 "xxx"
                     -- rewind
-                    ,Instruction opRewind       1 0 ""
+                    ,Instruction opRewind       1 6 ""
                     ,Instruction opNoop         0 7 ""
                     -- compare address, jump when negative
                     ,Instruction opAddress      0 0 ""
@@ -824,7 +824,7 @@ codeGeneratorTest = test [
                     ,Instruction opColumn       0 0 ""
                     ,Instruction opMakeKey      1 0 ""
                     -- begin index
-                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opBeginIdx     1 3 ""
                     ,Instruction opNoop         0 4 ""
                     -- compare address, jump when negative
                     ,Instruction opAddress      0 0 ""
@@ -848,7 +848,7 @@ codeGeneratorTest = test [
                     ,Instruction opColumn       0 1 ""
                     ,Instruction opMakeKey      2 0 ""
                     -- begin index
-                    ,Instruction opBeginIdx     1 0 ""
+                    ,Instruction opBeginIdx     1 6 ""
                     ,Instruction opNoop         0 7 ""
                     -- compare address, jump when negative
                     ,Instruction opAddress      0 0 ""
@@ -994,7 +994,7 @@ codeGeneratorTest = test [
                     ,Instruction opClose        0   0 ""
                     ---------------------------------------
                     -- select form temp table
-                    ,Instruction opRewind       1   0 ""
+                    ,Instruction opRewind       1   3 ""
                     ,Instruction opNoop         0   4 ""
 
                     -- insert into table
@@ -1100,7 +1100,7 @@ codeGeneratorTest = test [
                     -- make key (a), begin index idx_xxx_a
                     ,Instruction opInteger      1   0  ""
                     ,Instruction opMakeKey      1   0  ""
-                    ,Instruction opBeginIdx     3   0  ""
+                    ,Instruction opBeginIdx     3   5  ""
                     --
                     ,Instruction opNoop         0   6  ""
 
@@ -1109,7 +1109,7 @@ codeGeneratorTest = test [
                     ,Instruction opColumn       0   0  ""
                     ,Instruction opColumn       0   1  ""
                     ,Instruction opMakeKey      2   0  ""
-                    ,Instruction opBeginIdx     4   0  ""
+                    ,Instruction opBeginIdx     4   8  ""
                     --
                     ,Instruction opNoop         0   9  ""
                     -- where cond
@@ -1128,7 +1128,7 @@ codeGeneratorTest = test [
 
                     -- delete from table
                     ,Instruction opOpenWrite    4   0  "xxx"
-                    ,Instruction opRewind       4   0  ""
+                    ,Instruction opRewind       4   11  ""
                     ,Instruction opNoop         0   12 ""
                     -- where cond
                     ,Instruction opAddress      3   0  ""
@@ -1156,7 +1156,7 @@ codeGeneratorTest = test [
                     ---------------------------------------
                     -- insert the data select in step 1 to table
                     -- rewind temp table
-                    ,Instruction opRewind       1   0  ""
+                    ,Instruction opRewind       1   3  ""
                     ,Instruction opNoop         0   4  ""
                     --
                     ,Instruction opOpenWrite    0   0  "xxx"
@@ -1204,6 +1204,8 @@ codeGeneratorTest = test [
                 ~: putRes
                     [Instruction opNoop         0 0 ""
                     --
+                    ,Instruction opRewind       0 0 ""
+                    ,Instruction opBeginIdx     0 0 ""
                     ,Instruction opNext         0 0 ""
                     ,Instruction opNextIdx      0 0 ""
                     ,Instruction opJSetFound    0 0 ""
@@ -1222,6 +1224,8 @@ codeGeneratorTest = test [
                     ,Instruction opJNotNull     0 0 ""
                     ,Instruction opGoto         0 0 ""
                     --
+                    ,Instruction opRewind       0 1 ""
+                    ,Instruction opBeginIdx     0 1 ""
                     ,Instruction opNext         0 1 ""
                     ,Instruction opNextIdx      0 1 ""
                     ,Instruction opJSetFound    0 1 ""
@@ -1246,6 +1250,8 @@ codeGeneratorTest = test [
                 ?: Right
                     [Instruction opNoop         0 0  ""
                     --
+                    ,Instruction opRewind       0 0 ""
+                    ,Instruction opBeginIdx     0 0 ""
                     ,Instruction opNext         0 0  ""
                     ,Instruction opNextIdx      0 0  ""
                     ,Instruction opJSetFound    0 0  ""
@@ -1264,23 +1270,25 @@ codeGeneratorTest = test [
                     ,Instruction opJNotNull     0 0  ""
                     ,Instruction opGoto         0 0  ""
                     --
-                    ,Instruction opNext         0 35 ""
-                    ,Instruction opNextIdx      0 35 ""
-                    ,Instruction opJSetFound    0 35 ""
-                    ,Instruction opJIf          0 35 ""
-                    ,Instruction opJSetNotFound 0 35 ""
-                    ,Instruction opJLike        0 35 ""
-                    ,Instruction opJGlob        0 35 ""
-                    ,Instruction opJNe          0 35 ""
-                    ,Instruction opJEq          0 35 ""
-                    ,Instruction opJNe          0 35 ""
-                    ,Instruction opJLt          0 35 ""
-                    ,Instruction opJLe          0 35 ""
-                    ,Instruction opJGt          0 35 ""
-                    ,Instruction opJGe          0 35 ""
-                    ,Instruction opJIsNull      0 35 ""
-                    ,Instruction opJNotNull     0 35 ""
-                    ,Instruction opGoto         0 35 ""
+                    ,Instruction opRewind       0 39 ""
+                    ,Instruction opBeginIdx     0 39 ""
+                    ,Instruction opNext         0 39 ""
+                    ,Instruction opNextIdx      0 39 ""
+                    ,Instruction opJSetFound    0 39 ""
+                    ,Instruction opJIf          0 39 ""
+                    ,Instruction opJSetNotFound 0 39 ""
+                    ,Instruction opJLike        0 39 ""
+                    ,Instruction opJGlob        0 39 ""
+                    ,Instruction opJNe          0 39 ""
+                    ,Instruction opJEq          0 39 ""
+                    ,Instruction opJNe          0 39 ""
+                    ,Instruction opJLt          0 39 ""
+                    ,Instruction opJLe          0 39 ""
+                    ,Instruction opJGt          0 39 ""
+                    ,Instruction opJGe          0 39 ""
+                    ,Instruction opJIsNull      0 39 ""
+                    ,Instruction opJNotNull     0 39 ""
+                    ,Instruction opGoto         0 39 ""
                     --
                     ,Instruction opNoop         0 1  ""]
                 ]
