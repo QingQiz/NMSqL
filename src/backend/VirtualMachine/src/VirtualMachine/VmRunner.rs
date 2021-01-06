@@ -53,9 +53,14 @@ pub fn runOperation(
         }
       }
       VmOpType::OP_Open => vm.setCursor(nowOp.p1 as usize, &nowOp.p3, DbWrapper::CURSOR_READ_ONLY),
-      VmOpType::OP_OpenTemp => unimplemented!(),
+      VmOpType::OP_OpenTemp => vm.openTmpCursor(nowOp.p1 as usize),
       VmOpType::OP_OpenWrite => vm.setCursor(nowOp.p1 as usize, &nowOp.p3, DbWrapper::CURSOR_WRITE),
-      VmOpType::OP_Close => vm.closeCursor(nowOp.p1 as usize)?,
+      VmOpType::OP_Close => {
+        if vm.isTmp(nowOp.p1 as usize) {
+        } else {
+          vm.closeCursor(nowOp.p1 as usize)?
+        }
+      }
       VmOpType::OP_MoveTo => unimplemented!(),
       VmOpType::OP_Fcnt => unimplemented!(),
       VmOpType::OP_NewRecno => unimplemented!(),
@@ -105,18 +110,22 @@ pub fn runOperation(
         vm.cursorDelete(nowOp.p1 as usize)?;
       }
       VmOpType::OP_Column => {
-        let data = (match vm.cursorKeyAsData(nowOp.p1 as usize)? {
-          true => vm.cursorGetKey(nowOp.p1 as usize),
-          false => vm.cursorGetValue(nowOp.p1 as usize),
-        }?);
-        let toPush = VmMem::MEM_STRING(VmMemString::new(
-          match data.iter().skip(nowOp.p2 as usize).next() {
-            Some(x) => x.to_vec(),
-            None => {
-              return Err(String::from("column number is too big"));
-            }
-          },
-        ));
+        let toPush = if vm.isTmp(nowOp.p1 as usize) {
+          vm.columnTmpCursor(nowOp.p1 as usize, nowOp.p2 as usize)?
+        } else {
+          let data = (match vm.cursorKeyAsData(nowOp.p1 as usize)? {
+            true => vm.cursorGetKey(nowOp.p1 as usize),
+            false => vm.cursorGetValue(nowOp.p1 as usize),
+          }?);
+          VmMem::MEM_STRING(VmMemString::new(
+            match data.iter().skip(nowOp.p2 as usize).next() {
+              Some(x) => x.to_vec(),
+              None => {
+                return Err(String::from("column number is too big"));
+              }
+            },
+          ))
+        };
         vm.pushStack(toPush);
       }
       VmOpType::OP_KeyAsData => {
@@ -131,11 +140,19 @@ pub fn runOperation(
         let key = vm.cursorGetKey(nowOp.p1 as usize)?.clone();
         vm.pushStack(VmMem::MEM_STRING(key));
       }
+      VmOpType::OP_Address => {
+        let address = vm.cursorGetAddress(nowOp.p1 as usize).unwrap();
+        vm.pushStack(VmMem::MEM_INT(address));
+      }
       VmOpType::OP_Rewind => {
         vm.cursorRewind(nowOp.p1 as usize)?;
       }
       VmOpType::OP_Next => {
-        if vm.cursorIsEnd(nowOp.p1 as usize)? {
+        if if vm.isTmp(nowOp.p1 as usize) {
+          vm.isEndTmpCursor(nowOp.p1 as usize)?
+        } else {
+          vm.cursorIsEnd(nowOp.p1 as usize)?
+        } {
           pc = nowOp.p2 as usize - 1;
         } else {
           vm.cursorNext(nowOp.p1 as usize)?;
