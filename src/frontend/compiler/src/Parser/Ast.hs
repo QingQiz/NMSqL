@@ -46,7 +46,7 @@ data SortOrder = ASC | DESC
 data Value = ValStr String
            | ValInt Int
            | ValDouble Double
-           | Null
+           | Null deriving Eq
 
 
 data ValueList = ValueList [Expr]
