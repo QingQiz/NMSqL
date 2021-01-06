@@ -57,8 +57,8 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                           $ findIndex (elem idx . map fst . metadata_index) mds
                 keyLength = length key
                 mkKey = getCursor >>= \cr -> connectCodeGenEnv (map cExpr key)
-                     >> appendInst opMakeKey  keyLength        0 ""
-                     >> appendInst opBeginIdx (idxCursor + cr) 0 ""
+                     >> appendInst opMakeKey  keyLength        0      ""
+                     >> appendInst opBeginIdx (idxCursor + cr) labEnd ""
              in getCursor >>= \cr
              -> getLabel >>= \lab  -> updateLabel
              >> getLabel >>= \lab' -> updateLabel
@@ -82,7 +82,7 @@ cExprWrapper expr = getMetadata >>= \mds -> uncurry (wrapperExpr mds) (splitExpr
                              $ findIndex (\md -> metadata_name md == tb) mds
                  in getLabel >>= \lab  -> updateLabel
                  >> getLabel >>= \lab' -> updateLabel
-                 >> appendInst opRewind tbCursor 0 ""
+                 >> appendInst opRewind tbCursor labE ""
                  >> mkLabel lab
                  >> wrapperTb tbs lab'
                  >> mkLabel lab'

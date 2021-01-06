@@ -49,7 +49,7 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                 else getLabel >>= \lab ->
                      appendInstructions
                         [Instruction opOpenWrite cr' 0         tbName
-                        ,Instruction opRewind    cr' 0         ""
+                        ,Instruction opRewind    cr' lab       ""
                         ,Instruction opNoop      0   (lab + 1) ""
                         ,Instruction opAddress   cr  0         ""
                         ,Instruction opAddress   cr' 0         ""
@@ -63,15 +63,15 @@ cDelete (Delete tbName whereCond) = getMetadata >>= \mds'
                         ,Instruction opNoop      0   lab       ""
                         ,Instruction opClose     cr' 0         ""] >> putLabel (lab + 3)
 
-            deleteFromIndex ((name, colNames):xs) co = getCursor >>= \cr' -> let cr = cr' - 1 in
+            deleteFromIndex ((name, colNames):xs) co = getCursor >>= \cr' -> let cr = cr' - 1 in getLabel >>= \lab ->
                 if   name `elem` co
                 then doNothing >> deleteFromIndex xs co
                 else let idx = map (snd . (`columnIdx` mds)) colNames
                          key = appendInstructions (map (\i -> Instruction opColumn 0 i "") idx)
-                            >> appendInst opMakeKey  (length colNames) 0 ""
-                            >> appendInst opBeginIdx cr'                 0 ""
-                      in appendInst opOpenWrite cr' 0 name >> key >> getLabel >>= \lab
-                      -> appendInstructions
+                            >> appendInst opMakeKey  (length colNames) 0   ""
+                            >> appendInst opBeginIdx cr'               lab ""
+                      in appendInst opOpenWrite cr' 0 name >> key
+                      >> appendInstructions
                             [Instruction opNoop    0   (lab + 1) ""
                             ,Instruction opAddress cr  0         ""
                             ,Instruction opAddress cr' 0         ""
