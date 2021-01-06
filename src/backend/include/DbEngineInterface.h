@@ -7,6 +7,7 @@
  ***********************************/
 
 extern "C" {
+
 enum CursorType { CURSOR_BTREE, CURSOR_LIST };
 
 typedef enum CursorType CursorType;
