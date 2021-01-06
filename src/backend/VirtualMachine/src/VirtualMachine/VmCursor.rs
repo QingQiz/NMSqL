@@ -113,7 +113,7 @@ impl VmCursor {
     self.keyAsData = flag;
   }
   pub fn isEnd(self: &mut Self) -> bool {
-    if self.keyCache.len() == 0 || self.isIdx && self.keyCache != self.key {
+    if self.valueCache.len() == 0 || self.isIdx && self.keyCache != self.key {
       true
     } else {
       false
