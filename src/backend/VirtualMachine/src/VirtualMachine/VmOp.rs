@@ -122,6 +122,7 @@ pub enum VmOpType {
   OP_SetSetEmpty,
   OP_DefaultKey,
   OP_Address,
+  OP_Double,
 }
 
 impl Default for VmOpType {

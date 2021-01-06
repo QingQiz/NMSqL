@@ -434,6 +434,13 @@ pub fn runOperation(
         nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
         VmMemString::MEM_FLAG_STRING,
       ))),
+      VmOpType::OP_Double => vm.pushStack(VmMem::MEM_DOUBLE(
+        VmMem::MEM_STRING(VmMem::genVmString(
+          nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
+          VmMemString::MEM_FLAG_STRING,
+        ))
+        .realify(),
+      )),
       // push null to the stack
       VmOpType::OP_Null => vm.pushStack(VmMem::MEM_NULL),
       // pop an element from the stack
