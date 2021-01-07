@@ -10,8 +10,8 @@
 std::string extractString(const char *st);
 
 struct DBECursor{
-	void* key;
-	void* cursor;
+    std::string key;
+    void* cursor;
 };
 
 int findPageByName(const char* name);
