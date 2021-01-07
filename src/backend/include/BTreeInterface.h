@@ -12,7 +12,8 @@ typedef struct {
 } Address_t;
 
 typedef struct {
-    char data[16];
+    Size_t size;
+    void *data;
 } Key_t;
 
 /* meta information of B+ tree */
