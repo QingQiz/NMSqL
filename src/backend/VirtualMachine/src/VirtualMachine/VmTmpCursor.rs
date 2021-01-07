@@ -2,8 +2,8 @@ use super::VmMem::{VmMem, VmMemString, VmMemStringIterator};
 use super::VmUtil::*;
 #[derive(Default, Clone)]
 pub struct VmTmpCursor {
-  keys: Vec<Vec<VmMem>>,
-  values: Vec<Vec<VmMem>>,
+  keys: Vec<Vec<VmMemString>>,
+  values: Vec<Vec<VmMemString>>,
   nowIdx: usize,
   keyAsData: bool,
 }
@@ -12,41 +12,16 @@ impl VmTmpCursor {
     Self::default()
   }
   pub fn put(&mut self, key: &VmMemString, value: &VmMemString) {
-    let key = VmMemString::new(key[4..].to_vec());
-    let value = VmMemString::new(value[4..].to_vec());
-    self.keys.push(
-      key
-        .iter()
-        .map(|x| {
-          let len = (x[0] as usize) << 8 | (x[1] as usize);
-          match x[2] {
-            1 => VmMem::MEM_INT(vecU8ToI32(&x[4..])),
-            2 => VmMem::MEM_DOUBLE(vecU8ToF64(&x[4..])),
-            3 => VmMem::MEM_STRING(VmMemString::new(x[4..].to_vec())),
-            4 => VmMem::MEM_NULL,
-            _ => unreachable!(),
-          }
-        })
-        .collect(),
-    );
-    self.values.push(
-      value
-        .iter()
-        .map(|x| {
-          let len = (x[0] as usize) << 8 | (x[1] as usize);
-          match x[2] {
-            1 => VmMem::MEM_INT(vecU8ToI32(&x[4..])),
-            2 => VmMem::MEM_DOUBLE(vecU8ToF64(&x[4..])),
-            3 => VmMem::MEM_STRING(VmMemString::new(x[4..].to_vec())),
-            4 => VmMem::MEM_NULL,
-            _ => unreachable!(),
-          }
-        })
-        .collect(),
-    );
-    unimplemented!()
+    let key = VmMemString::new(key[..].to_vec());
+    let value = VmMemString::new(value[..].to_vec());
+    self
+      .keys
+      .push(key.iter().map(|x| VmMemString::new(x.to_vec())).collect());
+    self
+      .values
+      .push(value.iter().map(|x| VmMemString::new(x.to_vec())).collect());
   }
-  pub fn columnValue(&self, idx: usize) -> Result<VmMem, String> {
+  pub fn columnValue(&self, idx: usize) -> Result<VmMemString, String> {
     if self.nowIdx < self.values.len() && idx < self.values[self.nowIdx].len() {
       Ok(self.values[self.nowIdx][idx].clone())
     } else {
@@ -56,7 +31,7 @@ impl VmTmpCursor {
       ))
     }
   }
-  pub fn columnKey(&self, idx: usize) -> Result<VmMem, String> {
+  pub fn columnKey(&self, idx: usize) -> Result<VmMemString, String> {
     if self.nowIdx < self.values.len() && idx < self.values[self.nowIdx].len() {
       Ok(self.keys[self.nowIdx][idx].clone())
     } else {

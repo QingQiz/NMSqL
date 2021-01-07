@@ -64,7 +64,6 @@ impl VirtualMachine {
       self.vmCursors.resize(num + 1, VmCursor::default());
     }
     self.vmCursors[num] = VmCursor::new(cursorName, flag, self.transactionId);
-    self.vmCursors[num].rewind();
   }
   fn getCursor(self: &mut Self, num: usize) -> Result<&mut VmCursor, String> {
     if num < self.vmCursors.len() {
@@ -149,9 +148,10 @@ impl VirtualMachine {
       self.vmTmpCursors.resize(num + 1, VmTmpCursor::default());
     }
     self.vmTmpCursors[num] = VmTmpCursor::default();
+    self.cursorIsTmp[num] = true;
   }
   fn getTmpCursor(&mut self, num: usize) -> Result<&mut VmTmpCursor, String> {
-    if num < self.vmTmpCursors.len() {
+    if num >= self.vmTmpCursors.len() {
       Err(format!(
         "VmTmpCursor index out of bounds: len={} index={}",
         self.vmTmpCursors.len(),
@@ -171,7 +171,7 @@ impl VirtualMachine {
   ) -> Result<(), String> {
     Ok(self.getTmpCursor(num)?.put(key, value))
   }
-  pub fn columnTmpCursor(&mut self, num: usize, idx: usize) -> Result<VmMem, String> {
+  pub fn columnTmpCursor(&mut self, num: usize, idx: usize) -> Result<VmMemString, String> {
     self.getTmpCursor(num)?.columnValue(idx)
   }
   pub fn nextTmpCursor(&mut self, num: usize) -> Result<(), String> {

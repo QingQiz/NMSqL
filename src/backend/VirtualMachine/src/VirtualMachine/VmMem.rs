@@ -80,7 +80,7 @@ impl<'a> Iterator for VmMemStringIterator<'a> {
   }
 }
 
-#[derive(Debug, Clone, PartialOrd, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum VmMem {
   MEM_INT(i32),
   MEM_DOUBLE(f64),
@@ -134,6 +134,19 @@ impl VmMem {
       .concat(),
     )
   }
+  fn getRealValue(&self) -> Self {
+    if let Self::MEM_STRING(s) = self {
+      match s[2] {
+        VmMemString::MEM_FLAG_INT => VmMem::MEM_INT(vecU8ToI32(&s[4..8])),
+        VmMemString::MEM_FLAG_DOUBLE => VmMem::MEM_DOUBLE(vecU8ToF64(&s[4..12])),
+        VmMemString::MEM_FLAG_STRING => self.clone(),
+        VmMemString::MEM_FLAG_NULL => VmMem::MEM_NULL,
+        _ => unreachable!(),
+      }
+    } else {
+      self.clone()
+    }
+  }
 }
 
 impl Default for VmMem {
@@ -142,7 +155,62 @@ impl Default for VmMem {
   }
 }
 
+impl PartialEq for VmMem {
+  fn eq(&self, other: &VmMem) -> bool {
+    if let Some(Ordering::Equal) = self.partial_cmp(other) {
+      true
+    } else {
+      false
+    }
+  }
+}
 impl Eq for VmMem {}
+
+impl PartialOrd for VmMem {
+  fn partial_cmp(&self, other: &VmMem) -> Option<Ordering> {
+    let a = self.getRealValue();
+    let b = other.getRealValue();
+    if let VmMem::MEM_STRING(a) = a {
+      if let VmMem::MEM_STRING(b) = b {
+        let len = a.len().min(b.len());
+        for i in 4..len {
+          if a[i] == b[i] {
+            if a[i] == 0 {
+              return Some(Ordering::Equal);
+            }
+            continue;
+          }
+          return Some(a[i].cmp(&b[i]));
+        }
+        if a.len() > b.len() {
+          if a[b.len()] == 0 {
+            Some(Ordering::Equal)
+          } else {
+            Some(Ordering::Greater)
+          }
+        } else if a.len() < b.len() {
+          if b[a.len()] == 0 {
+            Some(Ordering::Equal)
+          } else {
+            Some(Ordering::Less)
+          }
+        } else {
+          Some(Ordering::Equal)
+        }
+      } else {
+        None
+      }
+    } else if let VmMem::MEM_NULL = a {
+      if let VmMem::MEM_NULL = b {
+        Some(Ordering::Equal)
+      } else {
+        None
+      }
+    } else {
+      a.realify().partial_cmp(&b.realify())
+    }
+  }
+}
 
 impl Ord for VmMem {
   fn cmp(&self, other: &Self) -> Ordering {
