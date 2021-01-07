@@ -23,6 +23,7 @@ pub fn runOperation(
   args: *mut std::ffi::c_void,
 ) -> Result<(), String> {
   let ops = parseOperations(operations);
+  for op in ops.iter() {}
   let mut pc = 0;
   loop {
     if pc == ops.len() {
@@ -65,13 +66,17 @@ pub fn runOperation(
       VmOpType::OP_Fcnt => unimplemented!(),
       VmOpType::OP_NewRecno => unimplemented!(),
       VmOpType::OP_Put => {
-        let value = match popOneMem(vm)? {
-          VmMem::MEM_STRING(x) => x,
-          _ => return Err(String::from("incorrect value format")),
+        let poped = popOneMem(vm)?;
+        let value = if let VmMem::MEM_STRING(x) = poped {
+          x
+        } else {
+          return Err(format!("incorrect value format, value={:?}", poped));
         };
-        let key = match popOneMem(vm)? {
-          VmMem::MEM_STRING(x) => x,
-          _ => return Err(String::from("incorrect key format")),
+        let poped = popOneMem(vm)?;
+        let key = if let VmMem::MEM_STRING(x) = poped {
+          x
+        } else {
+          return Err(format!("incorrect key format, key={:?}", poped));
         };
         vm.cursorInsert(nowOp.p1 as usize, &key, &value)?;
       }
@@ -111,7 +116,7 @@ pub fn runOperation(
       }
       VmOpType::OP_Column => {
         let toPush = if vm.isTmp(nowOp.p1 as usize) {
-          vm.columnTmpCursor(nowOp.p1 as usize, nowOp.p2 as usize)?
+          VmMem::MEM_STRING(vm.columnTmpCursor(nowOp.p1 as usize, nowOp.p2 as usize)?)
         } else {
           let data = (match vm.cursorKeyAsData(nowOp.p1 as usize)? {
             true => vm.cursorGetKey(nowOp.p1 as usize),
@@ -142,7 +147,7 @@ pub fn runOperation(
       }
       VmOpType::OP_Address => {
         let address = vm.cursorGetAddress(nowOp.p1 as usize).unwrap();
-        vm.pushStack(VmMem::MEM_INT(address));
+        vm.pushStack(VmMem::MEM_STRING(VmMem::MEM_INT(address).stringify()));
       }
       VmOpType::OP_Rewind => {
         vm.cursorRewind(nowOp.p1 as usize)?;
@@ -155,14 +160,13 @@ pub fn runOperation(
         }
       }
       VmOpType::OP_Next => {
+        vm.cursorNext(nowOp.p1 as usize)?;
         if if vm.isTmp(nowOp.p1 as usize) {
           vm.isEndTmpCursor(nowOp.p1 as usize)?
         } else {
           vm.cursorIsEnd(nowOp.p1 as usize)?
         } {
           pc = nowOp.p2 as usize - 1;
-        } else {
-          vm.cursorNext(nowOp.p1 as usize)?;
         }
       }
       VmOpType::OP_Destroy => {
@@ -197,12 +201,12 @@ pub fn runOperation(
         }
       }
       VmOpType::OP_NextIdx => {
+        vm.cursorNext(nowOp.p1 as usize)?;
         if vm.cursorIsEnd(nowOp.p1 as usize)? {
           pc = nowOp.p2 as usize - 1;
         } else {
           let value = vm.cursorGetValue(nowOp.p1 as usize)?.clone();
           vm.pushStack(VmMem::MEM_STRING(value));
-          vm.cursorNext(nowOp.p1 as usize);
         }
       }
       VmOpType::OP_PutIdx => unimplemented!(),
@@ -434,13 +438,8 @@ pub fn runOperation(
         nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
         VmMemString::MEM_FLAG_STRING,
       ))),
-      VmOpType::OP_Double => vm.pushStack(VmMem::MEM_DOUBLE(
-        VmMem::MEM_STRING(VmMem::genVmString(
-          nowOp.p3.as_bytes().into_iter().map(|&x| x).collect(),
-          VmMemString::MEM_FLAG_STRING,
-        ))
-        .realify(),
-      )),
+      VmOpType::OP_Double => vm.pushStack(VmMem::MEM_DOUBLE(nowOp.p3.parse().unwrap())),
+
       // push null to the stack
       VmOpType::OP_Null => vm.pushStack(VmMem::MEM_NULL),
       // pop an element from the stack
@@ -502,6 +501,10 @@ pub fn runOperation(
         let b = popOneMem(vm)?;
         if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
           vm.pushStack(VmMem::MEM_INT(std::cmp::min(a, b)));
+        } else if let VmMem::MEM_NULL = a {
+          vm.pushStack(b);
+        } else if let VmMem::MEM_NULL = b {
+          vm.pushStack(a);
         } else {
           let a = a.realify();
           let b = b.realify();
@@ -513,6 +516,10 @@ pub fn runOperation(
         let b = popOneMem(vm)?;
         if let (&VmMem::MEM_INT(a), &VmMem::MEM_INT(b)) = (&a, &b) {
           vm.pushStack(VmMem::MEM_INT(std::cmp::max(a, b)));
+        } else if let VmMem::MEM_NULL = a {
+          vm.pushStack(b);
+        } else if let VmMem::MEM_NULL = b {
+          vm.pushStack(a);
         } else {
           let a = a.realify();
           let b = b.realify();

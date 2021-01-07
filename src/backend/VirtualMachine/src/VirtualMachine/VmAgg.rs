@@ -19,6 +19,7 @@ impl<'a> KeyAdapter<'a> for AggAdaptor {
 pub struct VmAgg {
   data: RBTree<AggAdaptor>,
   current: VmMem,
+  len: usize,
 }
 
 impl VmAgg {
@@ -33,9 +34,13 @@ impl VmAgg {
       }
       else {
         self.data.insert(Box::new(AggData {
-                         link: RBTreeLink::new(),
-                         key: key,
-                         value: Vec::new()}));
+          link: RBTreeLink::new(),
+          key: key,
+          value: {
+            let mut ret = Vec::new();
+            ret.resize(self.len,VmMem::MEM_NULL);
+            ret
+          }}));
         false
       }
     }
@@ -74,6 +79,10 @@ impl VmAgg {
       *x += num;
       self.pushCurrentAgg(data);
       Ok(())
+    } else if let VmMem::MEM_NULL = value {
+      *value = VmMem::MEM_INT(num);
+      self.pushCurrentAgg(data);
+      Ok(())
     } else {
       Err(format!(
         "value is not int, cannot be added, value={:?}",
@@ -108,10 +117,10 @@ impl VmAgg {
     Ok(ret)
   }
   pub fn resizeCurrent(self: &mut Self, size: usize) -> Result<(), String> {
-    let mut data = self.popCurrentAgg()?;
-    data.as_mut().value.clear();
-    data.as_mut().value.resize(size, VmMem::default());
-    self.pushCurrentAgg(data);
+    self.data.clear();
+    self.len = size;
+    self.current = VmMem::MEM_NULL;
+    self.focus(VmMem::MEM_NULL);
     Ok(())
   }
 }

@@ -1,4 +1,4 @@
-use super::VmMem::VmMemString;
+use super::VmMem::{VmMem, VmMemString};
 use crate::wrapper::rustLayer as DbWrapper;
 use crate::wrapper::rustLayer::Cursor;
 
@@ -29,7 +29,7 @@ impl Default for VmCursor {
 }
 impl VmCursor {
   pub fn new(cursorName: &String, flag: i32, transactionId: i32) -> Self {
-    VmCursor {
+    let mut ret = VmCursor {
       cursor: DbWrapper::open(
         transactionId,
         &{
@@ -46,7 +46,9 @@ impl VmCursor {
       valueCache: VmMemString::default(),
       transactionId,
       idleNext: false,
-    }
+    };
+    ret.rewind();
+    ret
   }
   fn getCursor(self: &Self) -> Result<*mut Cursor, String> {
     Ok(self.cursor)
@@ -99,11 +101,15 @@ impl VmCursor {
   }
   pub fn find(self: &mut Self, key: &VmMemString) -> Result<(), String> {
     DbWrapper::find(self.transactionId, self.getCursor()?, key);
+    self.keyCache = VmMemString::new(DbWrapper::getKey(self.transactionId, self.cursor));
+    self.valueCache = VmMemString::new(DbWrapper::getValue(self.transactionId, self.cursor));
     Ok(())
   }
   pub fn erase(self: &mut Self) -> Result<(), String> {
     self.idleNext = true;
     DbWrapper::erase(self.transactionId, self.getCursor()?);
+    self.keyCache = VmMemString::new(DbWrapper::getKey(self.transactionId, self.cursor));
+    self.valueCache = VmMemString::new(DbWrapper::getValue(self.transactionId, self.cursor));
     Ok(())
   }
   pub fn getKeyAsData(self: &Self) -> bool {
@@ -113,8 +119,29 @@ impl VmCursor {
     self.keyAsData = flag;
   }
   pub fn isEnd(self: &mut Self) -> bool {
-    if self.valueCache.len() == 0 || self.isIdx && self.keyCache != self.key {
+    if self.valueCache.len() == 0 {
       true
+    } else if self.isIdx {
+      let mut keyCache = self.keyCache.iter();
+      let mut key = self.key.iter();
+      loop {
+        let k = key.next();
+        let c = keyCache.next();
+        if let None = k {
+          if let None = c {
+            break false;
+          }
+          break true;
+        } else if let None = c {
+          break true;
+        } else {
+          let k = VmMem::MEM_STRING(VmMemString::new(k.unwrap().to_vec()));
+          let c = VmMem::MEM_STRING(VmMemString::new(c.unwrap().to_vec()));
+          if k != c {
+            break true;
+          }
+        }
+      }
     } else {
       false
     }
