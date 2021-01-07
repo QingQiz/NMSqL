@@ -11,6 +11,7 @@ SET(LIB_DIRECTORY ../include/)
 SET(WORK_DIRECTORY ./)
 SET(HEAD_DIRECTORY ${WORK_DIRECTORY}include/)
 SET(SRC_DIRECTORY ${WORK_DIRECTORY}src/)
+SET(EXTERNAL_DIR ../BPTree/)
 
 INCLUDE_DIRECTORIES(${LIB_DIRECTORY} "./include")
 
@@ -20,4 +21,5 @@ add_executable(dbEngine ${MAIN_FILE}
         ${LIB_DIRECTORY}DbEngineInterface.h
         ${HEAD_DIRECTORY}DBEngine.h
         ${SRC_DIRECTORY}DBEngine.cpp
+		${EXTERNAL_DIR}BPTree.h
         )

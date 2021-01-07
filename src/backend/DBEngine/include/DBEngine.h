@@ -12,7 +12,6 @@ std::string extractString(const char *st);
 struct DBECursor{
 	void* key;
 	void* cursor;
-	void* rootPage;
 };
 
 int findPageByName(const char* name);
