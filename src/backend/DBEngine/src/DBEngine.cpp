@@ -7,6 +7,7 @@
 #include "DBEDefines.h"
 #include "BPTree.h"
 #include "predefined.h"
+#include "PagerInterface.h"
 #include <cstdlib>
 
 using std::string;
@@ -25,6 +26,10 @@ string extractString(const char *st) {
  */
 
 int findPageByName(const char *name) {
+    return 1;
+}
+
+int getRowSize(char *tableName) {
     return 1;
 }
 
@@ -66,9 +71,9 @@ int cursorClose(int transactionId, Cursor *cursor) {
     }
 }
 
-int getAddress(int transactionId, Cursor *cursor){
+int getAddress(int transactionId, Cursor *cursor) {
     auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
-    return btcursor->address.pgno*PAGESIZE+btcursor->address.offset;
+    return btcursor->address.pgno * PAGESIZE + btcursor->address.offset;
 }
 
 int create(const char *dbTable, const char *indexName, CursorType indexType,
@@ -105,10 +110,16 @@ void *getValue(int transactionId, Cursor *cursor) {
      * requires api from pager
      */
     if (cursor->cursorType == CURSOR_BTREE) {
-        return NULL;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
+        auto rtn = (void *) malloc(
+                getTableMetadata((((DBECursor *) cursor->cursor)->tableName).c_str())->columnCnt * COLUMN_SIZE);
+        auto page=GetMemPage(btcursor->address.pgno);
+        memcpy(rtn,page,getTableMetadata((((DBECursor *) cursor->cursor)->tableName).c_str())->columnCnt * COLUMN_SIZE);
+        return rtn;
     } else {
         return NULL;
     }
+    // todo: need explanation from pager.
 }
 
 int insert(int transactionId, Cursor *cursor, const void *key, const void *value) {
@@ -197,8 +208,8 @@ char **getTableColumns(const char *tableName) {
 /*
 ;
 ;
-void *getValue(int transactionId, Cursor *cursor);
-
+;
+;
 ;
 ;
 ;
@@ -217,6 +228,4 @@ int transaction(int *transactionId);
 int commit(int transactionId);
 int rollback(int transactionId);
 
-void openDb(const char *dbName);
-void closeDb();
  */
