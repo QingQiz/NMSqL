@@ -13,18 +13,22 @@ library:
   source-dirs:
     - src/Parser
     - src/CodeGenerator
-    - src/FFI
 
 executables:
-  libCompiler.so:
+  NMSqL:
     main: src/FFI/FFI.hs
+    c-sources:
+      - ../shell.c
     dependencies:
       - compiler
+    extra-lib-dirs:
+      ../../backend/lib
+    extra-libraries:
+      - DbEngine
+      - VirtualMachine
     ghc-options:
       - -no-hs-main
-      - -fPIC
-      - -shared
-      - -dynamic
+      - -static
 
 tests:
   module-test:
