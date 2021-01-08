@@ -97,6 +97,8 @@ impl VmCursor {
   }
   pub fn insert(self: &mut Self, key: &VmMemString, value: &VmMemString) -> Result<(), String> {
     DbWrapper::insert(self.transactionId, self.getCursor()?, key, value);
+    self.keyCache = key.clone();
+    self.valueCache = value.clone();
     Ok(())
   }
   pub fn find(self: &mut Self, key: &VmMemString) -> Result<(), String> {
