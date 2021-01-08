@@ -32,5 +32,9 @@
 #define SET_COOKIES_SUCCESS 1
 #define SET_COOKIES_FAILED 0
 
+#define PAGESIZE (4*1024)
+#define COLUMN_SIZE 4
 
 #endif //DBENGINE_DBEDEFINES_H
+
+

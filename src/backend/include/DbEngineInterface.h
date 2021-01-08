@@ -71,7 +71,7 @@ struct TableMetadata {
   int32_t cookie; // 表 Cookie
 };
 
-struct TableMetadata *getTableMetadata(char *tableName);
+struct TableMetadata *getTableMetadata(const char *tableName);
 }
 char **getAllTableNames();
 

@@ -5,6 +5,9 @@
 #include "BTreeInterface.h"
 #include "DbEngineInterface.h"
 #include "DBEDefines.h"
+#include "BPTree.h"
+#include "predefined.h"
+#include "PagerInterface.h"
 #include <cstdlib>
 
 using std::string;
@@ -26,19 +29,26 @@ int findPageByName(const char *name) {
     return 1;
 }
 
+int getRowSize(char *tableName) {
+    return 1;
+}
+
 /*
  * realization of DbEngineInterface.h
  */
 
-Cursor *open(const char *indexName, int flag) {
+Cursor *cursorOpen(int transactionId, const char *indexName, int flag) {
     string idxName = extractString(indexName);
     if (flag == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) malloc(sizeof(btCursor));
+        auto *btcursor = (BtCursor *) malloc(sizeof(BtCursor));
         auto rootPage = (pgno_t) findPageByName(idxName.c_str());
+        auto *dbecursor = (DBECursor *) malloc(sizeof(DBECursor));\
+        dbecursor->cursor = btcursor;
+        dbecursor->key = idxName;
         BPTree bpTree;
         bpTree.open(btcursor, rootPage);
         auto *cursor = (Cursor *) malloc(sizeof(Cursor));
-        cursor->cursor = (void *) btcursor;
+        cursor->cursor = (void *) dbecursor;
         cursor->cursorType = CURSOR_BTREE;
         bpTree.close();
         return cursor;
@@ -50,23 +60,31 @@ Cursor *open(const char *indexName, int flag) {
     }
 }
 
-int close(Cursor *cursor) {
+int cursorClose(int transactionId, Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = cursor->cursor;
-        free(btcursor);
+        auto dbecursor = (DBECursor *) cursor->cursor;
+        free(dbecursor->cursor);
+        free(dbecursor);
         return CLOSE_SUCCESS;
     } else {
         return CLOSE_FAILED;
     }
 }
 
+int getAddress(int transactionId, Cursor *cursor) {
+    auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
+    return btcursor->address.pgno * PAGESIZE + btcursor->address.offset;
+}
+
 int create(const char *dbTable, const char *indexName, CursorType indexType,
            const int indexColumnCnt, const char **indexColumns) {}
 
-int find(Cursor *cursor, const void *key) {
-    key_t k(extractString((const char *) key).c_str());
+int find(int transactionId, Cursor *cursor, const void *key) {
+    Key_t k;
+    k.data = (void *) extractString((const char *) key).c_str();
+    k.size = extractString((const char *) key).length();
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) cursor->cursor;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
         BPTree bpTree;
         bpTree.search(btcursor, k);
         bpTree.close();
@@ -74,47 +92,54 @@ int find(Cursor *cursor, const void *key) {
     } else {
         return FIND_FAILED;
     }
-    //    TODO: requires new API.
 }
 
-void *getKey(Cursor *cursor) {
+void *getKey(int transactionId, Cursor *cursor) {
     /*
      * requires api from btree
      */
     if (cursor->cursorType == CURSOR_BTREE) {
-        return NULL;
+        return (void *) (((DBECursor *) cursor->cursor)->key.c_str());
     } else {
         return NULL;
     }
 }
 
-void *getValue(Cursor *cursor) {
+void *getValue(int transactionId, Cursor *cursor) {
     /*
      * requires api from pager
      */
     if (cursor->cursorType == CURSOR_BTREE) {
-        return NULL;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
+        auto rtn = (void *) malloc(
+                getTableMetadata((((DBECursor *) cursor->cursor)->tableName).c_str())->columnCnt * COLUMN_SIZE);
+        auto page=GetMemPage(btcursor->address.pgno);
+        memcpy(rtn,page,getTableMetadata((((DBECursor *) cursor->cursor)->tableName).c_str())->columnCnt * COLUMN_SIZE);
+        return rtn;
     } else {
         return NULL;
     }
+    // todo: need explanation from pager.
 }
 
-int insert(Cursor *cursor, const void *key, const void *value) {
-    key_t k(extractString((const char *) key).c_str());
+int insert(int transactionId, Cursor *cursor, const void *key, const void *value) {
+    Key_t k;
+    k.data = (void *) extractString((const char *) key).c_str();
+    k.size = extractString((const char *) key).length();
     string data = extractString((const char *) value);
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) cursor->cursor;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
         BPTree bpTree;
-        bpTree.insert(btcursor, *((key_t *) key), (void *) data.c_str());
+        bpTree.insert(btcursor, k, (void *) data.c_str(), data.length());
         return INSERT_SUCCESS;
     } else {
         return INSERT_FAILED;
     }
 }
 
-int erase(Cursor *cursor) {
+int erase(int transactionId, Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) cursor->cursor;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
         BPTree bpTree;
         bpTree.remove(btcursor);
         bpTree.close();
@@ -124,9 +149,9 @@ int erase(Cursor *cursor) {
     }
 }
 
-int next(Cursor *cursor) {
+int next(int transactionId, Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) cursor->cursor;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
         BPTree bpTree;
         bpTree.next(btcursor);
         bpTree.close();
@@ -136,9 +161,9 @@ int next(Cursor *cursor) {
     }
 }
 
-int reset(Cursor *cursor) {
+int reset(int transactionId, Cursor *cursor) {
     if (cursor->cursorType == CURSOR_BTREE) {
-        auto *btcursor = (btCursor *) cursor->cursor;
+        auto *btcursor = (BtCursor *) ((DBECursor *) cursor->cursor)->cursor;
         BPTree bpTree;
         bpTree.first(btcursor);
         bpTree.close();
@@ -178,14 +203,31 @@ char **getTableColumns(const char *tableName) {
     return NULL;
 }
 
-/*
- * 事务相关
- */
-
-int transaction() {}
-
-int commit() {}
-
-int rollback() {}
 
 /*******************************************************************/
+/*
+;
+;
+;
+;
+;
+;
+;
+;
+
+pgno_t createTable();
+pgno_t createIndex();
+int clear(pgno_t page);
+int destroy(pgno_t page);
+
+int reorganize();
+int getCookies();
+int setCookies(int cookies);
+
+int transaction(int *transactionId);
+int commit(int transactionId);
+int rollback(int transactionId);
+
+ those above should be implemented by other modules.
+
+ */
