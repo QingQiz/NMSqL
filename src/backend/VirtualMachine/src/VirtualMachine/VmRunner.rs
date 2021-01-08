@@ -397,8 +397,13 @@ pub fn runOperation(
       VmOpType::OP_ColumnCount => vm.resultColumnNames.resize(nowOp.p1 as usize, Vec::new()),
       // set the p1-th column's name
       VmOpType::OP_ColumnName => {
-        vm.resultColumnNames[nowOp.p1 as usize] =
-          String::from(nowOp.p3.clone()).as_bytes().to_vec();
+        vm.resultColumnNames[nowOp.p1 as usize] = {
+          let mut ret = String::from(nowOp.p3.clone()).as_bytes().to_vec();
+          if *ret.last().unwrap() != 0 {
+            ret.push(0);
+          }
+          ret
+        }
       }
       // set the callback function
       VmOpType::OP_Callback => {
