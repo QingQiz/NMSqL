@@ -228,4 +228,6 @@ int transaction(int *transactionId);
 int commit(int transactionId);
 int rollback(int transactionId);
 
+ those above should be implemented by other modules.
+
  */
